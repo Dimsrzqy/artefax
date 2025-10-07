@@ -1,5 +1,7 @@
 <?php
+ob_start(); // <-- Tambahkan ini agar header() tetap bisa dijalankan meski ada output
 session_start();
+
 require_once "config/koneksi.php";
 require_once "class/users.php";
 
@@ -50,8 +52,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
                     'role' => $login['Role']
                 ];
 
-                // Redirect ke halaman service
-                header("Location: service-details.php");
+                // Redirect ke halaman layanan
+                header("Location:layanan/service-details.php");
                 exit;
             } else {
                 $message = "Email atau password salah!";
@@ -60,7 +62,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
         }
     }
 }
+
+ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
 ?>
+
 
 <!-- Popup notifikasi langsung -->
 <?php if (!empty($message)): ?>
@@ -279,7 +284,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
           <h3>Event Organizer</h3>
           <p>Kami membantu merancang dan menyelenggarakan berbagai jenis acara dengan konsep yang kreatif, rapi, dan sesuai kebutuhan klien.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
