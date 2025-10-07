@@ -1,5 +1,76 @@
+<?php
+session_start();
+require_once "config/koneksi.php";
+require_once "class/users.php";
+
+$database = new Database();
+$conn = $database->getConnection();
+$user = new User($conn);
+
+$message = "";
+
+// PROSES LOGIN
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
+
+    if (!isset($_SESSION['login_attempts'])) {
+        $_SESSION['login_attempts'] = 0;
+    }
+
+    // Cek timeout
+    if (isset($_SESSION['login_timeout']) && time() < $_SESSION['login_timeout']) {
+        $message = "Akun Anda terkunci sementara. Silakan coba lagi nanti.";
+    } elseif ($_SESSION['login_attempts'] >= 5) {
+        $message = "Terlalu banyak percobaan login. Silakan coba lagi setelah 5 menit.";
+        $_SESSION['login_timeout'] = time() + 300;
+    } else {
+        $email = trim($_POST['email']);
+        $password = trim($_POST['password']);
+
+        if (empty($email) || empty($password)) {
+            $message = "Email dan password wajib diisi!";
+            $_SESSION['login_attempts']++;
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $message = "Format email tidak valid!";
+            $_SESSION['login_attempts']++;
+        } else {
+            $user->Email = $email;
+            $user->Password = $password;
+
+            $login = $user->login();
+
+            if ($login) {
+                $_SESSION['login_attempts'] = 0;
+                unset($_SESSION['login_timeout']);
+                session_regenerate_id(true);
+
+                $_SESSION['user'] = [
+                    'id' => $login['IDUser'],
+                    'nama' => $login['NamaUser'],
+                    'email' => $login['Email'],
+                    'role' => $login['Role']
+                ];
+
+                // Redirect ke halaman service
+                header("Location: service-details.php");
+                exit;
+            } else {
+                $message = "Email atau password salah!";
+                $_SESSION['login_attempts']++;
+            }
+        }
+    }
+}
+?>
+
+<!-- Popup notifikasi langsung -->
+<?php if (!empty($message)): ?>
+<script>
+    alert("<?= addslashes($message) ?>");
+</script>
+<?php endif; ?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -27,498 +98,68 @@
 
     <!-- Main CSS File -->
     <link href="assets/css/main.css" rel="stylesheet" />
-
-    <!-- =======================================================
-  * Template Name: Devin
-  * Template URL: https://bootstrapmade.com/devin-bootstrap-template/
-  * Updated: Jul 23 2025 with Bootstrap v5.3.7
-  * Author: BootstrapMade.com
-  * License: https://bootstrapmade.com/license/
-  ======================================================== -->
   </head>
 
   <body class="index-page">
-    <header id="header" class="header d-flex align-items-center fixed-top">
-      <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-        <a href="index.html" class="logo d-flex align-items-center">
-          <!-- Uncomment the line below if you also wish to use an image logo -->
-          <!-- <img src="assets/img/logo.webp" alt=""> -->
-          <a href="index.html" class="logo d-flex align-items-center">
-             <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px;">
-          </a>
-        </a>
 
-        <nav id="navmenu" class="navmenu">
-          <ul>
-            <li><a href="#hero" class="active">Home</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#services">Layanan</a></li>
-            <li><a href="#portfolio">Portfolio</a></li>
-            <li><a href="#team">Team</a></li>
-            <li class="dropdown">
-              <a href="#"><span>Dropdown</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-              <ul>
-                <li><a href="#">Dropdown 1</a></li>
-                <li class="dropdown">
-                  <a href="#"><span>Deep Dropdown</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-                  <ul>
-                    <li><a href="#">Deep Dropdown 1</a></li>
-                    <li><a href="#">Deep Dropdown 2</a></li>
-                    <li><a href="#">Deep Dropdown 3</a></li>
-                    <li><a href="#">Deep Dropdown 4</a></li>
-                    <li><a href="#">Deep Dropdown 5</a></li>
-                  </ul>
-                </li>
-                <li><a href="#">Dropdown 2</a></li>
-                <li><a href="#">Dropdown 3</a></li>
-                <li><a href="#">Dropdown 4</a></li>
-              </ul>
-            </li>
+<header id="header" class="header d-flex align-items-center fixed-top">
+  <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+    <a href="index.php" class="logo d-flex align-items-center">
+      <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
+    </a>
 
-            <li class="dropdown extended-dropdown-2">
-              <a href="#"><span>Extended Dropdown</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-              <ul>
-                <li>
-                  <a href="#">
-                    <div class="menu-item-content">
-                      <div class="menu-icon">
-                        <i class="bi bi-speedometer2"></i>
-                      </div>
-                      <div class="menu-text">
-                        <span class="menu-title">Analytics Dashboard</span>
-                        <span class="menu-description">Track your performance metrics</span>
-                      </div>
-                    </div>
-                    <div class="menu-badge">New</div>
-                  </a>
-                </li>
-                <li>
-                  <a href="#">
-                    <div class="menu-item-content">
-                      <div class="menu-icon">
-                        <i class="bi bi-people"></i>
-                      </div>
-                      <div class="menu-text">
-                        <span class="menu-title">Team Management</span>
-                        <span class="menu-description">Manage your team members</span>
-                      </div>
-                    </div>
-                  </a>
-                </li>
-                <li>
-                  <a href="#">
-                    <div class="menu-item-content">
-                      <div class="menu-icon">
-                        <i class="bi bi-graph-up"></i>
-                      </div>
-                      <div class="menu-text">
-                        <span class="menu-title">Sales Reports</span>
-                        <span class="menu-description">Review financial statistics</span>
-                      </div>
-                    </div>
-                    <div class="menu-badge hot">Hot</div>
-                  </a>
-                </li>
-                <li>
-                  <a href="#">
-                    <div class="menu-item-content">
-                      <div class="menu-icon">
-                        <i class="bi bi-shield-lock"></i>
-                      </div>
-                      <div class="menu-text">
-                        <span class="menu-title">Security Center</span>
-                        <span class="menu-description">Manage privacy settings</span>
-                      </div>
-                    </div>
-                  </a>
-                </li>
-                <li>
-                  <a href="#">
-                    <div class="menu-item-content">
-                      <div class="menu-icon">
-                        <i class="bi bi-chat-dots"></i>
-                      </div>
-                      <div class="menu-text">
-                        <span class="menu-title">Message Center</span>
-                        <span class="menu-description">Check your notifications</span>
-                      </div>
-                    </div>
-                    <div class="menu-badge updates">5</div>
-                  </a>
-                </li>
-              </ul>
-            </li>
+    <nav id="navmenu" class="navmenu">
+      <ul>
+        <li><a href="#hero" class="active">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#services">Layanan</a></li>
+        <li><a href="#portfolio">Portfolio</a></li>
+        <li><a href="#team">Team</a></li>
+        <li><a href="#contact">Contact</a></li>
 
-            <!-- Megamenu 2 -->
-            <li class="megamenu-2">
-              <a href="#"><span>Megamenu</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+<li>
+  <a href="logout.php"
+     class="btn btn-danger px-3 py-2 text-white"
+     style="border-radius: 8px;"
+     onclick="return confirm('Apakah Anda yakin ingin logout?');">
+    Logout
+  </a>
+</li>
 
-              <!-- Mobile Megamenu -->
-              <ul class="mobile-megamenu">
-                <li><a href="#">Product Analytics</a></li>
-                <li><a href="#">Customer Insights</a></li>
-                <li><a href="#">Market Research</a></li>
+      </ul>
+      <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+    </nav>
+  </div>
+</header>
 
-                <li class="dropdown">
-                  <a href="#"><span>Enterprise Software</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-                  <ul>
-                    <li><a href="#">CRM Solutions</a></li>
-                    <li><a href="#">ERP Systems</a></li>
-                    <li><a href="#">Workflow Automation</a></li>
-                    <li><a href="#">Document Management</a></li>
-                    <li><a href="#">Business Intelligence</a></li>
-                    <li><a href="#">Integration Platform</a></li>
-                  </ul>
-                </li>
-
-                <li class="dropdown">
-                  <a href="#"><span>Development Tools</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-                  <ul>
-                    <li><a href="#">Code Editors</a></li>
-                    <li><a href="#">Version Control</a></li>
-                    <li><a href="#">Testing Frameworks</a></li>
-                    <li><a href="#">Deployment Tools</a></li>
-                    <li><a href="#">API Management</a></li>
-                    <li><a href="#">Performance Monitoring</a></li>
-                  </ul>
-                </li>
-
-                <li class="dropdown">
-                  <a href="#"><span>Creative Suite</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-                  <ul>
-                    <li><a href="#">Design Software</a></li>
-                    <li><a href="#">Video Editing</a></li>
-                    <li><a href="#">Audio Production</a></li>
-                    <li><a href="#">Animation Tools</a></li>
-                    <li><a href="#">Photo Editing</a></li>
-                    <li><a href="#">3D Modeling</a></li>
-                  </ul>
-                </li>
-
-                <li class="dropdown">
-                  <a href="#"><span>Resources</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
-                  <ul>
-                    <li><a href="#">Documentation</a></li>
-                    <li><a href="#">Tutorials</a></li>
-                    <li><a href="#">Community</a></li>
-                    <li><a href="#">Blog Posts</a></li>
-                  </ul>
-                </li>
-              </ul>
-              <!-- End Mobile Megamenu -->
-
-              <!-- Desktop Megamenu -->
-              <div class="desktop-megamenu">
-                <div class="tab-navigation">
-                  <ul class="nav nav-tabs flex-column" id="7525-megamenu-tabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link active" id="7525-tab-1-tab" data-bs-toggle="tab" data-bs-target="#7525-tab-1" type="button" role="tab" aria-controls="7525-tab-1" aria-selected="true">
-                        <i class="bi bi-building-gear"></i>
-                        <span>Enterprise Software</span>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" id="7525-tab-2-tab" data-bs-toggle="tab" data-bs-target="#7525-tab-2" type="button" role="tab" aria-controls="7525-tab-2" aria-selected="false">
-                        <i class="bi bi-code-slash"></i>
-                        <span>Development Tools</span>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" id="7525-tab-3-tab" data-bs-toggle="tab" data-bs-target="#7525-tab-3" type="button" role="tab" aria-controls="7525-tab-3" aria-selected="false">
-                        <i class="bi bi-palette"></i>
-                        <span>Creative Suite</span>
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" id="7525-tab-4-tab" data-bs-toggle="tab" data-bs-target="#7525-tab-4" type="button" role="tab" aria-controls="7525-tab-4" aria-selected="false">
-                        <i class="bi bi-journal-text"></i>
-                        <span>Resources</span>
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-
-                <div class="tab-content">
-                  <!-- Enterprise Software Tab -->
-                  <div class="tab-pane fade show active" id="7525-tab-1" role="tabpanel" aria-labelledby="7525-tab-1-tab">
-                    <div class="content-grid">
-                      <div class="product-section">
-                        <h4>Core Solutions</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-people"></i>
-                            <div>
-                              <span>CRM Solutions</span>
-                              <small>Manage customer relationships effectively</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-diagram-3"></i>
-                            <div>
-                              <span>ERP Systems</span>
-                              <small>Integrate all business processes</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-gear-wide"></i>
-                            <div>
-                              <span>Workflow Automation</span>
-                              <small>Streamline repetitive tasks</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-
-                      <div class="product-section">
-                        <h4>Data &amp; Analytics</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <div>
-                              <span>Document Management</span>
-                              <small>Organize and secure documents</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-bar-chart"></i>
-                            <div>
-                              <span>Business Intelligence</span>
-                              <small>Make data-driven decisions</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-share"></i>
-                            <div>
-                              <span>Integration Platform</span>
-                              <small>Connect all your systems</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="featured-banner">
-                      <div class="banner-content">
-                        <img src="assets/img/misc/misc-7.webp" alt="Enterprise Solutions" class="banner-image" />
-                        <div class="banner-info">
-                          <h5>Enterprise Package</h5>
-                          <p>Comprehensive business management solution with advanced features and 24/7 support.</p>
-                          <a href="#" class="cta-btn">Get Started <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Development Tools Tab -->
-                  <div class="tab-pane fade" id="7525-tab-2" role="tabpanel" aria-labelledby="7525-tab-2-tab">
-                    <div class="content-grid">
-                      <div class="product-section">
-                        <h4>Code &amp; Build</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-code-square"></i>
-                            <div>
-                              <span>Code Editors</span>
-                              <small>Advanced development environment</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-git"></i>
-                            <div>
-                              <span>Version Control</span>
-                              <small>Track changes and collaborate</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-check2-square"></i>
-                            <div>
-                              <span>Testing Frameworks</span>
-                              <small>Ensure code quality</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-
-                      <div class="product-section">
-                        <h4>Deploy &amp; Monitor</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-cloud-upload"></i>
-                            <div>
-                              <span>Deployment Tools</span>
-                              <small>Seamless application deployment</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-api"></i>
-                            <div>
-                              <span>API Management</span>
-                              <small>Design and manage APIs</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-speedometer2"></i>
-                            <div>
-                              <span>Performance Monitoring</span>
-                              <small>Track application performance</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="featured-banner">
-                      <div class="banner-content">
-                        <img src="assets/img/misc/misc-12.webp" alt="Development Tools" class="banner-image" />
-                        <div class="banner-info">
-                          <h5>Developer Suite</h5>
-                          <p>Complete toolkit for modern development teams with integrated CI/CD pipelines.</p>
-                          <a href="#" class="cta-btn">Explore Tools <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Creative Suite Tab -->
-                  <div class="tab-pane fade" id="7525-tab-3" role="tabpanel" aria-labelledby="7525-tab-3-tab">
-                    <div class="content-grid">
-                      <div class="product-section">
-                        <h4>Design &amp; Visual</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-brush"></i>
-                            <div>
-                              <span>Design Software</span>
-                              <small>Professional graphic design tools</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-camera-video"></i>
-                            <div>
-                              <span>Video Editing</span>
-                              <small>Professional video production</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-image"></i>
-                            <div>
-                              <span>Photo Editing</span>
-                              <small>Advanced image manipulation</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-
-                      <div class="product-section">
-                        <h4>Media Production</h4>
-                        <div class="product-list">
-                          <a href="#" class="product-link">
-                            <i class="bi bi-music-note"></i>
-                            <div>
-                              <span>Audio Production</span>
-                              <small>Professional audio editing</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-play-circle"></i>
-                            <div>
-                              <span>Animation Tools</span>
-                              <small>Create stunning animations</small>
-                            </div>
-                          </a>
-                          <a href="#" class="product-link">
-                            <i class="bi bi-box"></i>
-                            <div>
-                              <span>3D Modeling</span>
-                              <small>Advanced 3D design software</small>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="featured-banner">
-                      <div class="banner-content">
-                        <img src="assets/img/misc/misc-5.webp" alt="Creative Suite" class="banner-image" />
-                        <div class="banner-info">
-                          <h5>Creative Pro</h5>
-                          <p>Everything you need for creative projects, from concept to final production.</p>
-                          <a href="#" class="cta-btn">Start Creating <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Resources Tab -->
-                  <div class="tab-pane fade" id="7525-tab-4" role="tabpanel" aria-labelledby="7525-tab-4-tab">
-                    <div class="resources-layout">
-                      <div class="resource-categories">
-                        <div class="resource-category">
-                          <i class="bi bi-book"></i>
-                          <h5>Documentation</h5>
-                          <p>Comprehensive guides and API references for all our products and services.</p>
-                          <a href="#" class="resource-link">Browse Docs <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                        <div class="resource-category">
-                          <i class="bi bi-play-circle"></i>
-                          <h5>Video Tutorials</h5>
-                          <p>Step-by-step video guides to help you get the most out of our solutions.</p>
-                          <a href="#" class="resource-link">Watch Tutorials <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                        <div class="resource-category">
-                          <i class="bi bi-chat-square-dots"></i>
-                          <h5>Community Forum</h5>
-                          <p>Connect with other users, share tips, and get answers to your questions.</p>
-                          <a href="#" class="resource-link">Join Community <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                        <div class="resource-category">
-                          <i class="bi bi-newspaper"></i>
-                          <h5>Blog &amp; Articles</h5>
-                          <p>Latest insights, best practices, and industry trends from our experts.</p>
-                          <a href="#" class="resource-link">Read Blog <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- End Desktop Megamenu -->
-            </li>
-            <!-- End Mega Menu 2 -->
-
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-        </nav>
-      </div>
-    </header>
 
     <main class="main">
       <!-- Hero Section -->
-      <section id="hero" class="hero section">
-        <div class="container">
-          <div class="row align-items-center">
-            <div class="col-lg-6">
-              <div class="hero-content">
-                <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
-                <p>ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan. Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer dan multimedia yang inovatif, profesional, dan terintegrasi.</p>
-                <div class="hero-actions justify-content-center justify-content-lg-start">
-                  <a href="#services" class="btn-primary scrollto">Start Journey</a>
-                  <a href="https://www.youtube.com/watch?v=Y7f98aduVJ8" class="glightbox btn-video d-flex align-items-center">
-                    <i class="bi bi-play-fill"></i>
-                    <span>Watch Demo</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-6">
-              <div class="hero-image">
-                <img src="assets/img/illustration/illustration-28.webp" class="img-fluid floating" alt="" />
-              </div>
-            </div>
+     <section id="hero" class="hero section">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6">
+        <div class="hero-content">
+          <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
+          <p>
+            ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan. 
+            Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer 
+            dan multimedia yang inovatif, profesional, dan terintegrasi.
+          </p>
+          <div class="hero-actions justify-content-center justify-content-lg-start">
+            <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
           </div>
         </div>
-      </section>
+      </div>
+      <div class="col-lg-6">
+        <div class="hero-image">
+          <img src="assets/img/illustration/illustration-28.webp" class="img-fluid floating" alt="Hero Image" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
       <!-- /Hero Section -->
 
       <!-- Clients Section -->
@@ -585,7 +226,10 @@
                 <h2>Mengenal Lebih Dekat ARTEFAX.ID</h2>
                 <p class="lead">ARTEFAX.ID adalah perusahaan kreatif yang bergerak di bidang Event Organizer (EO) dan layanan multimedia terintegrasi.</p>
 
-                <p>Kami menghadirkan solusi lengkap untuk berbagai kebutuhan acara dan dokumentasi profesional, mulai dari perencanaan hingga eksekusi. Dengan tim yang berpengalaman dan peralatan berstandar industri, kami berkomitmen memberikan hasil terbaik bagi setiap klien.</p>
+                <p>
+                  Kami menghadirkan solusi lengkap untuk berbagai kebutuhan acara dan dokumentasi profesional, mulai dari perencanaan hingga eksekusi. Dengan tim yang berpengalaman dan peralatan berstandar industri, kami berkomitmen
+                  memberikan hasil terbaik bagi setiap klien.
+                </p>
 
                 <!-- Stats Row -->
                 <div class="stats-row">
@@ -619,166 +263,136 @@
       <!-- /About Section -->
 
       <!-- Services Section -->
-      <section id="services" class="services section">
-        <!-- Section Title -->
-        <div class="container section-title">
-          <h2>Layanan Kami</h2>
-          <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
+<section id="services" class="services section">
+  <div class="container section-title">
+    <h2>Layanan Kami</h2>
+    <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
+  </div>
+
+  <div class="container">
+    <div class="row gy-4">
+
+      <!-- Layanan 1: Event Organizer -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-palette"></i></div>
+          <h3>Event Organizer</h3>
+          <p>Kami membantu merancang dan menyelenggarakan berbagai jenis acara dengan konsep yang kreatif, rapi, dan sesuai kebutuhan klien.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
         </div>
-        <!-- End Section Title -->
+      </div>
 
-        <div class="container">
-          <div class="row gy-4">
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-palette"></i>
-                </div>
-                <h3>Event Organizer</h3>
-                <p>Kami membantu merancang dan menyelenggarakan berbagai jenis acara dengan konsep yang kreatif, rapi, dan sesuai kebutuhan klien.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-code-slash"></i>
-                </div>
-                <h3>Wedding Organizer</h3>
-                <p>Mewujudkan pernikahan impian Anda dengan perencanaan matang, dekorasi elegan, dan eksekusi penuh kesan.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-megaphone"></i>
-                </div>
-                <h3>Graduation</h3>
-                <p>Menyediakan layanan dokumentasi dan penyelenggaraan acara wisuda yang berkesan, penuh makna, dan profesional.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-graph-up-arrow"></i>
-                </div>
-                <h3>Photography & Videography</h3>
-                <p>Mengabadikan momen penting Anda dengan kualitas foto dan video terbaik, mulai dari pre-event hingga after-event.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-shield-check"></i>
-                </div>
-                <h3>Company Profile</h3>
-                <p>Membantu perusahaan tampil lebih profesional dengan pembuatan company profile yang informatif dan menarik, baik dalam bentuk cetak maupun digital.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-headset"></i>
-                </div>
-                <h3>Graphic Design</h3>
-                <p>Menyediakan desain visual kreatif untuk berbagai kebutuhan branding, promosi, dan publikasi.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-headset"></i>
-                </div>
-                <h3>Live Streaming</h3>
-                <p>Menyajikan pengalaman acara secara langsung kepada audiens lebih luas dengan kualitas siaran yang jernih dan stabil.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-             <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-headset"></i>
-                </div>
-                <h3>Yearbook Production</h3>
-                <p>Menangkap momen berharga dalam bentuk buku tahunan yang eksklusif dan penuh kenangan.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-             <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-headset"></i>
-                </div>
-                <h3>Special Effect / Stage SFX</h3>
-                <p>Memberikan sentuhan efek khusus untuk menghadirkan pengalaman panggung yang spektakuler dan berkesan.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-             <div class="col-lg-4 col-md-6">
-              <div class="service-card">
-                <div class="service-icon">
-                  <i class="bi bi-headset"></i>
-                </div>
-                <h3>Photobox APM</h3>
-                <p>Menyediakan photobooth interaktif dengan cetakan foto instan untuk menambah keceriaan acara Anda.</p>
-                <a href="service-details.html" class="service-link">
-                  Learn More
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-            <!-- End Service Card -->
-          </div>
+      <!-- Layanan 2: Wedding Organizer -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-heart"></i></div>
+          <h3>Wedding Organizer</h3>
+          <p>Mewujudkan pernikahan impian Anda dengan perencanaan matang, dekorasi elegan, dan eksekusi penuh kesan.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
         </div>
-      </section>
-      <!-- /Services Section -->
+      </div>
+
+      <!-- Layanan 3: Photography & Videography -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-camera"></i></div>
+          <h3>Photography & Videography</h3>
+          <p>Kami mengabadikan setiap momen penting Anda dengan hasil foto dan video berkualitas profesional.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 4: Multimedia Design -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-display"></i></div>
+          <h3>Multimedia Design</h3>
+          <p>Kami menyediakan desain grafis, motion, dan presentasi visual yang menarik dan profesional.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 5: Lighting & Stage -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-lightning"></i></div>
+          <h3>Lighting & Stage</h3>
+          <p>Kami menyediakan perlengkapan lighting dan panggung dengan kualitas tinggi untuk mendukung acara Anda.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 6: Sound System -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-mic"></i></div>
+          <h3>Sound System</h3>
+          <p>Kami menyediakan sound system profesional dengan kualitas audio jernih untuk berbagai acara.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="loginModalLabel">Login</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <?php if (!empty($message)): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($message) ?></div>
+          <?php endif; ?>
+          <form method="POST">
+            <input type="hidden" name="login_submit" value="1">
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+            <div class="text-center mt-3">
+              <a href="view/register.php" class="link-primary">Belum punya akun? Register</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</section>
+      <!-- End Services Section -->
 
       <!-- Features Section -->
       <section id="features" class="features section">
@@ -1614,8 +1228,6 @@
                 </div>
               </div>
               <!-- End Testimonial Slide -->
-            </div>
-
             <div class="swiper-navigation">
               <div class="swiper-button-prev"></div>
               <div class="swiper-button-next"></div>
@@ -1624,159 +1236,6 @@
         </div>
       </section>
       <!-- /Testimonials Section -->
-
-      <!-- Pricing Section -->
-      <section id="pricing" class="pricing section">
-        <!-- Section Title -->
-        <div class="container section-title">
-          <h2>Pricing</h2>
-          <p>Necessitatibus eius consequatur ex aliquid fuga eum quidem sint consectetur velit</p>
-        </div>
-        <!-- End Section Title -->
-
-        <div class="container">
-          <div class="row justify-content-center g-4">
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card starter">
-                <div class="plan-header">
-                  <h3 class="plan-name">Starter</h3>
-                  <p class="plan-description">Perfect for individuals and small projects getting started.</p>
-                </div>
-                <div class="pricing-display">
-                  <div class="price">
-                    <span class="currency">$</span>
-                    <span class="amount">19</span>
-                    <span class="period">/mo</span>
-                  </div>
-                </div>
-                <div class="features-list">
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>5 Projects</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>10GB Storage</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Email Support</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Basic Analytics</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>SSL Certificate</span>
-                  </div>
-                </div>
-                <a href="#" class="btn-plan">Get Started</a>
-              </div>
-            </div>
-            <!-- End Starter Plan -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card professional featured">
-                <div class="plan-header">
-                  <div class="featured-badge">Most Popular</div>
-                  <h3 class="plan-name">Professional</h3>
-                  <p class="plan-description">Ideal for growing businesses and teams that need more power.</p>
-                </div>
-                <div class="pricing-display">
-                  <div class="price">
-                    <span class="currency">$</span>
-                    <span class="amount">49</span>
-                    <span class="period">/mo</span>
-                  </div>
-                </div>
-                <div class="features-list">
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>25 Projects</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>100GB Storage</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Priority Support</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Advanced Analytics</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Team Collaboration</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Custom Integrations</span>
-                  </div>
-                </div>
-                <a href="#" class="btn-plan">Start Free Trial</a>
-              </div>
-            </div>
-            <!-- End Professional Plan -->
-
-            <div class="col-lg-4 col-md-6">
-              <div class="pricing-card enterprise">
-                <div class="plan-header">
-                  <h3 class="plan-name">Enterprise</h3>
-                  <p class="plan-description">Comprehensive solution for large organizations with specific needs.</p>
-                </div>
-                <div class="pricing-display">
-                  <div class="price">
-                    <span class="currency">$</span>
-                    <span class="amount">99</span>
-                    <span class="period">/mo</span>
-                  </div>
-                </div>
-                <div class="features-list">
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Unlimited Projects</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>1TB Storage</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>24/7 Phone Support</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Enterprise Analytics</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Advanced Security</span>
-                  </div>
-                  <div class="feature">
-                    <i class="bi bi-check2"></i>
-                    <span>Dedicated Account Manager</span>
-                  </div>
-                </div>
-                <a href="#" class="btn-plan">Contact Sales</a>
-              </div>
-            </div>
-            <!-- End Enterprise Plan -->
-          </div>
-
-          <div class="row justify-content-center mt-5">
-            <div class="col-lg-8 text-center">
-              <div class="pricing-footer">
-                <p class="guarantee-text">30-day money-back guarantee • No setup fees • Cancel anytime</p>
-                <p class="contact-text">Need a custom plan? <a href="#">Contact our sales team</a></p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <!-- /Pricing Section -->
 
       <!-- Faq Section -->
       <section id="faq" class="faq section">
@@ -2167,7 +1626,7 @@
           <div class="col-lg-4">
             <div class="footer-content">
               <a href="index.html" class="logo d-flex align-items-center mb-4">
-                <span class="sitename">Devin</span>
+                <span class="sitename">Artefax.id</span>
               </a>
               <p class="mb-4">Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae. Donec velit neque auctor sit amet aliquam vel ullamcorper sit amet ligula.</p>
 
@@ -2251,7 +1710,7 @@
                   <i class="bi bi-telephone"></i>
                 </div>
                 <div class="contact-info">
-                  <p>+1 (555) 987-6543</p>
+                  <p>+62 856 4581 9510</p>
                 </div>
               </div>
 
@@ -2260,7 +1719,7 @@
                   <i class="bi bi-envelope"></i>
                 </div>
                 <div class="contact-info">
-                  <p>contact@example.com</p>
+                  <p>artefaxm@gmail.com</p>
                 </div>
               </div>
 
@@ -2291,10 +1750,7 @@
                 <a href="#">Cookie Policy</a>
               </div>
               <div class="credits">
-                <!-- All the links in the footer should remain intact. -->
-                <!-- You can delete the links only if you've purchased the pro version. -->
-                <!-- Licensing information: https://bootstrapmade.com/license/ -->
-                <!-- Purchase the pro version with working PHP/AJAX contact form: [buy-url] -->
+
                 Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
               </div>
             </div>
