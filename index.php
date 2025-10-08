@@ -2,6 +2,12 @@
 ob_start(); // <-- Tambahkan ini agar header() tetap bisa dijalankan meski ada output
 session_start();
 
+// Hapus data sesi login_attempts dan login_timeout jika tidak diperlukan saat memulai
+if (!isset($_SESSION['user'])) {
+    unset($_SESSION['login_attempts']);
+    unset($_SESSION['login_timeout']);
+}
+
 require_once "config/koneksi.php";
 require_once "class/users.php";
 
@@ -9,11 +15,10 @@ $database = new Database();
 $conn = $database->getConnection();
 $user = new User($conn);
 
-$message = "";
+$message = ""; // Inisialisasi $message sebagai string kosong
 
 // PROSES LOGIN
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
-
     if (!isset($_SESSION['login_attempts'])) {
         $_SESSION['login_attempts'] = 0;
     }
@@ -53,7 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
                 ];
 
                 // Redirect ke halaman layanan
-                header("Location:layanan/service-details.php");
+                header("Location: layanan/service-details.php");
                 exit;
             } else {
                 $message = "Email atau password salah!";
@@ -65,14 +70,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
 
 ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
 ?>
-
-
-<!-- Popup notifikasi langsung -->
-<?php if (!empty($message)): ?>
-<script>
-    alert("<?= addslashes($message) ?>");
-</script>
-<?php endif; ?>
 
 <!DOCTYPE html>
 <html lang="id">
@@ -298,7 +295,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
           <h3>Wedding Organizer</h3>
           <p>Mewujudkan pernikahan impian Anda dengan perencanaan matang, dekorasi elegan, dan eksekusi penuh kesan.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
@@ -312,7 +309,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
           <h3>Photography & Videography</h3>
           <p>Kami mengabadikan setiap momen penting Anda dengan hasil foto dan video berkualitas profesional.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
@@ -326,7 +323,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
           <h3>Multimedia Design</h3>
           <p>Kami menyediakan desain grafis, motion, dan presentasi visual yang menarik dan profesional.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
@@ -340,7 +337,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
           <h3>Lighting & Stage</h3>
           <p>Kami menyediakan perlengkapan lighting dan panggung dengan kualitas tinggi untuk mendukung acara Anda.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
@@ -354,7 +351,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
           <h3>Sound System</h3>
           <p>Kami menyediakan sound system profesional dengan kualitas audio jernih untuk berbagai acara.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
             <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
@@ -364,38 +361,49 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
     </div>
   </div>
 
-  <!-- Login Modal -->
-  <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="loginModalLabel">Login</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Modal Login -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?php
+                    // Tampilkan pesan reset jika ada di URL
+                    if (isset($_GET['reset_message'])) {
+                        echo '<div class="alert ' . (strpos($_GET['reset_message'], 'Gagal') !== false || strpos($_GET['reset_message'], 'tidak') !== false ? 'alert-danger' : 'alert-success') . '" role="alert">';
+                        echo htmlspecialchars(urldecode($_GET['reset_message']));
+                        echo '</div>';
+                    }
+                    if (!empty($message)): ?>
+                        <div class="alert alert-danger"><?= htmlspecialchars($message) ?></div>
+                        <!-- Tampilkan link Lupa Password hanya jika ada pesan error -->
+                        <div class="text-center mt-2">
+                            <a href="http://localhost/Artefax/view/forgot_password.php" class="link-primary">Lupa Password?</a>
+                        </div>
+                    <?php endif; ?>
+                    <form method="POST">
+                        <input type="hidden" name="login_submit" value="1">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                        <div class="text-center mt-3">
+                            <a href="view/register.php" class="link-primary">Belum punya akun? Register</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
-          <?php if (!empty($message)): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($message) ?></div>
-          <?php endif; ?>
-          <form method="POST">
-            <input type="hidden" name="login_submit" value="1">
-            <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" class="form-control" id="email" name="email" required>
-            </div>
-            <div class="mb-3">
-              <label for="password" class="form-label">Password</label>
-              <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Login</button>
-            <div class="text-center mt-3">
-              <a href="view/register.php" class="link-primary">Belum punya akun? Register</a>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
-  </div>
-  
+
 </section>
       <!-- End Services Section -->
 

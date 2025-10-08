@@ -180,5 +180,50 @@ class User {
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }
+
+    // Ambil pengguna berdasarkan email untuk reset password
+    public function getUserByEmail($email) {
+        $query = "SELECT IDUser, NamaUser, Email, Role FROM " . $this->table . " WHERE Email = ? LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+
+        if (!$stmt) {
+            error_log("Prepare failed for getUserByEmail: " . $this->conn->error);
+            return false;
+        }
+
+        $email = htmlspecialchars(trim(strip_tags($email)));
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_assoc();
+    }
+
+    // Simpan token reset password
+    public function saveResetToken($email, $token, $expires) {
+        // Hapus token lama untuk email ini
+        $deleteQuery = "DELETE FROM password_resets WHERE email = ?";
+        $deleteStmt = $this->conn->prepare($deleteQuery);
+        if (!$deleteStmt) {
+            error_log("Prepare failed for delete token: " . $this->conn->error);
+            return false;
+        }
+        $deleteStmt->bind_param("s", $email);
+        $deleteStmt->execute();
+
+        // Simpan token baru
+        $insertQuery = "INSERT INTO password_resets (email, token, expires) VALUES (?, ?, ?)";
+        $insertStmt = $this->conn->prepare($insertQuery);
+        if (!$insertStmt) {
+            error_log("Prepare failed for saveResetToken: " . $this->conn->error);
+            return false;
+        }
+
+        $insertStmt->bind_param("sss", $email, $token, $expires);
+        $result = $insertStmt->execute();
+        if (!$result) {
+            error_log("Execute failed for saveResetToken: " . $insertStmt->error);
+        }
+        return $result;
+    }
 }
 ?>

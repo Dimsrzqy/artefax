@@ -8,13 +8,26 @@ class Database {
 
     public function getConnection() {
         $this->conn = null;
-        $this->conn = new mysqli($this->host, $this->username, $this->password, $this->db_name);
+        try {
+            $this->conn = new mysqli($this->host, $this->username, $this->password, $this->db_name);
 
-        if ($this->conn->connect_error) {
-            die("Connection failed: " . $this->conn->connect_error);
+            // Cek koneksi
+            if ($this->conn->connect_error) {
+                throw new Exception("Koneksi gagal: " . $this->conn->connect_error);
+            }
+
+            // Set charset ke UTF-8
+            if (!$this->conn->set_charset("utf8mb4")) {
+                throw new Exception("Error setting charset: " . $this->conn->error);
+            }
+
+            return $this->conn;
+        } catch (Exception $e) {
+            // Log error untuk debugging (misalnya ke file log)
+            error_log("Database Connection Error: " . $e->getMessage());
+            // Opsional: Kembalikan null atau lempar ulang exception tergantung kebutuhan
+            return null;
         }
-
-        return $this->conn;
     }
 }
 ?>
