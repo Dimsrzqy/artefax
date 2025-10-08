@@ -76,6 +76,9 @@
                             <div class="text-center mt-3">
                                 <a href="register.php" class="link-primary">Belum punya akun? Register</a>
                             </div>
+                            <div class="text-center mt-2">
+                                <a href="forgot_password.php" class="link-primary">Lupa Password?</a>
+                            </div>
                         </form>
                     </div>
                 </div>
