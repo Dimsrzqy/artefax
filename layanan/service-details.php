@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Service Details - Devin Bootstrap Template</title>
+    <title>Layanan - Artefax</title>
     <meta name="description" content="" />
     <meta name="keywords" content="" />
 
@@ -58,11 +58,11 @@
       <!-- Page Title -->
       <div class="page-title light-background">
         <div class="container">
-          <h1>Service Details</h1>
+          <h1>Layanan Kami</h1>
           <nav class="breadcrumbs">
             <ol>
               <li><a href="index.html">Home</a></li>
-              <li class="current">Service Details</li>
+              <li class="current">Layanan Event Organizer</li>
             </ol>
           </nav>
         </div>
@@ -81,8 +81,8 @@
                   <span class="service-category">Strategic Consulting</span>
                   <span class="reading-time">5 min read</span>
                 </div>
-                <h1>Business Process Optimization</h1>
-                <p class="service-description">Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae mauris viverra.</p>
+                <h1>Event Organizer Artefax</h1>
+                <p class="service-description">Mewujudkan acara impian Anda dengan konsep kreatif, profesional, dan penuh kesan.</p>
               </div>
 
               <!-- Service Visual -->
@@ -92,64 +92,69 @@
 
               <!-- Service Content -->
               <div class="service-narrative">
-                <h3>Transform Your Operations</h3>
+                <h3>Deskripsi Singkat Tentang Kami</h3>
                 <p>
-                  Donec rutrum congue leo eget malesuada. Vivamus magna justo, lacinia eget consectetur sed, convallis at tellus. Mauris blandit aliquet elit, eget tincidunt nibh pulvinar a. Cras ultricies ligula sed magna dictum porta.
+                  Artefax.id adalah mitra profesional dalam penyelenggaraan berbagai jenis acara, mulai dari event perusahaan, konser musik, seminar, hingga acara komunitas.
                 </p>
 
                 <p>
-                  Sed porttitor lectus nibh. Vestibulum ac diam sit amet quam vehicula elementum sed sit amet dui. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Donec sollicitudin molestie
-                  malesuada.
+                  Kami menyediakan layanan lengkap mulai dari perencanaan konsep, dekorasi, dokumentasi, sistem audio visual, hingga pengelolaan acara di hari H, semuanya ditangani oleh tim berpengalaman.
+                </p>
+
+                <h3>Mengapa Memilih Artefax Sebagai Event Organizer Anda</h3>
+                <p>
+                 Kami memahami bahwa setiap acara memiliki tujuan dan identitas yang unik.
+                 Dengan menggabungkan kreativitas dan perencanaan matang, kami memastikan setiap detail berjalan sempurna dan memberikan pengalaman tak terlupakan.
                 </p>
 
                 <!-- Key Benefits Grid -->
+                  <h3>Empat Keunggulan Utama Memilih Artefax.id</h3>
                 <div class="benefits-grid">
                   <div class="benefit-card">
                     <div class="benefit-icon">
                       <i class="bi bi-lightning-charge"></i>
                     </div>
-                    <h4>Efficiency Boost</h4>
-                    <p>Curabitur arcu erat accumsan id imperdiet et porttitor at sem.</p>
+                    <h4>Konsep Kreatif & Fleksibel</h4>
+                    <p>Setiap event dirancang sesuai tema dan kebutuhan klien, baik formal maupun santai.</p>
                   </div>
 
                   <div class="benefit-card">
                     <div class="benefit-icon">
                       <i class="bi bi-shield-check"></i>
                     </div>
-                    <h4>Risk Mitigation</h4>
-                    <p>Pellentesque in ipsum id orci porta dapibus vestibulum ante ipsum.</p>
+                    <h4>Tim Profesional & Berpengalaman</h4>
+                    <p>Tim kami terdiri dari crew yang sudah berpengalaman dalam berbagai skala event nasional dan lokal.</p>
                   </div>
 
                   <div class="benefit-card">
                     <div class="benefit-icon">
                       <i class="bi bi-graph-up"></i>
                     </div>
-                    <h4>Growth Acceleration</h4>
-                    <p>Vivamus suscipit tortor eget felis porttitor volutpat mauris blandit.</p>
+                    <h4>Peralatan Lengkap & Modern</h4>
+                    <p>Dilengkapi dengan sistem audio, lighting, LED videotron, dan efek panggung (SFX) yang berstandar industri.</p>
                   </div>
 
                   <div class="benefit-card">
                     <div class="benefit-icon">
                       <i class="bi bi-people"></i>
                     </div>
-                    <h4>Team Alignment</h4>
-                    <p>Donec rutrum congue leo eget malesuada vivamus magna justo lacinia.</p>
+                    <h4>Dokumentasi & Publikasi Profesional</h4>
+                    <p>Didukung oleh tim foto, video, dan live streaming yang siap mengabadikan setiap momen penting acara Anda.</p>
                   </div>
                 </div>
               </div>
 
               <!-- Implementation Timeline -->
               <div class="timeline-section">
-                <h3>Implementation Journey</h3>
+                <h3>Langkah-langkah kami dalam mewujudkan event Anda :</h3>
                 <div class="timeline">
-                  <div class="timeline-item">
+                  <div class="timeline-item"> 
                     <div class="timeline-marker">
                       <span>1</span>
                     </div>
                     <div class="timeline-content">
-                      <h4>Discovery &amp; Assessment</h4>
-                      <p>Comprehensive analysis of current processes and identification of optimization opportunities.</p>
-                      <small>Week 1-2</small>
+                      <h4>Konsultasi &amp; Konsep Awal</h4>
+                      <p>Mendengarkan ide dan kebutuhan Anda, lalu menentukan tema, lokasi, dan anggaran acara.</p>
                     </div>
                   </div>
 
@@ -158,9 +163,8 @@
                       <span>2</span>
                     </div>
                     <div class="timeline-content">
-                      <h4>Strategic Planning</h4>
-                      <p>Development of customized optimization roadmap with clear milestones and success metrics.</p>
-                      <small>Week 3-4</small>
+                     <h4>Perencanaan Teknis &amp; Desain</h4>
+                      <p>Membuat rundown acara, konsep dekorasi, sistem panggung, serta daftar kebutuhan teknis.</p>
                     </div>
                   </div>
 
@@ -169,9 +173,8 @@
                       <span>3</span>
                     </div>
                     <div class="timeline-content">
-                      <h4>Implementation</h4>
-                      <p>Systematic rollout of process improvements with continuous monitoring and adjustment.</p>
-                      <small>Week 5-12</small>
+                      <h4>Pelaksanaan Acara</h4>
+                      <p>Tim kami mengatur seluruh jalannya acara — mulai dari pemasangan dekorasi, sound system, lighting, hingga koordinasi di lapangan.</p>
                     </div>
                   </div>
 
@@ -180,9 +183,8 @@
                       <span>4</span>
                     </div>
                     <div class="timeline-content">
-                      <h4>Optimization &amp; Scale</h4>
-                      <p>Fine-tuning of implemented solutions and preparation for organization-wide scaling.</p>
-                      <small>Week 13-16</small>
+                      <h4>Evaluas &amp; Dokumentasi Akhir</h4>
+                      <p>Setelah acara selesai, kami berikan hasil dokumentasi (foto, video, atau live recording) beserta laporan singkat pelaksanaan.</p>
                     </div>
                   </div>
                 </div>
@@ -254,45 +256,85 @@
                   </div>
                 </div>
 
-                <!-- Consultation Form -->
-                <div class="consultation-form">
-                  <div class="form-header">
-                    <h4>Schedule Consultation</h4>
-                    <p>Vestibulum ac diam sit amet quam vehicula elementum sed sit amet dui.</p>
-                  </div>
+                  <!-- ===== Galeri Paket Layanan ===== -->
+<section id="gallery" class="service-gallery section">
+  <div class="container">
+    <h3 class="mb-4">Galeri Paket Layanan</h3>
 
-                  <form action="forms/consultation.php" method="post" class="php-email-form">
-                    <div class="form-group">
-                      <input type="text" name="name" class="form-input" placeholder="Full Name" required="" />
-                    </div>
+    <div class="row gy-4">
+      <div class="col-lg-4 col-md-6">
+        <img src="assets/img/services/layanan/9.png" alt="" class="img-fluid rounded-3 shadow-sm" />
+      </div>
+    </div>
+  </div>
+</section>
 
-                    <div class="form-group">
-                      <input type="email" name="email" class="form-input" placeholder="Email Address" required="" />
-                    </div>
+               <!-- Pemesanan Form -->
+<div class="consultation-form">
+  <div class="form-header">
+    <h4>Pesan Layanan Sekarang</h4>
+    <p>
+      Isi formulir di bawah ini untuk melakukan pemesanan layanan atau konsultasi paket acara bersama tim <strong>Artefax</strong>.
+      Kami akan menghubungi Anda untuk konfirmasi detail acara.
+    </p>
+  </div>
 
-                    <div class="form-group">
-                      <input type="tel" name="phone" class="form-input" placeholder="Phone Number" />
-                    </div>
+  <form action="forms/pemesanan.php" method="post" class="php-email-form">
+    <!-- Nama -->
+    <div class="form-group">
+      <input type="text" name="name" class="form-input" placeholder="Nama Lengkap Anda" required />
+    </div>
 
-                    <input type="hidden" name="subject" value="Business Process Optimization Consultation" />
+    <!-- Nomor HP -->
+    <div class="form-group">
+      <input type="tel" name="phone" class="form-input" placeholder="Nomor WhatsApp / Telepon" required />
+    </div>
 
-                    <div class="form-group">
-                      <textarea name="message" class="form-input" rows="4" placeholder="Tell us about your current challenges and goals..." required=""></textarea>
-                    </div>
+    <!-- Alamat Acara -->
+    <div class="form-group">
+      <textarea name="alamat" class="form-input" rows="2" placeholder="Alamat Lengkap Lokasi Acara" required></textarea>
+    </div>
 
-                    <div class="loading">Loading</div>
-                    <div class="error-message"></div>
-                    <div class="sent-message">Your consultation request has been sent. Thank you!</div>
+    <!-- Jaminan -->
+    <div class="form-group">
+      <input type="text" name="jaminan" class="form-input" placeholder="Jaminan (contoh: KTP / SIM / DP)" required />
+    </div>
 
-                    <button type="submit" class="btn-consultation">
-                      <span>Book Free Consultation</span>
-                      <i class="bi bi-arrow-right"></i>
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-            <!-- End Sidebar -->
+    <!-- Paket yang Dipilih -->
+    <div class="form-group">
+      <select name="paket" class="form-input" required>
+        <option value="" disabled selected>Pilih Paket Layanan</option>
+        <option value="Event Organizer - Basic">Event Organizer - Basic</option>
+        <option value="Event Organizer - Premium">Event Organizer - Premium</option>
+        <option value="Event Organizer - Full Production">Event Organizer - Full Production</option>
+        <option value="Wedding Organizer - Foto & Video">Wedding Organizer - Foto & Video</option>
+        <option value="Wedding Organizer - Dekorasi Lengkap">Wedding Organizer - Dekorasi Lengkap</option>
+        <option value="Graduation - Paket 1">Graduation - Paket 1</option>
+        <option value="Live Streaming - Paket 2">Live Streaming - Paket 2</option>
+        <option value="Special Effect - Sparkular">Special Effect - Sparkular</option>
+      </select>
+    </div>
+
+    <!-- Alat Tambahan -->
+    <div class="form-group">
+      <textarea name="alat" class="form-input" rows="2" placeholder="Tuliskan kebutuhan alat tambahan (misal: LED Videotron, Sound, Lighting, SFX, dll)"></textarea>
+    </div>
+
+    <!-- Catatan Tambahan -->
+    <div class="form-group">
+      <textarea name="message" class="form-input" rows="3" placeholder="Catatan tambahan (tanggal acara, jam mulai, dll)" required></textarea>
+    </div>
+
+    <div class="loading">Loading</div>
+    <div class="error-message"></div>
+    <div class="sent-message">Pemesanan Anda telah dikirim. Terima kasih!</div>
+
+    <button type="submit" class="btn-consultation">
+      <span>Kirim Pemesanan</span>
+      <i class="bi bi-arrow-right"></i>
+    </button>
+  </form>
+</div>
           </div>
         </div>
       </section>
