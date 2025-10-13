@@ -32,8 +32,8 @@
   <body class="service-details-page">
     <header id="header" class="header d-flex align-items-center fixed-top">
       <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-        <a href="index.php" class="logo d-flex align-items-center">
-          <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
+        <a href="../index.php" class="logo d-flex align-items-center">
+          <img src="../assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
         </a>
 
         <nav id="navmenu" class="navmenu">
@@ -61,7 +61,7 @@
           <h1>Layanan Kami</h1>
           <nav class="breadcrumbs">
             <ol>
-              <li><a href="index.html">Home</a></li>
+              <li><a href="../index.php">Home</a></li>
               <li class="current">Layanan Event Organizer</li>
             </ol>
           </nav>
@@ -87,7 +87,7 @@
 
               <!-- Service Visual -->
               <div class="service-visual">
-                <img src="assets/img/services/services-7.webp" alt="Business Process Optimization" class="img-fluid" />
+                <img src="../assets/img/services/EO.jpg" alt="Business Process Optimization" class="img-fluid" />
               </div>
 
               <!-- Service Content -->
@@ -263,7 +263,7 @@
 
     <div class="row gy-4">
       <div class="col-lg-4 col-md-6">
-        <img src="assets/img/services/layanan/9.png" alt="" class="img-fluid rounded-3 shadow-sm" />
+        <img src="../assets/img/services/9.png" alt="" class="img-fluid rounded-3 shadow-sm" />
       </div>
     </div>
   </div>
