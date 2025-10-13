@@ -279,7 +279,7 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         <div class="service-card">
           <div class="service-icon"><i class="bi bi-palette"></i></div>
           <h3>Event Organizer</h3>
-          <p>Kami membantu merancang dan menyelenggarakan berbagai jenis acara dengan konsep yang kreatif, rapi, dan sesuai kebutuhan klien.</p>
+          <p>Kami siap membantu merancang dan menjalankan acara kamu dengan konsep terbaik dan hasil yang maksimal.</p>
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
@@ -302,11 +302,11 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         </div>
       </div>
 
-      <!-- Layanan 3: Photography & Videography -->
+      <!-- Layanan 3: Graduation -->
       <div class="col-lg-4 col-md-6">
         <div class="service-card">
           <div class="service-icon"><i class="bi bi-camera"></i></div>
-          <h3>Photography & Videography</h3>
+          <h3>Graduation</h3>
           <p>Kami mengabadikan setiap momen penting Anda dengan hasil foto dan video berkualitas profesional.</p>
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
@@ -316,12 +316,12 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         </div>
       </div>
 
-      <!-- Layanan 4: Multimedia Design -->
+      <!-- Layanan 4: Photography & Videography -->
       <div class="col-lg-4 col-md-6">
         <div class="service-card">
           <div class="service-icon"><i class="bi bi-display"></i></div>
-          <h3>Multimedia Design</h3>
-          <p>Kami menyediakan desain grafis, motion, dan presentasi visual yang menarik dan profesional.</p>
+          <h3>Photography & Videography</h3>
+          <p>Kami mengabadikan setiap momen penting kamu dengan hasil foto dan video berkualitas tinggi.</p>
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
@@ -330,12 +330,12 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         </div>
       </div>
 
-      <!-- Layanan 5: Lighting & Stage -->
+      <!-- Layanan 5: Company Profile  -->
       <div class="col-lg-4 col-md-6">
         <div class="service-card">
           <div class="service-icon"><i class="bi bi-lightning"></i></div>
-          <h3>Lighting & Stage</h3>
-          <p>Kami menyediakan perlengkapan lighting dan panggung dengan kualitas tinggi untuk mendukung acara Anda.</p>
+          <h3>Company Profile</h3>
+          <p>Kami membantu menampilkan citra profesional perusahaan kamu melalui video dan desain profil yang menarik.</p>
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
@@ -344,12 +344,68 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         </div>
       </div>
 
-      <!-- Layanan 6: Sound System -->
+      <!-- Layanan 6: Graphic Design -->
       <div class="col-lg-4 col-md-6">
         <div class="service-card">
           <div class="service-icon"><i class="bi bi-mic"></i></div>
-          <h3>Sound System</h3>
-          <p>Kami menyediakan sound system profesional dengan kualitas audio jernih untuk berbagai acara.</p>
+          <h3>Graphic Design</h3>
+          <p>Kami menciptakan desain visual yang kreatif dan sesuai dengan karakter brand kamu.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 7: Live Streaming -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-mic"></i></div>
+          <h3>Live Streaming</h3>
+          <p>Kami menyediakan layanan siaran langsung dengan kualitas gambar dan suara yang jernih untuk berbagai acara.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 8: Yearbook Production -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-mic"></i></div>
+          <h3>Yearbook Production</h3>
+          <p>Kami membantu mengemas kenangan terbaikmu dalam buku tahunan yang menarik dan berkesan.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 9: Special Effect / Stage SFX -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-mic"></i></div>
+          <h3>Special Effect / Stage SFX</h3>
+          <p>Kami menghadirkan efek panggung profesional untuk menambah keseruan dan kemegahan acara kamu.</p>
+          <?php if (isset($_SESSION['user'])): ?>
+            <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php else: ?>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Learn More <i class="bi bi-arrow-right"></i></a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Layanan 10: Photobox APM -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon"><i class="bi bi-mic"></i></div>
+          <h3>Photobox APM</h3>
+          <p>Kami menyediakan photobox modern dengan hasil cetak instan untuk melengkapi keseruan acara kamu.</p>
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Learn More <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
