@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strtolower($login['Role']) === 'customer') {
                     header("Location: ../index.php");
                 } else {
-                    header("Location: list.php");
+                    header("Location: ../adminArtefax/index.html");
                 }
                 exit;
             } else {
