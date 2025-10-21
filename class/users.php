@@ -225,5 +225,26 @@ class User {
         }
         return $result;
     }
+    // Di dalam class User
+    public function getKaryawan()
+    {
+        $query = "SELECT IDUser, NamaUser, Email, NoHP, Alamat, Role
+                FROM " . $this->table . "
+                WHERE Role = 'Karyawan'
+                ORDER BY NamaUser ASC";
+        $result = $this->conn->query($query);
+
+        if (!$result) {
+            return false;
+        }
+
+        $karyawan = [];
+        while ($row = $result->fetch_assoc()) {
+            $karyawan[] = $row;
+        }
+        return $karyawan;
+    }
+
+
 }
 ?>

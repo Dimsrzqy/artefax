@@ -119,14 +119,14 @@ ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
         <li><a href="#team">Team</a></li>
         <li><a href="#contact">Contact</a></li>
 
-<li>
-  <a href="logout.php"
-     class="btn btn-danger px-3 py-2 text-white"
-     style="border-radius: 8px;"
-     onclick="return confirm('Apakah Anda yakin ingin logout?');">
-    Logout
-  </a>
-</li>
+      <li>
+        <a href="logout.php"
+          class="btn btn-danger px-3 py-2 text-white"
+          style="border-radius: 8px;"
+          onclick="return confirm('Apakah Anda yakin ingin logout?');">
+          Logout
+        </a>
+      </li>
 
       </ul>
       <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
