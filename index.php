@@ -1,12 +1,6 @@
 <?php
-ob_start(); // <-- Tambahkan ini agar header() tetap bisa dijalankan meski ada output
+ob_start();
 session_start();
-
-// Hapus data sesi login_attempts dan login_timeout jika tidak diperlukan saat memulai
-if (!isset($_SESSION['user'])) {
-    unset($_SESSION['login_attempts']);
-    unset($_SESSION['login_timeout']);
-}
 
 require_once "config/koneksi.php";
 require_once "class/users.php";
@@ -15,9 +9,17 @@ $database = new Database();
 $conn = $database->getConnection();
 $user = new User($conn);
 
-$message = ""; // Inisialisasi $message sebagai string kosong
+$message = "";
 
-// PROSES LOGIN
+// ==== PROSES LOGOUT ====
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    session_unset();
+    session_destroy();
+    header("Location: index.php?logout=success");
+    exit;
+}
+
+// ==== PROSES LOGIN ====
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     if (!isset($_SESSION['login_attempts'])) {
         $_SESSION['login_attempts'] = 0;
@@ -40,8 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
             $message = "Format email tidak valid!";
             $_SESSION['login_attempts']++;
         } else {
-            $user->Email = $email;
-            $user->Password = $password;
+            $user->UserEmail = $email;
+            $user->UserPassword = $password;
 
             $login = $user->login();
 
@@ -52,12 +54,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
 
                 $_SESSION['user'] = [
                     'id' => $login['IDUser'],
-                    'nama' => $login['NamaUser'],
-                    'email' => $login['Email'],
-                    'role' => $login['Role']
+                    'nama' => $login['UserNama'],
+                    'email' => $login['UserEmail'],
+                    'role' => $login['UserRole']
                 ];
 
-                // Redirect ke halaman layanan
+                // Arahkan ke halaman layanan jika role adalah customer
                 header("Location: layanan/service-details.php");
                 exit;
             } else {
@@ -68,7 +70,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     }
 }
 
-ob_end_flush(); // <-- pastikan output buffer ditutup dengan benar
+ob_end_flush();
 ?>
 
 <!DOCTYPE html>

@@ -1,3 +1,16 @@
+<?php
+session_start();
+
+// Tangani logout
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: ../index.php"); // redirect setelah logout
+    exit;
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -44,24 +57,31 @@
             <li><a href="#portfolio">Portfolio</a></li>
             <li><a href="#team">Team</a></li>
             <li><a href="#contact">Contact</a></li>
-
             <li>
-              <button
-                class="btn btn-danger px-3 py-2 text-white"
-                style="border-radius: 8px;"
-                onclick="logoutUser();">
-                Logout
-              </button>
+            <li>
+              <form method="POST" id="logoutForm" style="display:inline;">
+                <input type="hidden" name="logout" value="1">
+                <button
+                  type="submit"
+                  class="btn btn-danger px-3 py-2 text-white"
+                  style="border-radius: 8px;">
+                  Logout
+                </button>
+              </form>
             </li>
 
             <script>
-            function logoutUser() {
-              if (confirm('Apakah Anda yakin ingin logout?')) {
-                fetch('logout.php')
-                  .then(() => window.location.href = '../index.php');
-              }
-            }
+              // Ambil form logout
+              const logoutForm = document.getElementById('logoutForm');
+
+              logoutForm.addEventListener('submit', function(e) {
+                // Tampilkan konfirmasi
+                if (!confirm('Apakah Anda yakin ingin logout?')) {
+                  e.preventDefault(); // batalkan submit jika user pilih "Batal"
+                }
+              });
             </script>
+
 
           </ul>
           <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>

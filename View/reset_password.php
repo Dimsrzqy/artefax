@@ -1,96 +1,96 @@
 <?php
 session_start();
-require "../class/users.php";
-require "../config/koneksi.php";
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-require '../vendor/autoload.php'; // Path ke autoload dari /View/
+
+date_default_timezone_set('Asia/Jakarta');
+
+require_once "../config/koneksi.php";
+require_once "../class/users.php";
 
 $db = new Database();
 $conn = $db->getConnection();
 
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
-ini_set('error_log', 'C:\laragon\log\php_error.log');
-error_log("Reset password process started for token: " . ($_GET['token'] ?? 'no token'));
-
 $message = '';
+$success = false;
+$token_valid = false;
+$email = '';
 
-if ($conn === null) {
-    $message = "Gagal terhubung ke database. Silakan coba lagi nanti.";
+if (empty($_SESSION['reset_csrf'])) {
+    $_SESSION['reset_csrf'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['reset_csrf'];
+
+$token_input = $_GET['token'] ?? '';
+error_log("RESET START | token: $token_input | time: " . date('Y-m-d H:i:s'));
+
+if (!$conn) {
+    $message = "Gagal terhubung ke database.";
+} elseif (empty($token_input)) {
+    $message = "Token tidak ditemukan.";
 } else {
-    $user = new User($conn);
+    $token = trim($token_input);
 
-    if (isset($_GET['token']) && !empty($_GET['token'])) {
-        $token = htmlspecialchars(trim(strip_tags($_GET['token'])));
-        
-        // Verifikasi token
-        $query = "SELECT email, expires FROM password_resets WHERE token = ? AND expires > NOW()";
-        $stmt = $conn->prepare($query);
-        if ($stmt === false) {
-            error_log("Prepare failed: " . $conn->error);
-            $message = "Gagal memverifikasi token. Periksa log.";
-        } else {
-            $stmt->bind_param("s", $token);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $resetData = $result->fetch_assoc();
-            error_log("Query result: " . json_encode($resetData));
-            if ($resetData) {
-                error_log("Valid token found for email: " . $resetData['email']);
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $newPassword = $_POST['password'];
-                    $confirmPassword = $_POST['confirm_password'];
+    $query = "SELECT Reset_Email, ResetExpires FROM password_resets WHERE ResetToken = ? AND ResetExpires > NOW()";
+    $stmt = $conn->prepare($query);
 
-                    if ($newPassword !== $confirmPassword) {
-                        $message = "Kata sandi baru dan konfirmasi tidak cocok!";
-                    } elseif (strlen($newPassword) < 6) {
-                        $message = "Kata sandi harus minimal 6 karakter!";
+    if (!$stmt) {
+        $message = "Sistem error.";
+        error_log("Prepare failed: " . $conn->error);
+    } else {
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $row = $result->fetch_assoc();
+            $email = $row['Reset_Email'];
+            $token_valid = true;
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                if (!hash_equals($csrf_token, $_POST['csrf_token'] ?? '')) {
+                    $message = "Permintaan tidak valid.";
+                } else {
+                    $password = trim($_POST['password'] ?? '');
+                    $confirm  = trim($_POST['confirm'] ?? '');
+
+                    if ($password !== $confirm) {
+                        $message = "Password tidak cocok!";
+                    } elseif (strlen($password) < 6) {
+                        $message = "Password minimal 6 karakter!";
                     } else {
-                        // Hash password baru
-                        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                        
-                        // Update password di tabel users
-                        $email = $resetData['email'];
-                        $updateQuery = "UPDATE users SET Password = ? WHERE Email = ?"; // Sesuaikan nama kolom
+                        $hashed = password_hash($password, PASSWORD_DEFAULT);
+
+                        // PERBAIKAN: UserPassword + UserEmail
+                        $updateQuery = "UPDATE users SET UserPassword = ?, UpdatedAt = NOW() WHERE UserEmail = ?";
                         $updateStmt = $conn->prepare($updateQuery);
-                        if ($updateStmt === false) {
-                            error_log("Prepare failed: " . $conn->error);
-                            $message = "Gagal menyiapkan query. Periksa log.";
-                        } else {
-                            $updateStmt->bind_param("ss", $hashedPassword, $email);
+                        if ($updateStmt) {
+                            $updateStmt->bind_param("ss", $hashed, $email);
                             if ($updateStmt->execute()) {
-                                error_log("Password updated successfully for email: $email");
-                                // Hapus token dan session
-                                session_destroy();
-                                error_log("Session destroyed");
-                                $deleteQuery = "DELETE FROM password_resets WHERE token = ?";
+                                $deleteQuery = "DELETE FROM password_resets WHERE ResetToken = ?";
                                 $deleteStmt = $conn->prepare($deleteQuery);
-                                if ($deleteStmt === false) {
-                                    error_log("Delete prepare failed: " . $conn->error);
-                                } else {
+                                if ($deleteStmt) {
                                     $deleteStmt->bind_param("s", $token);
                                     $deleteStmt->execute();
                                     $deleteStmt->close();
                                 }
-                                // Redirect otomatis ke login.php dengan path absolut
+
+                                $success = true;
+                                $message = "Password berhasil diubah!";
                                 header("Location: http://localhost/Artefax/view/login.php");
                                 exit();
                             } else {
-                                error_log("Execute failed: " . $updateStmt->error . " for email: $email");
-                                $message = "Gagal mengubah kata sandi. Error: " . $updateStmt->error;
+                                $message = "Gagal mengubah password.";
                             }
                             $updateStmt->close();
+                        } else {
+                            $message = "Sistem error.";
                         }
                     }
                 }
-            } else {
-                $message = "Token tidak valid atau telah kedaluwarsa. Periksa log untuk detail.";
             }
-            $stmt->close(); // Tutup statement verifikasi token
+        } else {
+            $message = "Token tidak valid atau sudah kadaluarsa.";
         }
-    } else {
-        $message = "Token tidak ditemukan. Silakan minta ulang link reset.";
+        $stmt->close();
     }
 }
 ?>
@@ -100,46 +100,57 @@ if ($conn === null) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - Artefax</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <title>Reset Password</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
+        .card { max-width: 420px; margin: auto; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .card-header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-align: center; padding: 2rem; }
+        .form-control { border-radius: 50px; padding: 12px 20px; }
+        .btn-primary { background: #667eea; border: none; border-radius: 50px; padding: 12px; font-weight: 600; }
+        .btn-primary:hover { background: #5a6fd8; }
+        .btn-success { background: #28a745; border-radius: 50px; padding: 12px; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card mt-5">
-                    <div class="card-body">
-                        <h2 class="card-title text-center mb-4">Reset Password</h2>
-                        <p class="text-center">Masukkan kata sandi baru untuk akun Anda.</p>
-                        <?php if ($message): ?>
-                            <div class="alert <?php echo strpos($message, 'Gagal') !== false || strpos($message, 'tidak') !== false ? 'alert-danger' : 'alert-success'; ?> mt-3" role="alert">
-                                <?php echo htmlspecialchars($message); ?>
-                            </div>
-                        <?php endif; ?>
-                        <?php if (empty($message) || strpos($message, 'berhasil') === false): ?>
-                            <form method="POST">
-                                <div class="mb-3">
-                                    <label for="password" class="form-label">Kata Sandi Baru</label>
-                                    <input type="password" class="form-control" id="password" name="password" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="confirm_password" class="form-label">Konfirmasi Kata Sandi</label>
-                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100">Ubah Kata Sandi</button>
-                            </form>
-                        <?php endif; ?>
-                        <div class="text-center mt-3">
-                            <a href="login.php" class="link-primary">Kembali ke Login</a>
-                        </div>
+        <div class="card">
+            <div class="card-header">
+                <h3>Reset Password</h3>
+                <p class="mb-0 opacity-75">Masukkan kata sandi baru</p>
+            </div>
+            <div class="card-body p-4">
+                <?php if ($message): ?>
+                    <div class="alert alert-<?= $success ? 'success' : 'danger' ?> alert-dismissible fade show">
+                        <?= htmlspecialchars($message) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
+                <?php endif; ?>
+
+                <?php if ($token_valid && !$success): ?>
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                        <div class="mb-3">
+                            <label class="form-label">Password Baru</label>
+                            <input type="password" name="password" class="form-control" required minlength="6">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Konfirmasi</label>
+                            <input type="password" name="confirm" class="form-control" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Ubah Password</button>
+                    </form>
+                <?php elseif ($success): ?>
+                    <a href="login.php" class="btn btn-success w-100">Login Sekarang</a>
+                <?php else: ?>
+                    <a href="forgot_password.php" class="btn btn-outline-secondary w-100">Minta Ulang Token</a>
+                <?php endif; ?>
+
+                <div class="text-center mt-3">
+                    <a href="login.php" class="text-muted small">Kembali ke Login</a>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 </body>
 </html>

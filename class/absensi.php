@@ -2,128 +2,100 @@
 class Absensi
 {
     private $conn;
-    private $table = "absensi";
+    private $table = "presensi";
 
-    public $IDAbsensi;
+    // Properti sesuai kolom tabel (SESUAI KAMU)
+    public $IDPresensi;
     public $IDUser;
-    public $IDBooking;
-    public $Waktu;
-    public $Lokasi;
-    public $Foto;
-    public $Status;
+    public $IDBooking;        // ← BUKAN IDBookingPsn
+    public $PsnWaktu;         // ← BUKAN WaktuPsn
+    public $PsnLokasi;        // ← BUKAN LokasiPsn
+    public $PsnFoto;          // ← BUKAN FotoPsn
+    public $PsnStatus;        // ← BUKAN Status
 
     public function __construct($db)
     {
         $this->conn = $db;
     }
 
-    // ✅ Tambah absensi baru
-    public function tambah()
-    {
-        try {
-            $sql = "INSERT INTO {$this->table} 
-                    (IDUser, IDBooking, Waktu, Lokasi, Foto, Status)
-                    VALUES (?, ?, ?, ?, ?, ?)";
-            
-            $stmt = $this->conn->prepare($sql);
-            if ($stmt === false) {
-                throw new Exception("Gagal menyiapkan query: " . $this->conn->error);
-            }
-
-            $stmt->bind_param("iissss",
-                $this->IDUser,
-                $this->IDBooking,
-                $this->Waktu,
-                $this->Lokasi,
-                $this->Foto,
-                $this->Status
-            );
-
-            $result = $stmt->execute();
-            if ($result === false) {
-                throw new Exception("Gagal mengeksekusi query: " . $stmt->error);
-            }
-
-            return $result;
-        } catch (Exception $e) {
-            // Anda bisa log error di sini atau kembalikan false
-            return false;
-        }
-    }
-
-    // ✅ Tampilkan semua absensi
+    // TAMPILKAN SEMUA ABSENSI (HANYA UNTUK LIHAT)
     public function tampilSemua()
     {
-        try {
-            $sql = "SELECT a.*, u.NamaUser, b.IDBooking
-                    FROM {$this->table} a
-                    JOIN Users u ON a.IDUser = u.IDUser
-                    JOIN Booking b ON a.IDBooking = b.IDBooking
-                    ORDER BY a.Waktu DESC";
-            $result = $this->conn->query($sql);
-            if ($result === false) {
-                throw new Exception("Gagal menjalankan query: " . $this->conn->error);
-            }
-            return $result;
-        } catch (Exception $e) {
+        $sql = "SELECT 
+                    p.PsnWaktu,
+                    p.PsnLokasi,
+                    p.PsnFoto,
+                    p.PsnStatus,
+                    u.UserNama
+                FROM {$this->table} p
+                LEFT JOIN users u ON p.IDUser = u.IDUser
+                ORDER BY p.PsnWaktu DESC";
+
+        $result = $this->conn->query($sql);
+
+        if (!$result) {
+            error_log("Absensi Query Error: " . $this->conn->error);
             return false;
         }
+
+        return $result;
     }
 
-    // ✅ Tampilkan absensi berdasarkan user
-    public function tampilByUser($idUser)
+    // TAMBAH ABSENSI (JIKA DIPERLUKAN)
+    public function tambah()
     {
-        try {
-            $sql = "SELECT a.*, b.IDBooking
-                    FROM {$this->table} a
-                    JOIN Booking b ON a.IDBooking = b.IDBooking
-                    WHERE a.IDUser = ?
-                    ORDER BY a.Waktu DESC";
-            $stmt = $this->conn->prepare($sql);
-            if ($stmt === false) {
-                throw new Exception("Gagal menyiapkan query: " . $this->conn->error);
-            }
+        $sql = "INSERT INTO {$this->table} 
+                (IDUser, IDBooking, PsnWaktu, PsnLokasi, PsnFoto, PsnStatus)
+                VALUES (?, ?, ?, ?, ?, ?)";
 
-            $stmt->bind_param("i", $idUser);
-            $stmt->execute();
-            return $stmt->get_result();
-        } catch (Exception $e) {
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            error_log("Prepare failed (tambah): " . $this->conn->error);
             return false;
         }
+
+        $stmt->bind_param(
+            "iissss",
+            $this->IDUser,
+            $this->IDBooking,
+            $this->PsnWaktu,
+            $this->PsnLokasi,
+            $this->PsnFoto,
+            $this->PsnStatus
+        );
+
+        $result = $stmt->execute();
+        if (!$result) {
+            error_log("Execute failed (tambah): " . $stmt->error);
+        }
+        $stmt->close();
+        return $result;
     }
 
-    // ✅ Update status absensi (Hadir, Izin, Alpha)
-    public function updateStatus($idAbsensi, $status)
+    // UPDATE STATUS
+    public function updateStatus($idPresensi, $status)
     {
-        try {
-            $sql = "UPDATE {$this->table} SET Status = ? WHERE IDAbsensi = ?";
-            $stmt = $this->conn->prepare($sql);
-            if ($stmt === false) {
-                throw new Exception("Gagal menyiapkan query: " . $this->conn->error);
-            }
+        $sql = "UPDATE {$this->table} SET PsnStatus = ? WHERE IDPresensi = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) return false;
 
-            $stmt->bind_param("si", $status, $idAbsensi);
-            return $stmt->execute();
-        } catch (Exception $e) {
-            return false;
-        }
+        $stmt->bind_param("si", $status, $idPresensi);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
-    // ✅ Hapus absensi
-    public function hapus($idAbsensi)
+    // HAPUS
+    public function hapus($idPresensi)
     {
-        try {
-            $sql = "DELETE FROM {$this->table} WHERE IDAbsensi = ?";
-            $stmt = $this->conn->prepare($sql);
-            if ($stmt === false) {
-                throw new Exception("Gagal menyiapkan query: " . $this->conn->error);
-            }
+        $sql = "DELETE FROM {$this->table} WHERE IDPresensi = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) return false;
 
-            $stmt->bind_param("i", $idAbsensi);
-            return $stmt->execute();
-        } catch (Exception $e) {
-            return false;
-        }
+        $stmt->bind_param("i", $idPresensi);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 }
 ?>
