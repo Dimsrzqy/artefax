@@ -15,8 +15,13 @@
     die( 'Unable to load the "PHP Email Form" Library!');
   }
 
-  $contact = new PHP_Email_Form;
-  $contact->ajax = true;
+  // Pastikan untuk memanggil kelas dengan namespace jika diperlukan
+  if (class_exists('PHP_Email_Form')) {
+      $contact = new PHP_Email_Form;
+      $contact->ajax = true;
+  } else {
+      die('PHP_Email_Form class not found. Please check the library.');
+  }
   
   $contact->to = $receiving_email_address;
   $contact->from_name = $_POST['email'];
