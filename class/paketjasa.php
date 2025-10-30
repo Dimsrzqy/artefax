@@ -22,50 +22,54 @@ class PaketJasa {
     // CREATE DATA
     // =============================
     public function create() {
-        $query = "INSERT INTO " . $this->table . "
+        $query = "INSERT INTO " . $this->table . " 
                   (PaketNama, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus, CreatedAt)
-                  VALUES
-                  (:PaketNama, :PaketKategori, :PaketDeskripsi, :PaketHarga, :PaketDurasi, :PaketStatus, NOW())";
+                  VALUES (?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $this->conn->prepare($query);
 
-        // masih auto increment *) $stmt->bindParam(':IDPaket', $this->IDPaket);
-        $stmt->bindParam(':PaketNama', $this->PaketNama);
-        $stmt->bindParam(':PaketKategori', $this->PaketKategori);
-        $stmt->bindParam(':PaketDeskripsi', $this->PaketDeskripsi);
-        $stmt->bindParam(':PaketHarga', $this->PaketHarga);
-        $stmt->bindParam(':PaketDurasi', $this->PaketDurasi);
-        $stmt->bindParam(':PaketStatus', $this->PaketStatus);
-
-        if ($stmt->execute()) {
-            return true;
+        if (!$stmt) {
+            return false;
         }
-        return false;
+
+        $stmt->bind_param(
+            "sssiss", 
+            $this->PaketNama,
+            $this->PaketKategori,
+            $this->PaketDeskripsi,
+            $this->PaketHarga,
+            $this->PaketDurasi,
+            $this->PaketStatus
+        );
+
+        return $stmt->execute();
     }
 
     // =============================
     // READ (TAMPIL SEMUA DATA)
     // =============================
     public function readAll() {
-        $query = "SELECT * FROM " . $this->table . " ORDER BY CreatedAt DESC";
+        $query = "SELECT IDPaket, PaketNama, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus 
+                  FROM " . $this->table . " 
+                  ORDER BY CreatedAt DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-
-        return $stmt;
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 
     // =============================
     // READ BY ID
     // =============================
     public function readOne() {
-        $query = "SELECT * FROM " . $this->table . " WHERE IDPaket = :IDPaket LIMIT 1";
+        $query = "SELECT * FROM " . $this->table . " WHERE IDPaket = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':IDPaket', $this->IDPaket);
+        $stmt->bind_param("i", $this->IDPaket);
         $stmt->execute();
+        $result = $stmt->get_result();
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row) {
+        if ($row = $result->fetch_assoc()) {
+            $this->IDPaket = $row['IDPaket'];
             $this->PaketNama = $row['PaketNama'];
             $this->PaketKategori = $row['PaketKategori'];
             $this->PaketDeskripsi = $row['PaketDeskripsi'];
@@ -79,66 +83,53 @@ class PaketJasa {
         return false;
     }
 
+
     // =============================
     // UPDATE DATA
     // =============================
     public function update() {
-        $query = "UPDATE " . $this->table . "
-                  SET PaketNama = :PaketNama,
-                      PaketKategori = :PaketKategori,
-                      PaketDeskripsi = :PaketDeskripsi,
-                      PaketHarga = :PaketHarga,
-                      PaketDurasi = :PaketDurasi,
-                      PaketStatus = :PaketStatus,
-                      UpdatedAt = NOW()
-                  WHERE IDPaket = :IDPaket";
+        $query = "UPDATE " . $this->table . " 
+                  SET PaketNama = ?, PaketKategori = ?, PaketDeskripsi = ?, 
+                      PaketHarga = ?, PaketDurasi = ?, PaketStatus = ?, UpdatedAt = NOW()
+                  WHERE IDPaket = ?";
 
         $stmt = $this->conn->prepare($query);
+        if (!$stmt) return false;
 
-        $stmt->bindParam(':PaketNama', $this->PaketNama);
-        $stmt->bindParam(':PaketKategori', $this->PaketKategori);
-        $stmt->bindParam(':PaketDeskripsi', $this->PaketDeskripsi);
-        $stmt->bindParam(':PaketHarga', $this->PaketHarga);
-        $stmt->bindParam(':PaketDurasi', $this->PaketDurasi);
-        $stmt->bindParam(':PaketStatus', $this->PaketStatus);
-        $stmt->bindParam(':IDPaket', $this->IDPaket);
+        $stmt->bind_param(
+            "sssissi",
+            $this->PaketNama,
+            $this->PaketKategori,
+            $this->PaketDeskripsi,
+            $this->PaketHarga,
+            $this->PaketDurasi,
+            $this->PaketStatus,
+            $this->IDPaket
+        );
 
-        if ($stmt->execute()) {
-            return true;
-        }
-        return false;
+        return $stmt->execute();
     }
 
     // =============================
     // DELETE DATA
     // =============================
     public function delete() {
-        $query = "DELETE FROM " . $this->table . " WHERE IDPaket = :IDPaket";
+        $query = "DELETE FROM " . $this->table . " WHERE IDPaket = ?";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':IDPaket', $this->IDPaket);
-
-        if ($stmt->execute()) {
-            return true;
-        }
-        return false;
+        $stmt->bind_param("i", $this->IDPaket);
+        return $stmt->execute();
     }
 
     // =============================
     // SEARCH DATA
     // =============================
     public function search($keyword) {
-        $query = "SELECT * FROM " . $this->table . "
-                  WHERE PaketNama LIKE :keyword
-                  OR PaketKategori LIKE :keyword
-                  OR PaketDeskripsi LIKE :keyword";
-
+        $keyword = "%" . $this->conn->real_escape_string($keyword) . "%";
+        $query = "SELECT * FROM " . $this->table . " 
+                  WHERE PaketNama LIKE ? OR PaketKategori LIKE ? OR PaketDeskripsi LIKE ?";
         $stmt = $this->conn->prepare($query);
-        $keyword = "%{$keyword}%";
-        $stmt->bindParam(':keyword', $keyword);
+        $stmt->bind_param("sss", $keyword, $keyword, $keyword);
         $stmt->execute();
-
-        return $stmt;
+        return $stmt->get_result();
     }
-}
-?>
-  
+}?>
