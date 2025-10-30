@@ -249,7 +249,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-header">
       <div class="container">
         <div class="az-header-left">
-          <a href="index.html" class="az-logo"><span></span> azia</a>
+          <a href="index.html" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
@@ -268,17 +268,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </li>
             <li class="nav-item active">
               <a href="form-layanan.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Layanan</a>
-            </li>
-            <li class="nav-item">
-              <a href="" class="nav-link with-sub"><i class="typcn typcn-document"></i> Pages</a>
-              <nav class="az-menu-sub">
-                <a href="page-signin.html" class="nav-link">Sign In</a>
-                <a href="page-signup.html" class="nav-link">Sign Up</a>
-              </nav>
-            </li>
-
-            <li class="nav-item">
-              <a href="../template/chart-chartjs.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Charts</a>
             </li>
             <li class="nav-item">
               <a href="../template/form-elements.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Forms</a>

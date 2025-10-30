@@ -246,7 +246,7 @@ ob_end_flush();
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
-            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+            <a href="Paket/service-details.php" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
         </div>
       </div>
@@ -260,7 +260,7 @@ ob_end_flush();
           <?php if (isset($_SESSION['user'])): ?>
             <a href="layanan/service-details.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
-            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+            <a href="Paket/service-details.php" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
         </div>
       </div>
