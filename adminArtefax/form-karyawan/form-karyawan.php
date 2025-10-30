@@ -186,13 +186,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item active">
                         <a href="form-karyawan.php" class="nav-link">Karyawan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="chart-chartjs.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Charts</a>
+                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Layanan</a>
                     </li>
                     <li class="nav-item">
                         <a href="form-elements.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Forms</a>
