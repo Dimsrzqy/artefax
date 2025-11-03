@@ -184,10 +184,18 @@ public function register($forceRole = null) {
        🔹 AMBIL SEMUA USER
     ========================================================== */
     public function getAllUsers() {
-        $query = "SELECT * FROM " . $this->table . " ORDER BY CreatedAt DESC";
-        $result = $this->conn->query($query);
-        return $result ?: false;
-    }
+    $query = "SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole, CreatedAt 
+              FROM " . $this->table . " 
+              ORDER BY CreatedAt DESC";
+
+    $result = $this->conn->query($query);
+
+    if ($result && $result->num_rows > 0) {
+        return $result->fetch_all(MYSQLI_ASSOC); 
+
+    return []; 
+}
+}
 
     /* ==========================================================
        🔹 UPDATE PROFIL USER
