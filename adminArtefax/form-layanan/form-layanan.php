@@ -278,10 +278,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <div class="container">
                   <div>
                     <nav class="nav">
-                      <a href="elem-buttons.html" class="nav-link">Buttons</a>
-                      <a href="elem-dropdown.html" class="nav-link">Dropdown</a>
-                      <a href="elem-icons.html" class="nav-link">Icons</a>
-                      <a href="table-basic.html" class="nav-link">Table</a>
+                      <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
+                      <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
+                      <a href="../template/elem-icons.html" class="nav-link">Icons</a>
+                      <a href="../template/table-basic.html" class="nav-link">Table</a>
                     </nav>
                   </div>
                 </div>
