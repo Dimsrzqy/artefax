@@ -270,7 +270,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <a href="form-layanan.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Layanan</a>
             </li>
             <li class="nav-item">
-              <a href="../template/form-elements.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Forms</a>
+              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Users</a>
             </li>
             <li class="nav-item">
               <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -366,33 +366,12 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <div class="container">
         <div class="az-content-left az-content-left-components">
           <div class="component-item">
-            <label>UI Elements</label>
-            <nav class="nav flex-column">
-              <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-              <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-              <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-            </nav>
-
-            <label>Forms</label>
-            <nav class="nav flex-column">
-              <a href="../template/form-elements.html" class="nav-link">Form Elements</a>
-            </nav>
-
+        
             <label>Layanan</label>
             <nav class="nav flex-column">
               <a href="../form-layanan/daftarlayanan.html" class="nav-link active">Daftar Layanan</a> 
             </nav>
-
-            <label>Charts</label>
-            <nav class="nav flex-column">
-              <a href="../template/chart-chartjs.html" class="nav-link">ChartJS</a>
-            </nav>
-
-            <label>Tables</label>
-            <nav class="nav flex-column">
-              <a href="../template/table-basic.html" class="nav-link">Basic Tables</a>
-            </nav>
-          </div><!-- component-item -->
+        </div><!-- component-item -->
 
         </div><!-- az-content-left -->
         <div class="az-content-body pd-lg-l-40 d-flex flex-column">
