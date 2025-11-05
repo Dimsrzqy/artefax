@@ -189,7 +189,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
                     </li>
                     <li class="nav-item">
                         <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
