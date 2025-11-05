@@ -188,15 +188,15 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <li class="nav-item">
                         <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
-                    <li class="nav-item active">
-                        <a href="form-karyawan.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i>Karyawan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Layanan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="form-user.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Users</a>
-                    </li>
+                <li class="nav-item active">
+              <a href="../form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
+            </li>
                     <li class="nav-item">
               <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
               <div class="az-menu-sub">
