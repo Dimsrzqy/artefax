@@ -1,0 +1,219 @@
+.card {
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+.card-body {
+  padding: 20px;
+}
+
+.card-stat {
+  background: #fff;
+  border: 1px solid #e0e6ed;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+.card-stat h6 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #555;
+}
+.card-stat h3 {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* warna khusus untuk setiap stat */
+.bg-menunggu {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+.bg-berjalan {
+  background: #d1ecf1;
+  border-left: 4px solid #17a2b8;
+}
+.bg-selesai {
+  background: #d4edda;
+  border-left: 4px solid #28a745;
+}
+.bg-total {
+  background: #d6d8ff;
+  border-left: 4px solid #007bff;
+}
+
+/* ================== TABEL KOTAK-KOTAK ================== */
+.table-kotak {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14.5px;
+  background: #fff;
+  border: 2px solid #007bff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 18px rgba(0, 123, 255, 0.18);
+}
+.table-kotak thead th {
+  background: #007bff !important;
+  color: #fff !important;
+  font-weight: 700;
+  padding: 16px 12px;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 13.5px;
+  letter-spacing: 0.8px;
+  border: none;
+  border-bottom: 3px solid #0056b3;
+}
+.table-kotak thead th i {
+  margin-right: 8px;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+.table-kotak tbody td {
+  padding: 16px 12px;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid #dee2e6;
+  border-left: 1px solid #dee2e6;
+  background: #fff;
+  transition: all 0.22s ease;
+}
+.table-kotak tbody tr td:first-child {
+  border-left: none;
+}
+.table-kotak tbody tr:nth-child(odd) td {
+  background: #f8f9fa;
+}
+.table-kotak tbody tr:hover td {
+  background: #e3f2fd !important;
+  font-weight: 600;
+}
+.table-kotak tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badge Status Kotak Tajam */
+.badge-kotak {
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  min-width: 94px;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border: 1.5px solid transparent;
+}
+.status-menunggu {
+  background: #fff3cd;
+  color: #856404;
+  border-color: #ffeaa7;
+}
+.status-berjalan {
+  background: #d1ecf1;
+  color: #0c5460;
+  border-color: #74b9ff;
+}
+.status-selesai {
+  background: #d4edda;
+  color: #155724;
+  border-color: #28a745;
+}
+
+/* Badge Hari ini / Besok */
+.badge-today {
+  background: #ff6b6b;
+  color: #fff;
+  font-size: 0.65em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 700;
+}
+.badge-tomorrow {
+  background: #4ecdc4;
+  color: #fff;
+  font-size: 0.65em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 700;
+}
+
+/* Durasi */
+.durasi i {
+  color: #007bff;
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 70px 20px;
+  color: #6c757d;
+  background: #f8f9fa;
+  border-radius: 10px;
+  margin: 20px 0;
+  border: 2px dashed #dee2e6;
+}
+.empty-state i {
+  font-size: 4.5rem;
+  margin-bottom: 18px;
+  opacity: 0.5;
+  color: #adb5bd;
+}
+
+/* RESPONSIF MOBILE – CARD VIEW */
+@media (max-width: 768px) {
+  .table-kotak {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .table-kotak thead {
+    display: none;
+  }
+  .table-kotak tbody tr {
+    display: block;
+    margin-bottom: 22px;
+    border: 2px solid #007bff;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.22);
+  }
+  .table-kotak tbody td {
+    display: block;
+    text-align: right;
+    padding: 15px 20px;
+    border-bottom: 1px dashed #dee2e6;
+    border-left: none;
+  }
+  .table-kotak tbody td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 700;
+    color: #007bff;
+    text-transform: uppercase;
+    font-size: 13.5px;
+    letter-spacing: 0.7px;
+  }
+  .table-kotak tbody td:last-child {
+    border-bottom: none;
+    background: #f5fbff;
+  }
+  .badge-kotak {
+    margin-top: 10px;
+    float: right;
+  }
+}
