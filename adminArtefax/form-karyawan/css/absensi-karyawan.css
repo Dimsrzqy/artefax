@@ -1,0 +1,67 @@
+/* absensi-style.css - CSS Eksternal untuk Halaman Absensi */
+
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  margin-top: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #ccc;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #3366ff;
+  color: white;
+  font-weight: bold;
+}
+
+.custom-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.custom-table tr:hover {
+  background-color: #fff3cd;
+  transition: 0.3s;
+}
+
+.status-hadir {
+  color: green;
+  font-weight: bold;
+}
+
+.status-izin {
+  color: orange;
+  font-weight: bold;
+}
+
+.status-alpha {
+  color: red;
+  font-weight: bold;
+}
+
+.custom-table img {
+  border-radius: 8px;
+  max-width: 80px;
+  height: auto;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+}
+
+.no-data i {
+  font-size: 48px;
+  color: #ced4da;
+  display: block;
+  margin-bottom: 15px;
+}
