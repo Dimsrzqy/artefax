@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'service':
                     header("Location: ../service/index.php");
                     break;
+                case 'karyawan':  // TAMBAHKAN INI
+                    header("Location: ../dasboardKaryawan/index.html");
+                    break;
                 case 'admin':
                 default:
                     header("Location: ../adminArtefax/index.html");
