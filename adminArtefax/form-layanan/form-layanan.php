@@ -567,14 +567,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
     </script>
 
-          <div class="ht-40"></div>
-
-          <div class="az-footer mg-t-auto">
-            <div class="container">
-              <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">Copyright © bootstrapdash.com 2020</span>
-              <span class="float-none float-sm-right d-block mt-1 mt-sm-0 text-center"> Free <a href="https://www.bootstrapdash.com/bootstrap-admin-template/" target="_blank">Bootstrap admin templates</a> from Bootstrapdash.com</span>
-            </div><!-- container -->
-          </div><!-- az-footer -->
         </div><!-- az-content-body -->
       </div><!-- container -->
     </div><!-- az-content -->

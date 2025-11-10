@@ -32,39 +32,13 @@
     <!-- azia CSS -->
     <link rel="stylesheet" href="../css/azia.css">
 
-    <style>
-      .custom-table {
-        width: 100%; border-collapse: collapse; background: white;
-        margin-top: 20px; border-radius: 10px; overflow: hidden;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      }
-      .custom-table th, .custom-table td {
-        border: 1px solid #ccc; padding: 10px 14px; text-align: center;
-      }
-      .custom-table th {
-        background-color: #3366ff; color: white; font-weight: bold;
-      }
-      .custom-table tr:nth-child(even) { background-color: #f2f2f2; }
-      .custom-table tr:hover { background-color: #fff3cd; transition: 0.3s; }
-
-      .status-hadir { color: green; font-weight: bold; }
-      .status-izin { color: orange; font-weight: bold; }
-      .status-alpha { color: red; font-weight: bold; }
-
-      .custom-table img {
-        border-radius: 8px; max-width: 80px; height: auto;
-      }
-
-      .no-data {
-        text-align: center; padding: 40px; color: #6c757d;
-      }
-      .no-data i { font-size: 48px; color: #ced4da; display: block; margin-bottom: 15px; }
-    </style>
+    <!-- CSS EKSTERNAL BARU -->
+    <link rel="stylesheet" href="css/absensi-karyawan.css">
   </head>
   <body>
 
     <!-- HEADER -->
- <div class="az-header">
+    <div class="az-header">
         <div class="container">
             <div class="az-header-left">
                 <a href="../index.html" class="az-logo"><span></span> Artefax</a>
@@ -80,13 +54,13 @@
                         <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="form-karyawan.php" class="nav-link">Karyawan</a>
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Layanan</a>
+                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="form-elements.html" class="nav-link"><i class="typcn typcn-chart-bar-outline"></i> Forms</a>
+                       <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
                     </li>
                     <li class="nav-item">
                         <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -243,7 +217,7 @@
                                 // Mengubah BLOB menjadi Base64
                                 if (!empty($row['PsnFoto'])) {
                                     $fotoData = base64_encode($row['PsnFoto']);
-                                    $fotoPath = "data:image/jpeg;base64,$fotoData"; // ganti 'jpeg' sesuai tipe sebenarnya
+                                    $fotoPath = "data:image/jpeg;base64,$fotoData";
                                 } else {
                                     $fotoPath = '../../img/no-photo.png';
                                 }
