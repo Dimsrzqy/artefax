@@ -1,3 +1,11 @@
+/* ==================================================== */
+/* DASHBOARD KARYAWAN - FULL CSS (CARD + TABEL GABUNG)  */
+/* Artefax Event Management - 2025                      */
+/* CARD STATISTIK TIDAK DIUBAH SAMA SEKALI              */
+/* TABEL DIPERBAIKI TOTAL: KOTAK-KOTAK, BORDER JELAS    */
+/* ==================================================== */
+
+/* ================== CARD & STATISTIK (ASLI 100%) ================== */
 .card {
   border: 1px solid #e0e6ed;
   border-radius: 8px;
@@ -171,6 +179,21 @@
   margin-bottom: 18px;
   opacity: 0.5;
   color: #adb5bd;
+}
+
+/* ===================================================== */
+/* TAMBAHAN: STYLE UNTUK WAKTU MULAI & SELESAI (HANYA JAM) */
+/* ===================================================== */
+td[data-label="Mulai"] strong,
+td[data-label="Selesai"] strong {
+  font-size: 1.1em;
+  color: #007bff;
+  font-weight: 700;
+}
+td[data-label="Mulai"] br,
+td[data-label="Selesai"] br {
+  display: block;
+  margin: 2px 0;
 }
 
 /* RESPONSIF MOBILE – CARD VIEW */

@@ -17,27 +17,32 @@ require_once '../../class/EventAssignment.php';
 
 $db = new Database();
 $conn = $db->getConnection();
-
-if ($conn === null) {
-    die("Database gagal terkoneksi!");
-}
+if ($conn === null) die("Database gagal terkoneksi!");
 
 $assignment = new EventAssignment($conn);
 $allAssignments = $assignment->getAssignmentsByKaryawan($idKaryawan);
 $stats = $assignment->getStats($idKaryawan);
 
-// === FILTER: HILANGKAN EVENT YANG SUDAH LEWAT (KECUALI SELESAI) ===
-$now = new DateTime(); // Waktu saat ini
+// === FILTER: HILANGKAN EVENT YANG SUDAH LEWAT (kecuali status selesai) ===
+$now = new DateTime();
 $assignments = [];
 
 foreach ($allAssignments as $t) {
-    $selesai = !empty($t['EventSelesai']) ? new DateTime($t['EventSelesai']) : null;
-    $status = strtolower($t['EventStatus']);
+    $tanggal = !empty($t['EventTanggal']) ? new DateTime($t['EventTanggal']) : null;
+    $waktuSelesai = !empty($t['WaktuSelesai']) && $t['WaktuSelesai'] !== '—' ? $t['WaktuSelesai'] : null;
+    $status = $t['EventStatusClean'] ?? trim(strtolower($t['EventStatus']));
 
-    // Tampilkan jika:
-    // 1. Status = Selesai (riwayat tetap tampil)
-    // 2. Atau EventSelesai belum lewat
-    if ($status === 'selesai' || ($selesai && $selesai >= $now)) {
+    // Buat DateTime lengkap untuk cek "lewat"
+    $selesaiFull = null;
+    if ($tanggal && $waktuSelesai) {
+        $selesaiFull = clone $tanggal;
+        $time = DateTime::createFromFormat('H:i:s', $waktuSelesai);
+        if (!$time) $time = DateTime::createFromFormat('H:i', $waktuSelesai);
+        if ($time) $selesaiFull->setTime($time->format('H'), $time->format('i'), 0);
+    }
+
+    // Logika penampilan event:
+    if ($status === 'selesai' || !$selesaiFull || $selesaiFull >= $now) {
         $assignments[] = $t;
     }
 }
@@ -50,41 +55,11 @@ foreach ($allAssignments as $t) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Penugasan - <?= htmlspecialchars($namaKaryawan) ?> | Artefax</title>
 
-    <!-- Font Awesome -->
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    
-    <!-- Azia Core CSS -->
     <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
-    
-    <!-- CSS Karyawan -->
     <link href="../css/karyawan.css" rel="stylesheet">
-
-    <style>
-        .badge-today { 
-            background: #ff6b6b; color: white; font-size: 0.65em; padding: 3px 7px; border-radius: 4px; margin-left: 6px; 
-        }
-        .badge-tomorrow { 
-            background: #4ecdc4; color: white; font-size: 0.65em; padding: 3px 7px; border-radius: 4px; margin-left: 6px; 
-        }
-        .badge-solid { 
-            padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85em; 
-        }
-        .status-menunggu { background: #ffc107; color: #212529; }
-        .status-berjalan { background: #17a2b8; color: white; }
-        .status-selesai { background: #28a745; color: white; }
-        .durasi { font-family: 'Courier New', monospace; font-weight: 600; }
-        .empty-state { text-align: center; padding: 50px 20px; color: #6c757d; }
-        .empty-state i { font-size: 60px; color: #dee2e6; margin-bottom: 16px; }
-        .table-kotak th { background: #f8f9fa; font-weight: 600; }
-        .table-kotak td { vertical-align: middle; }
-        .text-muted { color: #6c757d !important; font-style: italic; }
-        @media (max-width: 768px) {
-            .card-stat h6 { font-size: 0.9rem; }
-            .card-stat h3 { font-size: 1.5rem; }
-        }
-    </style>
 </head>
 <body class="az-body">
 
@@ -125,30 +100,10 @@ foreach ($allAssignments as $t) {
 
                 <!-- STATISTIK -->
                 <div class="row row-sm mg-b-30">
-                    <div class="col-3">
-                        <div class="card card-stat bg-warning text-dark">
-                            <h6>Menunggu</h6>
-                            <h3><?= $stats['menunggu'] ?></h3>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="card card-stat bg-info">
-                            <h6>Berjalan</h6>
-                            <h3><?= $stats['berjalan'] ?></h3>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="card card-stat bg-success">
-                            <h6>Selesai</h6>
-                            <h3><?= $stats['selesai'] ?></h3>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="card card-stat bg-primary">
-                            <h6>Total</h6>
-                            <h3><?= $stats['total'] ?></h3>
-                        </div>
-                    </div>
+                    <div class="col-3"><div class="card card-stat bg-menunggu"><h6>Menunggu</h6><h3><?= $stats['menunggu'] ?></h3></div></div>
+                    <div class="col-3"><div class="card card-stat bg-berjalan"><h6>Berjalan</h6><h3><?= $stats['berjalan'] ?></h3></div></div>
+                    <div class="col-3"><div class="card card-stat bg-selesai"><h6>Selesai</h6><h3><?= $stats['selesai'] ?></h3></div></div>
+                    <div class="col-3"><div class="card card-stat bg-total"><h6>Total</h6><h3><?= $stats['total'] ?></h3></div></div>
                 </div>
 
                 <!-- TABEL PENUGASAN -->
@@ -160,105 +115,66 @@ foreach ($allAssignments as $t) {
                             <small class="text-muted">Event yang sudah lewat otomatis disembunyikan.</small>
                         </div>
                     <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-kotak table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Event</th>
-                                        <th>Lokasi</th>
-                                        <th>Customer</th>
-                                        <th>Mulai</th>
-                                        <th>Selesai</th>
-                                        <th>Durasi</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    $today    = new DateTime();
-                                    $today->setTime(0, 0, 0);
-                                    $tomorrow = clone $today;
-                                    $tomorrow->modify('+1 day');
+                        <table class="table-kotak">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-tag"></i> Event</th>
+                                    <th><i class="fas fa-map-marker-alt"></i> Lokasi</th>
+                                    <th><i class="fas fa-user-tie"></i> Customer</th>
+                                    <th><i class="fas fa-calendar-alt"></i> Mulai</th>
+                                    <th><i class="fas fa-calendar-check"></i> Selesai</th>
+                                    <th><i class="fas fa-clock"></i> Durasi</th>
+                                    <th><i class="fas fa-info-circle"></i> Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $today = new DateTime(); $today->setTime(0,0,0);
+                                $tomorrow = clone $today; $tomorrow->modify('+1 day');
 
-                                    foreach ($assignments as $t): 
-                                        $mulai   = !empty($t['EventMulai'])   ? new DateTime($t['EventMulai'])   : null;
-                                        $selesai = !empty($t['EventSelesai']) ? new DateTime($t['EventSelesai']) : null;
+                                foreach ($assignments as $t):
+                                    $tanggal = !empty($t['EventTanggal']) ? new DateTime($t['EventTanggal']) : null;
+                                    $status = $t['EventStatusClean'];
+                                    $badgeMulai = '';
 
-                                        // Badge: Hari ini / Besok (berdasarkan EventMulai)
-                                        $badgeMulai = '';
-                                        if ($mulai) {
-                                            $mulaiDate = clone $mulai;
-                                            $mulaiDate->setTime(0, 0, 0);
-                                            if ($mulaiDate == $today) {
-                                                $badgeMulai = '<span class="badge-today">Hari ini</span>';
-                                            } elseif ($mulaiDate == $tomorrow) {
-                                                $badgeMulai = '<span class="badge-tomorrow">Besok</span>';
-                                            }
-                                        }
+                                    if ($tanggal) {
+                                        if ($tanggal == $today) $badgeMulai = '<span class="badge-today">Hari ini</span>';
+                                        elseif ($tanggal == $tomorrow) $badgeMulai = '<span class="badge-tomorrow">Besok</span>';
+                                    }
+                                ?>
+                                <tr>
+                                    <td><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
+                                    <td><small><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></small></td>
+                                    <td><?= htmlspecialchars($t['CustomerNama'] ?? 'N/A') ?></td>
 
-                                        // Durasi
-                                        $durasi = '—';
-                                        if ($mulai && $selesai) {
-                                            $interval = $mulai->diff($selesai);
-                                            $jam = $interval->h;
-                                            $menit = $interval->i;
-                                            $durasi = $jam . ' jam';
-                                            if ($menit > 0) $durasi .= ' ' . $menit . ' menit';
-                                        }
+                                    <td>
+                                        <?= $tanggal ? $tanggal->format('d M Y') : '-' ?><br>
+                                        <strong><?= $t['WaktuMulai'] ?></strong>
+                                        <?= $badgeMulai ?>
+                                    </td>
 
-                                        // Status
-                                        $status = strtolower($t['EventStatus']);
-                                        $icon = match($status) {
-                                            'menunggu' => 'hourglass-half',
-                                            'berjalan' => 'running',
-                                            default    => 'check-circle'
-                                        };
-                                    ?>
-                                    <tr>
-                                        <td data-label="Event">
-                                            <strong><?= htmlspecialchars($t['EventNama']) ?></strong>
-                                        </td>
-                                        <td data-label="Lokasi">
-                                            <small><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></small>
-                                        </td>
-                                        <td data-label="Customer">
-                                            <?= htmlspecialchars($t['CustomerNama'] ?? 'N/A') ?>
-                                        </td>
-                                        <td data-label="Mulai">
-                                            <?= $mulai ? $mulai->format('d M Y H:i') : '-' ?>
-                                            <?= $badgeMulai ?>
-                                        </td>
-                                        <td data-label="Selesai">
-                                            <?= $selesai ? $selesai->format('d M Y H:i') : '-' ?>
-                                        </td>
-                                        <td data-label="Durasi" class="durasi">
-                                            <?= $durasi ?>
-                                        </td>
-                                        <td data-label="Status">
-                                            <span class="badge-solid status-<?= $status ?>">
-                                                <?= ucfirst($t['EventStatus']) ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                    <td>
+                                        <?= $tanggal ? $tanggal->format('d M Y') : '-' ?><br>
+                                        <strong><?= $t['WaktuSelesai'] ?></strong>
+                                    </td>
+
+                                    <td class="durasi"><?= $t['EventDurasiFormatted'] ?></td>
+
+                                    <td>
+                                        <span class="badge-kotak status-<?= $status ?>">
+                                            <?= ucfirst($t['EventStatus']) ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     <?php endif; ?>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Info Kecil -->
-                <div class="mg-t-20">
-                    <small class="text-muted">
-                        Event yang sudah lewat (kecuali status <strong>Selesai</strong>) otomatis disembunyikan.
-                    </small>
-                </div>
-
-            </div><!-- az-content-body -->
-        </div><!-- container -->
-    </div><!-- az-content -->
-
-    <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
