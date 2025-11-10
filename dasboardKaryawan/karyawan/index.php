@@ -84,7 +84,7 @@ foreach ($allAssignments as $t) {
                             <h6><?= htmlspecialchars($namaKaryawan) ?></h6>
                             <span>Karyawan</span>
                         </div>
-                        <a href="../../View/logout.php" class="dropdown-item"><i class="typcn typcn-power"></i> Keluar</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power"></i> Keluar</a>
                     </div>
                 </div>
             </div>
