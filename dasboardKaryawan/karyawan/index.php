@@ -20,32 +20,8 @@ $conn = $db->getConnection();
 if ($conn === null) die("Database gagal terkoneksi!");
 
 $assignment = new EventAssignment($conn);
-$allAssignments = $assignment->getAssignmentsByKaryawan($idKaryawan);
+$assignments = $assignment->getAssignmentsByKaryawan($idKaryawan);
 $stats = $assignment->getStats($idKaryawan);
-
-// === FILTER: HILANGKAN EVENT YANG SUDAH LEWAT (kecuali status selesai) ===
-$now = new DateTime();
-$assignments = [];
-
-foreach ($allAssignments as $t) {
-    $tanggal = !empty($t['EventTanggal']) ? new DateTime($t['EventTanggal']) : null;
-    $waktuSelesai = !empty($t['WaktuSelesai']) && $t['WaktuSelesai'] !== '—' ? $t['WaktuSelesai'] : null;
-    $status = $t['EventStatusClean'] ?? trim(strtolower($t['EventStatus']));
-
-    // Buat DateTime lengkap untuk cek "lewat"
-    $selesaiFull = null;
-    if ($tanggal && $waktuSelesai) {
-        $selesaiFull = clone $tanggal;
-        $time = DateTime::createFromFormat('H:i:s', $waktuSelesai);
-        if (!$time) $time = DateTime::createFromFormat('H:i', $waktuSelesai);
-        if ($time) $selesaiFull->setTime($time->format('H'), $time->format('i'), 0);
-    }
-
-    // Logika penampilan event:
-    if ($status === 'selesai' || !$selesaiFull || $selesaiFull >= $now) {
-        $assignments[] = $t;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -56,8 +32,6 @@ foreach ($allAssignments as $t) {
     <title>Penugasan - <?= htmlspecialchars($namaKaryawan) ?> | Artefax</title>
 
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
-    <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../css/karyawan.css" rel="stylesheet">
 </head>
@@ -72,7 +46,7 @@ foreach ($allAssignments as $t) {
             <div class="az-header-menu">
                 <ul class="nav">
                     <li class="nav-item active"><a href="index.php" class="nav-link">Penugasan</a></li>
-                    <li class="nav-item"><a href="../form-karyawan.php" class="nav-link">Absensi</a></li>
+                    <li class="nav-item"><a href="InputAbsenKaryawan.php" class="nav-link">Absensi</a></li>
                 </ul>
             </div>
             <div class="az-header-right">
@@ -112,59 +86,31 @@ foreach ($allAssignments as $t) {
                         <div class="empty-state">
                             <i class="fas fa-calendar-check"></i>
                             <p class="tx-20 mg-b-5">Tidak ada penugasan aktif saat ini.</p>
-                            <small class="text-muted">Event yang sudah lewat otomatis disembunyikan.</small>
+                            <small class="text-muted">Event yang sudah selesai otomatis disembunyikan.</small>
                         </div>
                     <?php else: ?>
                         <table class="table-kotak">
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-tag"></i> Event</th>
-                                    <th><i class="fas fa-map-marker-alt"></i> Lokasi</th>
-                                    <th><i class="fas fa-user-tie"></i> Customer</th>
-                                    <th><i class="fas fa-calendar-alt"></i> Mulai</th>
-                                    <th><i class="fas fa-calendar-check"></i> Selesai</th>
-                                    <th><i class="fas fa-clock"></i> Durasi</th>
-                                    <th><i class="fas fa-info-circle"></i> Status</th>
+                                    <th>Event</th>
+                                    <th>Lokasi</th>
+                                    <th>Customer</th>
+                                    <th>Mulai</th>
+                                    <th>Selesai</th>
+                                    <th>Durasi</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php
-                                $today = new DateTime(); $today->setTime(0,0,0);
-                                $tomorrow = clone $today; $tomorrow->modify('+1 day');
-
-                                foreach ($assignments as $t):
-                                    $tanggal = !empty($t['EventTanggal']) ? new DateTime($t['EventTanggal']) : null;
-                                    $status = $t['EventStatusClean'];
-                                    $badgeMulai = '';
-
-                                    if ($tanggal) {
-                                        if ($tanggal == $today) $badgeMulai = '<span class="badge-today">Hari ini</span>';
-                                        elseif ($tanggal == $tomorrow) $badgeMulai = '<span class="badge-tomorrow">Besok</span>';
-                                    }
-                                ?>
+                                <?php foreach ($assignments as $t): ?>
                                 <tr>
                                     <td><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
-                                    <td><small><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></small></td>
-                                    <td><?= htmlspecialchars($t['CustomerNama'] ?? 'N/A') ?></td>
-
-                                    <td>
-                                        <?= $tanggal ? $tanggal->format('d M Y') : '-' ?><br>
-                                        <strong><?= $t['WaktuMulai'] ?></strong>
-                                        <?= $badgeMulai ?>
-                                    </td>
-
-                                    <td>
-                                        <?= $tanggal ? $tanggal->format('d M Y') : '-' ?><br>
-                                        <strong><?= $t['WaktuSelesai'] ?></strong>
-                                    </td>
-
-                                    <td class="durasi"><?= $t['EventDurasiFormatted'] ?></td>
-
-                                    <td>
-                                        <span class="badge-kotak status-<?= $status ?>">
-                                            <?= ucfirst($t['EventStatus']) ?>
-                                        </span>
-                                    </td>
+                                    <td><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($t['CustomerNama'] ?? '—') ?></td>
+                                    <td><?= $t['TanggalFormatted'] ?><br><strong><?= $t['WaktuMulai'] ?></strong></td>
+                                    <td><?= $t['TanggalFormatted'] ?><br><strong><?= $t['WaktuSelesai'] ?></strong></td>
+                                    <td><?= $t['EventDurasiFormatted'] ?></td>
+                                    <td><span class="badge-kotak status-<?= $t['EventStatusClean'] ?>"><?= ucfirst($t['EventStatus']) ?></span></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

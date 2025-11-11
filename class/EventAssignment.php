@@ -8,29 +8,27 @@ class EventAssignment {
     }
 
     // ==========================================================
-    // 🔄 UPDATE STATUS OTOMATIS JIKA WAKTU SUDAH LEWAT
+    // 🔄 UPDATE STATUS OTOMATIS
     // ==========================================================
     public function updateStatusOtomatis() {
         $query = "
             UPDATE {$this->table}
             SET EventStatus = 'Selesai'
-            WHERE EventStatus != 'Selesai'
+            WHERE TRIM(LOWER(EventStatus)) != 'selesai'
               AND NOW() > DATE_ADD(
                   TIMESTAMP(EventTanggal, EventMulai),
                   INTERVAL EventDurasi HOUR
               )
         ";
-
         if (!$this->conn->query($query)) {
-            error_log('Gagal update status otomatis: ' . $this->conn->error);
+            error_log('❌ Gagal update status otomatis: ' . $this->conn->error);
         }
     }
 
     // ==========================================================
-    // 📅 AMBIL PENUGASAN BERDASARKAN KARYAWAN (Kecuali yang Selesai)
+    // 📋 AMBIL PENUGASAN KARYAWAN (HANYA YANG BELUM SELESAI)
     // ==========================================================
     public function getAssignmentsByKaryawan($idKaryawan) {
-        // Pastikan status terbaru
         $this->updateStatusOtomatis();
 
         $query = "SELECT 
@@ -39,15 +37,15 @@ class EventAssignment {
                     e.EventStatus, e.CreatedAt, e.UpdatedAt,
                     u.UserNama AS CustomerNama
                   FROM {$this->table} e
-                  LEFT JOIN booking b ON e.IDBooking = b.IDBooking
-                  LEFT JOIN users u ON b.IDUser = u.IDUser
+                  LEFT JOIN booking b ON b.IDBooking = e.IDBooking
+                  LEFT JOIN users u ON u.IDUser = b.IDUser
                   WHERE e.IDKaryawan = ?
-                    AND e.EventStatus != 'Selesai'
+                    AND TRIM(LOWER(e.EventStatus)) != 'selesai'
                   ORDER BY e.EventTanggal DESC, e.EventMulai ASC";
 
         $stmt = $this->conn->prepare($query);
         if (!$stmt) {
-            error_log("Prepare failed: " . $this->conn->error);
+            error_log("Prepare failed (getAssignmentsByKaryawan): " . $this->conn->error);
             return [];
         }
 
@@ -57,19 +55,16 @@ class EventAssignment {
 
         $assignments = [];
         while ($row = $result->fetch_assoc()) {
-            // === STATUS CLEAN UNTUK CSS BADGE ===
-            $row['EventStatusClean'] = strtolower(trim($row['EventStatus']));
-
-            // === FORMAT TANGGAL & JAM ===
-            $row['TanggalFormatted'] = date('d M Y', strtotime($row['EventTanggal']));
-            $row['WaktuMulai']       = $row['EventMulai']   ? date('H:i', strtotime($row['EventMulai']))   : '—';
-            $row['WaktuSelesai']     = $row['EventSelesai'] ? date('H:i', strtotime($row['EventSelesai'])) : '—';
-
-            // === FORMAT DURASI (jam) ===
-            $durasiJam = (int) $row['EventDurasi'];
-            $row['EventDurasiFormatted'] = $durasiJam . " jam";
-
+            $row['EventStatusClean'] = strtolower(trim($row['EventStatus'] ?? 'unknown'));
+            $row['TanggalFormatted'] = $row['EventTanggal'] ? date('d M Y', strtotime($row['EventTanggal'])) : '—';
+            $row['WaktuMulai'] = $row['EventMulai'] ? date('H:i', strtotime($row['EventMulai'])) : '—';
+            $row['WaktuSelesai'] = $row['EventSelesai'] ? date('H:i', strtotime($row['EventSelesai'])) : '—';
+            $row['EventDurasiFormatted'] = ((int) $row['EventDurasi']) . " jam";
             $assignments[] = $row;
+        }
+
+        if (count($assignments) === 0) {
+            error_log("⚠️ Tidak ada event aktif untuk IDKaryawan={$idKaryawan}");
         }
 
         $stmt->close();
@@ -77,10 +72,9 @@ class EventAssignment {
     }
 
     // ==========================================================
-    // 📊 STATISTIK EVENT PER KARYAWAN
+    // 📊 STATISTIK EVENT
     // ==========================================================
     public function getStats($idKaryawan) {
-        // Pastikan status terbaru agar data akurat
         $this->updateStatusOtomatis();
 
         $query = "SELECT 
@@ -93,21 +87,21 @@ class EventAssignment {
 
         $stmt = $this->conn->prepare($query);
         if (!$stmt) {
-            error_log("Prepare failed: " . $this->conn->error);
+            error_log("Prepare failed (getStats): " . $this->conn->error);
             return ['total' => 0, 'selesai' => 0, 'berjalan' => 0, 'menunggu' => 0];
         }
 
         $stmt->bind_param("i", $idKaryawan);
         $stmt->execute();
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-
+        $row = $result->fetch_assoc() ?: ['total' => 0, 'selesai' => 0, 'berjalan' => 0, 'menunggu' => 0];
         $stmt->close();
-        return $row ?: ['total' => 0, 'selesai' => 0, 'berjalan' => 0, 'menunggu' => 0];
+
+        return $row;
     }
 
     // ==========================================================
-    // ➕ TAMBAH EVENT BARU (AUTO HITUNG SELESAI)
+    // ➕ TAMBAH EVENT BARU
     // ==========================================================
     public function tambahEvent($nama, $lokasi, $idBooking, $idKaryawan, $tanggal, $mulai, $durasi) {
         $query = "

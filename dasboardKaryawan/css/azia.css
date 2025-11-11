@@ -1,98 +1,4 @@
-/*
-* Azia v1.0.0 (https://www.bootstrapdash.com/demo/azia/v1.0/)
-* Copyright 2019 BootstrapDash
-* Licensed under BootstrapDash License
-*
-*
-* ------ Table Of Contents -------
-*
-*   1. FONTS IMPORT
-*   2. BOOTSTRAP FRAMEWORK
-*   3. BOOTSTRAP OVERRIDES
-*      3.1  Accordion
-*      3.2  Alerts
-*      3.3  Badge
-*      3.4  Breadcrumb
-*      3.5  Buttons
-*      3.6  Cards
-*      3.7  Carousel
-*      3.8  Dropdown
-*      3.9  Forms
-*      3.10 Grid
-*      3.11 Input Group
-*      3.12 Modal
-*      3.13 Nav
-*      3.14 Pagination
-*      3.15 Popover
-*      3.16 Progress
-*      3.17 Table
-*      3.18 Toast
-*      3.19 Tooltip
-*   4. CUSTOM ELEMENT STYLES
-*      4.1  Accordion
-*      4.2  Buttons
-*      4.3  Charts
-*      4.4  Forms
-*      4.5  Image
-*      4.6  List
-*      4.7  Modal
-*      4.8  Nav
-*   5. CUSTOM VENDOR STYLES
-*      5.1  DataTables
-*      5.2  DatePicker
-*      5.3  DateTimePicker
-*      5.4  jQuery Steps
-*      5.5  jQVMap
-*      5.6  Morris
-*      5.7  Parsley
-*      5.8  Quill
-*      5.9  RangSlider
-*      5.10 Scrollbar
-*      5.11 Select2
-*      5.12 Spectrum
-*   6. PAGE LAYOUT STYLES
-*      6.1  Content
-*      6.2  Footer
-*      6.3  Global
-*      6.4  Header
-*      6.5  Iconbar
-*      6.6  Navbar
-*      6.7  Navbar Variant
-*      6.8  Sidebar
-*   7. TEMPLATE STYLES
-*      7.1  Demo
-*      7.2  Calendar
-*      7.3  Chat
-*      7.4  Contacts
-*      7.5  Invoice
-*      7.6  Mail
-*      7.7  Profile
-*      7.8  Signin
-*      7.9  Signup
-*      7.10 Error
-*   8. DASHBOARD STYLES
-*      8.1  Dashboard One
-*      8.2  Dashboard Two
-*      8.3  Dashboard Three
-*      8.4  Dashboard Four
-*      8.5  Dashboard Five
-*      8.6  Dashboard Six
-*      8.7  Dashboard Seven
-*      8.8  Dashboard Eight
-*      8.9  Dashboard Nine
-*      8.10 Dashboard Ten
-*   9. UTILITIES/HELPER CLASSES
-*      9.1  Background
-*      9.2  Border
-*      9.3  Height
-*      9.4  Margin
-*      9.5  Misc
-*      9.6  Padding
-*      9.7  Position
-*      9.8  Typography
-*      9.9  Width
-*
-*/
+
 /* ############### FONTS IMPORT ############### */
 @import url("https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900");
 @import url("https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700,800");
@@ -3396,171 +3302,109 @@ input[type="button"].btn-block {
   word-wrap: break-word;
   background-color: #fff;
   background-clip: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.125);
-  border-radius: 3px; }
-  .card > hr {
-    margin-right: 0;
-    margin-left: 0; }
-  .card > .list-group {
-    border-top: inherit;
-    border-bottom: inherit; }
-    .card > .list-group:first-child {
-      border-top-width: 0;
-      border-top-left-radius: 2px;
-      border-top-right-radius: 2px; }
-    .card > .list-group:last-child {
-      border-bottom-width: 0;
-      border-bottom-right-radius: 2px;
-      border-bottom-left-radius: 2px; }
-  .card > .card-header + .list-group,
-  .card > .list-group + .card-footer {
-    border-top: 0; }
+  border: 1.5px solid rgba(0, 123, 255, 0.4); /* biru lembut */
+  border-radius: 10px;
+  box-shadow: none !important; /* ✅ Hapus semua shadow */
+}
 
+.card > hr {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.card > .list-group {
+  border-top: inherit;
+  border-bottom: inherit;
+}
+
+.card > .list-group:first-child {
+  border-top-width: 0;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.card > .list-group:last-child {
+  border-bottom-width: 0;
+  border-bottom-right-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.card > .card-header + .list-group,
+.card > .list-group + .card-footer {
+  border-top: 0;
+}
+
+/* === Bagian isi kartu === */
 .card-body {
   flex: 1 1 auto;
   min-height: 1px;
-  padding: 1.25rem; }
+  padding: 1.25rem;
+}
 
+/* === Judul & teks === */
 .card-title {
-  margin-bottom: 0.75rem; }
+  margin-bottom: 0.75rem;
+}
 
 .card-subtitle {
   margin-top: -0.375rem;
-  margin-bottom: 0; }
+  margin-bottom: 0;
+}
 
 .card-text:last-child {
-  margin-bottom: 0; }
+  margin-bottom: 0;
+}
 
-.card-link:hover {
-  text-decoration: none; }
-
-.card-link + .card-link {
-  margin-left: 1.25rem; }
-
+/* === Header & Footer (tanpa bayangan) === */
 .card-header {
   padding: 0.75rem 1.25rem;
   margin-bottom: 0;
-  background-color: rgba(0, 0, 0, 0.03);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.125); }
-  .card-header:first-child {
-    border-radius: 2px 2px 0 0; }
+  background-color: rgba(0, 123, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 123, 255, 0.2);
+  border-radius: 10px 10px 0 0;
+}
 
 .card-footer {
   padding: 0.75rem 1.25rem;
-  background-color: rgba(0, 0, 0, 0.03);
-  border-top: 1px solid rgba(0, 0, 0, 0.125); }
-  .card-footer:last-child {
-    border-radius: 0 0 2px 2px; }
+  background-color: rgba(0, 123, 255, 0.05);
+  border-top: 1px solid rgba(0, 123, 255, 0.2);
+  border-radius: 0 0 10px 10px;
+}
 
-.card-header-tabs {
-  margin-right: -0.625rem;
-  margin-bottom: -0.75rem;
-  margin-left: -0.625rem;
-  border-bottom: 0; }
+/* === Variasi list & accordion === */
+.accordion > .card {
+  overflow: hidden;
+  box-shadow: none !important; /* ✅ Pastikan tetap flat */
+}
+.accordion > .card:not(:last-of-type) {
+  border-bottom: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.accordion > .card:not(:first-of-type) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.accordion > .card > .card-header {
+  border-radius: 0;
+  margin-bottom: -1px;
+}
 
-.card-header-pills {
-  margin-right: -0.625rem;
-  margin-left: -0.625rem; }
-
-.card-img-overlay {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding: 1.25rem;
-  border-radius: 2px; }
-
-.card-img,
-.card-img-top,
-.card-img-bottom {
-  flex-shrink: 0;
-  width: 100%; }
-
-.card-img,
-.card-img-top {
-  border-top-left-radius: 2px;
-  border-top-right-radius: 2px; }
-
-.card-img,
-.card-img-bottom {
-  border-bottom-right-radius: 2px;
-  border-bottom-left-radius: 2px; }
-
-.card-deck .card {
-  margin-bottom: 15px; }
-
+/* === Responsif: tetap flat di semua ukuran === */
 @media (min-width: 576px) {
-  .card-deck {
-    display: flex;
-    flex-flow: row wrap;
-    margin-right: -15px;
-    margin-left: -15px; }
-    .card-deck .card {
-      flex: 1 0 0%;
-      margin-right: 15px;
-      margin-bottom: 0;
-      margin-left: 15px; } }
-
-.card-group > .card {
-  margin-bottom: 15px; }
-
-@media (min-width: 576px) {
-  .card-group {
-    display: flex;
-    flex-flow: row wrap; }
-    .card-group > .card {
-      flex: 1 0 0%;
-      margin-bottom: 0; }
-      .card-group > .card + .card {
-        margin-left: 0;
-        border-left: 0; }
-      .card-group > .card:not(:last-child) {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0; }
-        .card-group > .card:not(:last-child) .card-img-top,
-        .card-group > .card:not(:last-child) .card-header {
-          border-top-right-radius: 0; }
-        .card-group > .card:not(:last-child) .card-img-bottom,
-        .card-group > .card:not(:last-child) .card-footer {
-          border-bottom-right-radius: 0; }
-      .card-group > .card:not(:first-child) {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0; }
-        .card-group > .card:not(:first-child) .card-img-top,
-        .card-group > .card:not(:first-child) .card-header {
-          border-top-left-radius: 0; }
-        .card-group > .card:not(:first-child) .card-img-bottom,
-        .card-group > .card:not(:first-child) .card-footer {
-          border-bottom-left-radius: 0; } }
-
-.card-columns .card {
-  margin-bottom: 0.75rem; }
-
-@media (min-width: 576px) {
+  .card-deck,
+  .card-group,
   .card-columns {
-    column-count: 3;
-    column-gap: 1.25rem;
-    orphans: 1;
-    widows: 1; }
-    .card-columns .card {
-      display: inline-block;
-      width: 100%; } }
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .card-deck .card,
+  .card-group > .card,
+  .card-columns .card {
+    box-shadow: none !important; /* ✅ Tidak ada bayangan */
+  }
+}
 
-.accordion {
-  overflow-anchor: none; }
-  .accordion > .card {
-    overflow: hidden; }
-    .accordion > .card:not(:last-of-type) {
-      border-bottom: 0;
-      border-bottom-right-radius: 0;
-      border-bottom-left-radius: 0; }
-    .accordion > .card:not(:first-of-type) {
-      border-top-left-radius: 0;
-      border-top-right-radius: 0; }
-    .accordion > .card > .card-header {
-      border-radius: 0;
-      margin-bottom: -1px; }
 
 .breadcrumb {
   display: flex;
