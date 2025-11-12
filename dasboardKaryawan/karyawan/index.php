@@ -47,6 +47,7 @@ $stats = $assignment->getStats($idKaryawan);
                 <ul class="nav">
                     <li class="nav-item active"><a href="index.php" class="nav-link">Penugasan</a></li>
                     <li class="nav-item"><a href="InputAbsenKaryawan.php" class="nav-link">Absensi</a></li>
+                    <li class="nav-item"><a href="LaporanPenugasan.php" class="nav-link">Laporan</a></li>
                 </ul>
             </div>
             <div class="az-header-right">

@@ -135,19 +135,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<header class="az-header">
-    <div class="container">
-        <a href="index.php" class="az-logo">artefax</a>
-        <nav>
-            <a href="index.php">Penugasan</a>
-            <a href="InputAbsenKaryawan.php" class="active">Absensi</a>
-        </nav>
-        <div class="az-user">
-            <img src="../img/faces/face1.jpg" alt="user">
-            <span><?= htmlspecialchars($namaKaryawan) ?></span>
+    <div class="az-header">
+        <div class="container">
+            <div class="az-header-left">
+                <a href="index.php" class="az-logo"><span></span> artefax</a>
+            </div>
+            <div class="az-header-menu">
+                <ul class="nav">
+                    <li class="nav-item"><a href="index.php" class="nav-link">Penugasan</a></li>
+                    <li class="nav-item"><a href="InputAbsenKaryawan.php" class="nav-link">Absensi</a></li>
+                    <li class="nav-item active"><a href="LaporanPenugasan.php" class="nav-link">Laporan</a></li>
+                </ul>
+            </div>
+            <div class="az-header-right">
+                <div class="dropdown az-profile-menu">
+                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <div class="dropdown-menu">
+                        <div class="az-header-profile">
+                            <div class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></div>
+                            <h6><?= htmlspecialchars($namaKaryawan) ?></h6>
+                            <span>Karyawan</span>
+                        </div>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power"></i> Keluar</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</header>
 
 <main class="container-main">
     <section class="absensi-card">

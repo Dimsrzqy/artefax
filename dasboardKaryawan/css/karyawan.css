@@ -212,7 +212,7 @@ td[data-label="Selesai"] br {
     border-radius: 14px;
     overflow: hidden;
     background: #fff;
-    box-shadow: none !important; /* ✅ Tidak ada shadow */
+    box-shadow: none !important;
   }
   .table-kotak tbody td {
     display: block;
