@@ -137,8 +137,8 @@ ob_end_flush();
         <div class="hero-content">
           <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
           <p>
-            ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan. 
-            Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer 
+            ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan.
+            Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer
             dan multimedia yang inovatif, profesional, dan terintegrasi.
           </p>
           <div class="hero-actions justify-content-center justify-content-lg-start">
@@ -244,23 +244,9 @@ ob_end_flush();
           <h3>Jasa Event</h3>
           <p>Kami siap membantu merancang dan menjalankan acara kamu dengan konsep terbaik dan hasil yang maksimal.</p>
           <?php if (isset($_SESSION['user'])): ?>
-            <a href="layanan/service-details.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+            <a href="Paket/Services.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php else: ?>
-            <a href="Paket/service-details.php" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-          <?php endif; ?>
-        </div>
-      </div>
-
-      <!-- Layanan 2: Penyewaan Alat -->
-      <div class="col-lg-6 col-md-8">
-        <div class="service-card">
-          <div class="service-icon"><i class="bi bi-heart"></i></div>
-          <h3>Penyewaan Alat</h3>
-          <p>Kami menyediakan berbagai alat multimedia sesuai dengan kebutuhan acaramu.</p>
-          <?php if (isset($_SESSION['user'])): ?>
-            <a href="layanan/service-details.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-          <?php else: ?>
-            <a href="Paket/service-details.php" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+            <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
           <?php endif; ?>
         </div>
       </div>

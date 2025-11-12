@@ -234,4 +234,20 @@
   window.addEventListener('load', navmenuScrollspy);
   document.addEventListener('scroll', navmenuScrollspy);
 
+  /**
+   * Handle login modal redirect
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    const loginModal = document.getElementById('loginModal');
+    if (loginModal) {
+        loginModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const redirectInput = document.getElementById('redirect_input');
+            if (button.getAttribute('data-redirect')) {
+                redirectInput.value = button.getAttribute('data-redirect');
+            }
+        });
+    }
+});
+
 })();
