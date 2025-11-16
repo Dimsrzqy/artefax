@@ -106,6 +106,27 @@ class User {
         $stmt->close();
         return $user;
     }
+    /* ==========================================================
+       AMBIL USER BY ID
+    ========================================================== */
+    public function getUserByID($id) { 
+        
+        $query = "SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole, CreatedAt, UpdatedAt FROM {$this->table} WHERE IDUser = ? LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) return false;
+
+        $id = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
+        
+        $stmt->bind_param("i", $id); 
+        $stmt->execute();
+        
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        $stmt->close();
+        
+        return $user;
+    }
+
 
     /* ==========================================================
        SAVE RESET TOKEN
