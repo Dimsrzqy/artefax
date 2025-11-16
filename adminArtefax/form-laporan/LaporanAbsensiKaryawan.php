@@ -50,13 +50,10 @@
                     <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+                    <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                 </li>
                 <li class="nav-item">
                     <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-                </li>
-                <li class="nav-item">
-                    <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
                 </li>
                 <li class="nav-item active">
                     <a href="LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
@@ -167,7 +164,7 @@
 
     <div class="az-content-body pd-lg-l-40 d-flex flex-column">
       <div class="az-content-breadcrumb">
-        <span>Karyawan</span>
+        <span>Laporan</span>
         <span>Absensi</span>
       </div>
       <h2 class="az-content-title">Daftar Absensi Karyawan</h2>
