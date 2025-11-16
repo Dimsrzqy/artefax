@@ -1,21 +1,163 @@
 <?php
-include '../config/koneksi.php'; // sesuaikan dengan posisi file kamu
+// shop.php (letakkan di folder Paket/)
+// Menampilkan produk gabungan dari tabel `alat` dan `paketjasa`
+// Menggunakan koneksi mysqli (class Database di ../config/koneksi.php)
 
+session_start();
+include __DIR__ . '/../config/koneksi.php'; // sesuaikan jika lokasi koneksi berbeda
+
+// ---------------------------
+// KONEKSI
+// ---------------------------
 $db = new Database();
 $conn = $db->getConnection();
+if (!$conn) {
+    die("Koneksi database gagal.");
+}
 
-// ambil semua data dari tabel alat
-$alatQuery = "SELECT * FROM alat WHERE AlatStatus = 'aktif' ORDER BY CreatedAt DESC";
-$alatResult = $conn->query($alatQuery);
-$alatData = $alatResult->fetch_all(MYSQLI_ASSOC);
+// ---------------------------
+// AMBIL PARAMETER FILTER / SORT / SEARCH
+// ---------------------------
+$q         = trim($_GET['q'] ?? '');           // kata kunci pencarian
+$type      = $_GET['type'] ?? '';              // 'alat'|'paket'|'' (semua)
+$kategori  = $_GET['kategori'] ?? '';          // subkategori
+$sort      = $_GET['sort'] ?? 'newest';        // newest | price_asc | price_desc | name
+$featured  = $_GET['featured'] ?? '';          // '1' jika hanya featured (bestseller)
+$min_price = is_numeric($_GET['min_price'] ?? '') ? (float)$_GET['min_price'] : null;
+$max_price = is_numeric($_GET['max_price'] ?? '') ? (float)$_GET['max_price'] : null;
 
-// ambil semua data dari tabel paketjasa
-$paketQuery = "SELECT * FROM paketjasa WHERE PaketStatus = 'aktif' ORDER BY CreatedAt DESC";
-$paketResult = $conn->query($paketQuery);
-$paketData = $paketResult->fetch_all(MYSQLI_ASSOC);
+// helper escape
+function esc($conn, $v) {
+    return $conn->real_escape_string($v);
+}
 
-// gabungkan semua produk (jika ingin tampilkan bersama)
-$allProducts = array_merge($alatData, $paketData);
+// ---------------------------
+// Siapkan bagian WHERE untuk UNION query
+// Kita buat kondisi untuk masing-masing tabel, lalu gabungkan
+// ---------------------------
+$whereAlat = [];
+$wherePaket = [];
+
+// Hanya tampilkan yang status aktif/tersedia (jika kamu punya aturan)
+// jika ingin tampil semua, comment baris berikut:
+$whereAlat[] = "LOWER(AlatStatus) IN ('aktif','bestseller','tersedia')"; // fleksibel
+$wherePaket[] = "PaketStatus IN ('aktif','aktif','Bestseller','bestseller','Bestseller')";
+
+// pencarian
+if ($q !== '') {
+    $s = esc($conn, $q);
+    $whereAlat[] = "(AlatNama LIKE '%$s%' OR AlatDeskripsi LIKE '%$s%')";
+    $wherePaket[] = "(PaketNama LIKE '%$s%' OR PaketDeskripsi LIKE '%$s%')";
+}
+
+// filter tipe (alat / paket)
+if ($type === 'alat') {
+    // kosongkan kondisi paket supaya tidak diambil (hanya alat)
+    $wherePaket[] = "0"; // always false
+} elseif ($type === 'paket') {
+    $whereAlat[] = "0"; // always false
+}
+
+// filter kategori (subkategori)
+if ($kategori !== '') {
+    $k = esc($conn, $kategori);
+    $whereAlat[] = "AlatKategori = '$k'";
+    $wherePaket[] = "PaketKategori = '$k'";
+}
+
+// filter harga
+if ($min_price !== null) {
+    $whereAlat[] = "AlatHarga >= " . (float)$min_price;
+    $wherePaket[] = "PaketHarga >= " . (float)$min_price;
+}
+if ($max_price !== null) {
+    $whereAlat[] = "AlatHarga <= " . (float)$max_price;
+    $wherePaket[] = "PaketHarga <= " . (float)$max_price;
+}
+
+// featured (bestseller)
+if ($featured === '1') {
+    $whereAlat[] = "LOWER(AlatStatus) = 'bestseller'";
+    $wherePaket[] = "LOWER(PaketStatus) = 'bestseller'";
+}
+
+// gabungkan where menjadi string
+$whereAlatStr = count($whereAlat) ? "WHERE " . implode(' AND ', $whereAlat) : "";
+$wherePaketStr = count($wherePaket) ? "WHERE " . implode(' AND ', $wherePaket) : "";
+
+// ---------------------------
+// QUERY UNION (gabungkan hasil dari dua tabel)
+// Field diseragamkan: id, tipe, name, kategori, description, price, image, status, created_at
+// ---------------------------
+$sql = "
+    SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kategori,
+           AlatDeskripsi AS description, AlatHarga AS price, AlatDirGbr AS image, AlatStatus AS status, CreatedAt as created_at
+    FROM alat
+    $whereAlatStr
+    UNION ALL
+    SELECT IDPaket AS id, 'paket' AS tipe, PaketNama AS name, PaketKategori AS kategori,
+           PaketDeskripsi AS description, PaketHarga AS price, PaketDirGbr AS image, PaketStatus AS status, CreatedAt as created_at
+    FROM paketjasa
+    $wherePaketStr
+";
+
+// Sorting: karena UNION ALL gabungan, tambahkan ORDER BY di akhir SQL
+if ($sort === 'price_asc') {
+    $sql .= " ORDER BY price ASC";
+} elseif ($sort === 'price_desc') {
+    $sql .= " ORDER BY price DESC";
+} elseif ($sort === 'name') {
+    $sql .= " ORDER BY name ASC";
+} else {
+    // newest: urutkan berdasarkan created_at (jika ada), fallback id desc
+    $sql .= " ORDER BY created_at DESC, id DESC";
+}
+
+// eksekusi query
+$res = $conn->query($sql);
+$products = [];
+if ($res) {
+    while ($row = $res->fetch_assoc()) {
+        // pastikan tipe dan field ada
+        $products[] = $row;
+    }
+    $res->free();
+}
+
+// ---------------------------
+// Ambil daftar subkategori dinamis untuk sidebar (Alat + Paket)
+// ---------------------------
+$alatSub = [];
+$paketSub = [];
+
+// Alat kategori
+$res = $conn->query("SELECT AlatKategori, COUNT(*) AS cnt FROM alat WHERE AlatKategori IS NOT NULL AND AlatKategori <> '' GROUP BY AlatKategori");
+if ($res) {
+    while ($r = $res->fetch_assoc()) $alatSub[$r['AlatKategori']] = (int)$r['cnt'];
+    $res->free();
+}
+// Paket kategori
+$res = $conn->query("SELECT PaketKategori, COUNT(*) AS cnt FROM paketjasa WHERE PaketKategori IS NOT NULL AND PaketKategori <> '' GROUP BY PaketKategori");
+if ($res) {
+    while ($r = $res->fetch_assoc()) $paketSub[$r['PaketKategori']] = (int)$r['cnt'];
+    $res->free();
+}
+
+// ---------------------------
+// Path gambar (relatif dari file ini)
+// kita gunakan ../img/produk/ karena shop.php berada di folder Paket/
+// ---------------------------
+$imgBaseUrl = '../img/produk/';     // digunakan di tag <img src="...">
+$imgBasePath = __DIR__ . '/../img/produk/'; // untuk cek file_exists
+$placeholder = '../img/noimage.png'; // siapkan placeholder
+
+// ---------------------------
+// Fungsi format Rupiah (Indonesia)
+// ---------------------------
+function rupiah($n) {
+    return 'Rp ' . number_format((float)$n, 0, ',', '.');
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,66 +190,64 @@ $allProducts = array_merge($alatData, $paketData);
         </div>
         <!-- Spinner End -->
 
-
-   <!-- Navbar start -->
+ <!-- =============================== -->
+    <!-- 🔹 5. NAVBAR DARI TEMPLATE     -->
+    <!-- =============================== -->
+   <!-- 🔸 Navbar Start -->
 <div class="container-fluid fixed-top">
-    <div class="container topbar bg-primary d-none d-lg-block">
-        <div class="d-flex justify-content-between">
-            <div class="top-info ps-2">
-                <small class="me-3"><i class="fas fa-map-marker-alt me-2 text-secondary"></i> 
-                    <a href="#" class="text-white">123 Street, New York</a>
-                </small>
-                <small class="me-3"><i class="fas fa-envelope me-2 text-secondary"></i>
-                    <a href="#" class="text-white">Email@Example.com</a>
-                </small>
-            </div>
-            <div class="top-link pe-2">
-                <a href="#" class="text-white"><small class="text-white mx-2">Privacy Policy</small> /</a>
-                <a href="#" class="text-white"><small class="text-white mx-2">Terms of Use</small> /</a>
-                <a href="#" class="text-white"><small class="text-white ms-2">Sales and Refunds</small></a>
-            </div>
-        </div>
-    </div>
+    <!-- 🔹 Navbar Utama -->
     <div class="container px-0">
         <nav class="navbar navbar-light bg-white navbar-expand-xl">
-            <!-- ubah index.html menjadi index.php -->
-            <a href="index.php" class="navbar-brand">
-                <h1 class="text-primary display-6">Fruitables</h1>
+            
+            <!-- 🔸 Logo Brand -->
+            <a href="../index.php" class="navbar-brand">
+                <h1 class="text-primary display-6">Artefax</h1>
             </a>
 
+            <!-- 🔸 Tombol Toggle (untuk tampilan mobile) -->
             <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                 <span class="fa fa-bars text-primary"></span>
             </button>
 
+          
+            <!-- 🔸 Daftar Menu -->
             <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
                 <div class="navbar-nav mx-auto">
-                    <a href="index.php" class="nav-item nav-link active">Home</a>
-                    <a href="shop.php" class="nav-item nav-link">Shop</a>
-                    <a href="shop-detail.php" class="nav-item nav-link">Shop Detail</a>
 
-                    <div class="nav-item dropdown">
-                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
-                        <div class="dropdown-menu m-0 bg-secondary rounded-0">
-                            <a href="cart.php" class="dropdown-item">Cart</a>
-                            <a href="checkout.php" class="dropdown-item">Checkout</a>
-                            <a href="404.php" class="dropdown-item">404 Page</a>
-                        </div>
+                    <!-- ✅ Home diarahkan ke index utama folder Artefax -->
+                    <a href="../index.php" class="nav-item nav-link">Home</a>
+
+                    <!-- ✅ Services diarahkan ke halaman dalam folder Paket -->
+                    <a href="Services.php" class="nav-item nav-link ">Services</a>
+
+                    <!-- ✅ Shop -->
+                    <a href="shop.php" class="nav-item nav-link active">Shop</a>
+
+                    <!-- ✅ checkout  -->
+                          <a href="checkout.php" class="nav-item nav-link">Checkout</a>
                     </div>
 
-                    <!-- ubah contact.html menjadi contact.php -->
+                    <!-- 🔸 Contact -->
                     <a href="contact.php" class="nav-item nav-link">Contact</a>
                 </div>
 
+                <!-- 🔸 Bagian Kanan Navbar (Search, Cart, Account) -->
                 <div class="d-flex m-3 me-0">
-                    <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" data-bs-toggle="modal" data-bs-target="#searchModal">
+
+                    <!-- Tombol Pencarian -->
+                    <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" 
+                            data-bs-toggle="modal" data-bs-target="#searchModal">
                         <i class="fas fa-search text-primary"></i>
                     </button>
 
+                    <!-- Keranjang -->
                     <a href="#" class="position-relative me-4 my-auto">
                         <i class="fa fa-shopping-bag fa-2x"></i>
-                        <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1" style="top: -5px; left: 15px; height: 20px; min-width: 20px;">3</span>
+                        <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1"
+                              style="top: -5px; left: 15px; height: 20px; min-width: 20px;">3</span>
                     </a>
 
+                    <!-- Akun -->
                     <a href="#" class="my-auto">
                         <i class="fas fa-user fa-2x"></i>
                     </a>
@@ -118,222 +258,267 @@ $allProducts = array_merge($alatData, $paketData);
 </div>
 <!-- Navbar End -->
 
+<!-- ========== Modal Search Start ========== -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content rounded-0">
+      <div class="modal-header">
+        <h5 class="modal-title">Search by keyword</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body d-flex align-items-center">
+        <form method="GET" action="shop.php" class="input-group w-75 mx-auto d-flex">
+          <input type="text" name="q" class="form-control p-3" placeholder="Cari produk..." value="<?= htmlspecialchars($q) ?>">
+          <button class="input-group-text p-3" type="submit"><i class="fa fa-search"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ========== Modal Search End ========== -->
 
-        <!-- Modal Search Start -->
-        <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen">
-                <div class="modal-content rounded-0">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Search by keyword</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body d-flex align-items-center">
-                        <div class="input-group w-75 mx-auto d-flex">
-                            <input type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
-                            <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
-                        </div>
-                    </div>
-                </div>
+<!-- ========== Header / Breadcrumb ========== -->
+<div class="container-fluid page-header py-5" style="margin-top:90px;">
+  <h1 class="text-center text-white display-6">Shop</h1>
+  <ol class="breadcrumb justify-content-center mb-0">
+    <li class="breadcrumb-item"><a href="../index.php">Home</a></li>
+    <li class="breadcrumb-item active text-white">Shop</li>
+  </ol>
+</div>
+
+<!-- ========== Shop Content ========== -->
+<div class="container-fluid fruite py-5">
+  <div class="container py-5">
+    <div class="mb-4">
+      <h1 class="mb-0">All Products</h1>
+      <p class="text-muted">Menampilkan alat & paket jasa. Klik produk untuk lihat detail dan tambah ke keranjang.</p>
+    </div>
+
+    <!-- Kontrol atas: search inline + sort -->
+    <div class="row g-4 mb-3">
+      <div class="col-xl-3">
+        <form method="GET" action="shop.php" class="input-group">
+          <input type="text" name="q" class="form-control p-3" placeholder="Search keywords..." value="<?= htmlspecialchars($q) ?>">
+          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+          <button class="input-group-text p-3"><i class="fa fa-search"></i></button>
+        </form>
+      </div>
+      <div class="col-6"></div>
+      <div class="col-xl-3">
+        <div class="bg-light ps-3 py-3 rounded d-flex justify-content-between align-items-center">
+          <label for="sortSelect" class="mb-0 me-2">Sort:</label>
+          <form id="sortForm" method="GET" action="shop.php" class="m-0 d-flex align-items-center">
+            <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
+            <select id="sortSelect" name="sort" class="form-select form-select-sm border-0 bg-light" onchange="this.form.submit();">
+              <option value="newest" <?= $sort==='newest' ? 'selected' : '' ?>>Newest</option>
+              <option value="price_asc" <?= $sort==='price_asc' ? 'selected' : '' ?>>Price: Low to High</option>
+              <option value="price_desc" <?= $sort==='price_desc' ? 'selected' : '' ?>>Price: High to Low</option>
+              <option value="name" <?= $sort==='name' ? 'selected' : '' ?>>Name</option>
+            </select>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- SIDEBAR -->
+      <div class="col-lg-3">
+        <div class="row g-4">
+          <div class="col-lg-12">
+            <h4>Categories</h4>
+            <div class="mb-2">
+              <a href="shop.php" class="btn btn-sm <?= $type==='' ? 'btn-primary' : 'btn-outline-primary' ?>">All</a>
+              <a href="shop.php?type=alat" class="btn btn-sm <?= $type==='alat' ? 'btn-primary' : 'btn-outline-primary' ?>">Alat</a>
+              <a href="shop.php?type=paket" class="btn btn-sm <?= $type==='paket' ? 'btn-primary' : 'btn-outline-primary' ?>">Paket Jasa</a>
             </div>
-        </div>
-        <!-- Modal Search End -->
 
+            <?php if ($type === '' || $type === 'alat'): ?>
+              <h6 class="mt-3">Alat</h6>
+              <ul class="list-unstyled fruite-categorie">
+                <?php if (!empty($alatSub)): foreach ($alatSub as $sub => $cnt): ?>
+                  <li class="mb-1 d-flex justify-content-between">
+                    <a href="shop.php?type=alat&kategori=<?= urlencode($sub) ?>"><i class="fas fa-camera me-2"></i><?= htmlspecialchars($sub) ?></a>
+                    <span>(<?= $cnt ?>)</span>
+                  </li>
+                <?php endforeach; else: ?>
+                  <li class="text-muted">Tidak ada subkategori.</li>
+                <?php endif; ?>
+              </ul>
+            <?php endif; ?>
 
-        <!-- Single Page Header start -->
-        <div class="container-fluid page-header py-5">
-            <h1 class="text-center text-white display-6">Shop</h1>
-            <ol class="breadcrumb justify-content-center mb-0">
-                <li class="breadcrumb-item"><a href="#">Home</a></li>
-                <li class="breadcrumb-item"><a href="#">Pages</a></li>
-                <li class="breadcrumb-item active text-white">Shop</li>
-            </ol>
-        </div>
-        <!-- Single Page Header End -->
+            <?php if ($type === '' || $type === 'paket'): ?>
+              <h6 class="mt-3">Paket Jasa</h6>
+              <ul class="list-unstyled fruite-categorie">
+                <?php if (!empty($paketSub)): foreach ($paketSub as $sub => $cnt): ?>
+                  <li class="mb-1 d-flex justify-content-between">
+                    <a href="shop.php?type=paket&kategori=<?= urlencode($sub) ?>"><i class="fas fa-briefcase me-2"></i><?= htmlspecialchars($sub) ?></a>
+                    <span>(<?= $cnt ?>)</span>
+                  </li>
+                <?php endforeach; else: ?>
+                  <li class="text-muted">Tidak ada subkategori.</li>
+                <?php endif; ?>
+              </ul>
+            <?php endif; ?>
+          </div>
 
-
-        <!-- Fruits Shop Start-->
-        <div class="container-fluid fruite py-5">
-            <div class="container py-5">
-                <h1 class="mb-4">Fresh fruits shop</h1>
-                <div class="row g-4">
-                    <div class="col-lg-12">
-                        <div class="row g-4">
-                            <div class="col-xl-3">
-                                <div class="input-group w-100 mx-auto d-flex">
-                                    <input type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
-                                    <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
-                                </div>
-                            </div>
-                            <div class="col-6"></div>
-                            <div class="col-xl-3">
-                                <div class="bg-light ps-3 py-3 rounded d-flex justify-content-between mb-4">
-                                    <label for="fruits">Default Sorting:</label>
-                                    <select id="fruits" name="fruitlist" class="border-0 form-select-sm bg-light me-3" form="fruitform">
-                                        <option value="volvo">Nothing</option>
-                                        <option value="saab">Popularity</option>
-                                        <option value="opel">Organic</option>
-                                        <option value="audi">Fantastic</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row g-4">
-                            <div class="col-lg-3">
-                                <div class="row g-4">
-                                    <div class="col-lg-12">
-                                        <div class="mb-3">
-                                            <h4>Categories</h4>
-                                            <ul class="list-unstyled fruite-categorie">
-                                                <?php foreach($categoryCounts as $category => $count): ?>
-                                                <li>
-                                                    <div class="d-flex justify-content-between fruite-name">
-                                                        <a href="#"><i class="fas fa-apple-alt me-2"></i><?= ucfirst(htmlspecialchars($category)); ?></a>
-                                                        <span>(<?= $count; ?>)</span>
-                                                    </div>
-                                                </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-12">
-                                        <div class="mb-3">
-                                            <h4 class="mb-2">Price</h4>
-                                            <input type="range" class="form-range w-100" id="rangeInput" name="rangeInput" min="0" max="500" value="0" oninput="amount.value=rangeInput.value">
-                                            <output id="amount" name="amount" min-velue="0" max-value="500" for="rangeInput">0</output>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-12">
-                                        <div class="mb-3">
-                                            <h4>Additional</h4>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-1" name="Categories-1" value="Beverages">
-                                                <label for="Categories-1"> Organic</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-2" name="Categories-1" value="Beverages">
-                                                <label for="Categories-2"> Fresh</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-3" name="Categories-1" value="Beverages">
-                                                <label for="Categories-3"> Sales</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-4" name="Categories-1" value="Beverages">
-                                                <label for="Categories-4"> Discount</label>
-                                            </div>
-                                            <div class="mb-2">
-                                                <input type="radio" class="me-2" id="Categories-5" name="Categories-1" value="Beverages">
-                                                <label for="Categories-5"> Expired</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-12">
-                                        <h4 class="mb-3">Featured products</h4>
-                                        <div class="d-flex align-items-center justify-content-start">
-                                            <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                                <img src="img/featur-1.jpg" class="img-fluid rounded" alt="">
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-2">Big Banana</h6>
-                                                <div class="d-flex mb-2">
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star"></i>
-                                                </div>
-                                                <div class="d-flex mb-2">
-                                                    <h5 class="fw-bold me-2">2.99 $</h5>
-                                                    <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center justify-content-start">
-                                            <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                                <img src="img/featur-2.jpg" class="img-fluid rounded" alt="">
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-2">Big Banana</h6>
-                                                <div class="d-flex mb-2">
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star"></i>
-                                                </div>
-                                                <div class="d-flex mb-2">
-                                                    <h5 class="fw-bold me-2">2.99 $</h5>
-                                                    <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center justify-content-start">
-                                            <div class="rounded me-4" style="width: 100px; height: 100px;">
-                                                <img src="img/featur-3.jpg" class="img-fluid rounded" alt="">
-                                            </div>
-                                            <div>
-                                                <h6 class="mb-2">Big Banana</h6>
-                                                <div class="d-flex mb-2">
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star text-secondary"></i>
-                                                    <i class="fa fa-star"></i>
-                                                </div>
-                                                <div class="d-flex mb-2">
-                                                    <h5 class="fw-bold me-2">2.99 $</h5>
-                                                    <h5 class="text-danger text-decoration-line-through">4.11 $</h5>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-center my-4">
-                                            <a href="#" class="btn border border-secondary px-4 py-3 rounded-pill text-primary w-100">Vew More</a>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-12">
-                                        <div class="position-relative">
-                                            <img src="img/banner-fruits.jpg" class="img-fluid w-100 rounded" alt="">
-                                            <div class="position-absolute" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                                                <h3 class="text-secondary fw-bold">Fresh <br> Fruits <br> Banner</h3>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-9">
-                                <div class="row g-4 justify-content-center">
-                                    <!-- Replace the static product grid with this dynamic version -->
-                                    <?php foreach($allProducts as $product): ?>
-                                    <div class="col-md-6 col-lg-6 col-xl-4">
-                                        <div class="rounded position-relative fruite-item">
-                                            <div class="fruite-img">
-                                                <img src="<?= htmlspecialchars($product['image']); ?>" class="img-fluid w-100 rounded-top" alt="">
-                                            </div>
-                                            <div class="text-white bg-secondary px-3 py-1 rounded position-absolute" style="top: 10px; left: 10px;">
-                                                <?= htmlspecialchars($product['category']); ?>
-                                            </div>
-                                            <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-                                                <h4><?= htmlspecialchars($product['name']); ?></h4>
-                                                <p><?= htmlspecialchars($product['description']); ?></p>
-                                                <div class="d-flex justify-content-between flex-lg-wrap">
-                                                    <p class="text-dark fs-5 fw-bold mb-0">$<?= number_format($product['price'], 2); ?> / kg</p>
-                                                    <a href="#" class="btn border border-secondary rounded-pill px-3 text-primary">
-                                                        <i class="fa fa-shopping-bag me-2 text-primary"></i> Add to cart
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+          <!-- Price filter -->
+          <div class="col-lg-12">
+            <div class="mb-3">
+              <h4 class="mb-2">Price</h4>
+              <form method="GET" action="shop.php">
+                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
+                <div class="d-flex gap-2 mb-2">
+                  <input type="number" name="min_price" class="form-control" placeholder="Min" value="<?= htmlspecialchars($min_price ?? '') ?>">
+                  <input type="number" name="max_price" class="form-control" placeholder="Max" value="<?= htmlspecialchars($max_price ?? '') ?>">
                 </div>
+                <button class="btn btn-sm btn-outline-primary w-100" type="submit">Filter Price</button>
+              </form>
             </div>
-        </div>
-        <!-- Fruits Shop End-->
+          </div>
 
+          <!-- Featured -->
+          <div class="col-lg-12">
+            <div class="mb-3">
+              <h4>Status</h4>
+              <form method="GET" action="shop.php">
+                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                <div class="mb-2">
+                  <input type="radio" id="f_all" name="featured" value="" <?= $featured!== '1' ? 'checked' : '' ?>>
+                  <label for="f_all"> Semua</label>
+                </div>
+                <div class="mb-2">
+                  <input type="radio" id="f_bs" name="featured" value="1" <?= $featured=== '1' ? 'checked' : '' ?>>
+                  <label for="f_bs"> Bestsellers</label>
+                </div>
+                <button class="btn btn-sm btn-outline-primary mt-2" type="submit">Apply</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Featured products preview (ambil 3 teratas dari query yang sudah kamu punya) -->
+          <div class="col-lg-12">
+            <h4 class="mb-3">Featured (Preview)</h4>
+            <!-- contoh sederhana: kita ambil 3 produk bestseller -->
+            <?php
+            $fres = $conn->query("SELECT IDAlat AS id, AlatNama AS name, AlatHarga AS price, AlatDirGbr AS image, 'alat' AS tipe FROM alat WHERE LOWER(AlatStatus)='bestseller' LIMIT 3");
+            while ($fr = $fres->fetch_assoc()):
+              $fpImg = file_exists($imgBasePath . ($fr['image'] ?? '')) ? $imgBaseUrl . $fr['image'] : $placeholder;
+            ?>
+              <div class="d-flex align-items-center mb-3">
+                <div class="rounded me-3" style="width:72px;height:72px;overflow:hidden">
+                  <img src="<?= $fpImg ?>" class="img-fluid" style="width:100%;height:100%;object-fit:cover">
+                </div>
+                <div>
+                  <div class="fw-bold mb-1"><?= htmlspecialchars($fr['name']) ?></div>
+                  <div class="text-primary"><?= rupiah($fr['price']) ?></div>
+                </div>
+              </div>
+            <?php endwhile; if ($fres) $fres->free(); ?>
+          </div>
+        </div>
+      </div>
+<!-- PRODUCT GRID -->
+    <!-- PRODUCT GRID -->
+<div class="col-lg-9">
+  <div class="row g-4 justify-content-center">
+    <?php if (empty($products)): ?>
+      <div class="col-12 text-center py-5"><h5>Tidak ada produk ditemukan.</h5></div>
+    <?php else: ?>
+
+      <?php 
+        // SETTING PATH GAMBAR FIX
+        $imgBaseUrl  = "../img/paket/"; // URL gambar untuk <img>
+        $imgBasePath = __DIR__ . "/../img/paket/"; // Lokasi folder untuk file_exists
+        $placeholder = "../img/noimage.png"; // fallback
+      ?>
+
+      <?php foreach ($products as $p): ?>
+
+        <?php
+          // Nama kolom gambar HARUS bernama 'gambar'
+          $imgFile = $p['gambar'] ?? ''; 
+          $imgPath = $imgBasePath . $imgFile;
+          $imgUrl  = (!empty($imgFile) && file_exists($imgPath)) 
+                      ? $imgBaseUrl . $imgFile 
+                      : $placeholder;
+        ?>
+
+        <div class="col-md-6 col-lg-6 col-xl-4">
+          <div class="rounded position-relative fruite-item">
+            <div class="fruite-img">
+              <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top"
+                   alt="<?= htmlspecialchars($p['name']) ?>"
+                   style="height:220px;object-fit:cover">
+            </div>
+
+            <?php if (strtolower($p['status']) === 'bestseller'): ?>
+              <div class="position-absolute" style="top:10px;left:10px;">
+                <span class="badge bg-warning text-dark">Bestseller</span>
+              </div>
+            <?php endif; ?>
+
+            <div class="p-4 border border-secondary border-top-0 rounded-bottom">
+              <h4><?= htmlspecialchars($p['name']) ?></h4>
+              <p class="small text-muted mb-2">
+                <?= htmlspecialchars(mb_strimwidth($p['description'], 0, 80, '...')) ?>
+              </p>
+
+              <div class="d-flex justify-content-between flex-lg-wrap align-items-center">
+                <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
+
+                <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
+                        data-id="<?= htmlspecialchars($p['id']) ?>"
+                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
+                        data-name="<?= htmlspecialchars($p['name']) ?>"
+                        data-kat="<?= htmlspecialchars($p['kategori']) ?>"
+                        data-desc="<?= htmlspecialchars($p['description']) ?>"
+                        data-price="<?= htmlspecialchars($p['price']) ?>"
+                        data-img="<?= $imgUrl ?>">
+                  <i class="fa fa-info-circle me-2 text-primary"></i> Detail
+                </button>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL PRODUK (popup) -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <img id="modalImg" src="" class="img-fluid rounded" alt="">
+        </div>
+        <div class="col-md-7">
+          <h4 id="modalName"></h4>
+          <p><small id="modalCat" class="text-muted"></small></p>
+          <h5 class="text-primary" id="modalPrice"></h5>
+          <p id="modalDesc"></p>
+
+          <!-- Pilihan durasi jika tipe paket punya durasi (jika ada) -->
+          <div id="modalExtra" class="mb-2"></div>
+
+          <!-- Jumlah & Tombol Tambah ke Keranjang -->
+          <div class="d-flex gap-2">
+            <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:120px;">
+            <button id="btnAddToCart" class="btn btn-primary">Tambah ke Keranjang</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
         <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
@@ -439,9 +624,49 @@ $allProducts = array_merge($alatData, $paketData);
     <script src="lib/waypoints/waypoints.min.js"></script>
     <script src="lib/lightbox/js/lightbox.min.js"></script>
     <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+ <script>
+// buka modal product dan isi data
+$(document).on('click', '.openDetailBtn', function(){
+    const btn = $(this);
+    $('#modalImg').attr('src', btn.data('img'));
+    $('#modalName').text(btn.data('name'));
+    $('#modalCat').text(btn.data('kat'));
+    $('#modalDesc').text(btn.data('desc'));
+    $('#modalPrice').text(new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(btn.data('price')));
+    $('#modalQty').val(1);
+    // simpan data pada tombol add
+    $('#btnAddToCart').data('id', btn.data('id'));
+    $('#btnAddToCart').data('tipe', btn.data('tipe'));
+    $('#productModal').modal('show');
+});
 
+// Tambah ke keranjang (AJAX ke cart_add.php)
+$('#btnAddToCart').click(function(){
+    const id = $(this).data('id');
+    const tipe = $(this).data('tipe');
+    const qty = parseInt($('#modalQty').val()) || 1;
+
+    $.post('cart_add.php', { id: id, tipe: tipe, qty: qty }, function(resp){
+        try {
+            const j = JSON.parse(resp);
+            if (j.success) {
+                // update counter keranjang di navbar
+                $('#cartCount').text(j.cart_count);
+                // tampil notifikasi sederhana
+                alert('Produk berhasil ditambahkan ke keranjang.');
+                $('#productModal').modal('hide');
+            } else {
+                alert('Gagal menambahkan ke keranjang: ' + (j.message || 'unknown'));
+            }
+        } catch(e) {
+            alert('Response error: ' + resp);
+        }
+    });
+});
+</script>
     <!-- Template Javascript -->
     <script src="js/main.js"></script>
+   
     </body>
 
 </html>

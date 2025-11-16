@@ -104,28 +104,6 @@ foreach ($paket as $p) {
     <!-- =============================== -->
    <!-- 🔸 Navbar Start -->
 <div class="container-fluid fixed-top">
-    <!-- 🔹 Top Bar (bagian atas navbar) -->
-    <div class="container topbar bg-primary d-none d-lg-block">
-        <div class="d-flex justify-content-between">
-            <div class="top-info ps-2">
-                <small class="me-3">
-                    <i class="fas fa-map-marker-alt me-2 text-secondary"></i> 
-                    <a href="#" class="text-white">123 Street, New York</a>
-                </small>
-                <small class="me-3">
-                    <i class="fas fa-envelope me-2 text-secondary"></i>
-                    <a href="#" class="text-white">Email@Example.com</a>
-                </small>
-            </div>
-
-            <div class="top-link pe-2">
-                <a href="#" class="text-white"><small class="text-white mx-2">Privacy Policy</small> /</a>
-                <a href="#" class="text-white"><small class="text-white mx-2">Terms of Use</small> /</a>
-                <a href="#" class="text-white"><small class="text-white ms-2">Sales and Refunds</small></a>
-            </div>
-        </div>
-    </div>
-
     <!-- 🔹 Navbar Utama -->
     <div class="container px-0">
         <nav class="navbar navbar-light bg-white navbar-expand-xl">
@@ -148,20 +126,13 @@ foreach ($paket as $p) {
                     <a href="../index.php" class="nav-item nav-link">Home</a>
 
                     <!-- ✅ Services diarahkan ke halaman dalam folder Paket -->
-                    <a href="index.php" class="nav-item nav-link active">Services</a>
+                    <a href="Services.php" class="nav-item nav-link active">Services</a>
 
-                    <!-- ✅ Shop dan Detail -->
+                    <!-- ✅ Shop -->
                     <a href="shop.php" class="nav-item nav-link">Shop</a>
-                    <a href="shop-detail.php" class="nav-item nav-link">Shop Detail</a>
 
-                    <!-- 🔸 Dropdown Menu -->
-                    <div class="nav-item dropdown">
-                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
-                        <div class="dropdown-menu m-0 bg-secondary rounded-0">
-                            <a href="cart.php" class="dropdown-item">Cart</a>
-                            <a href="checkout.php" class="dropdown-item">Checkout</a>
-                            <a href="404.php" class="dropdown-item">404 Page</a>
-                        </div>
+                    <!-- ✅ checkout  -->
+                          <a href="checkout.php" class="nav-item nav-link">Checkout</a>
                     </div>
 
                     <!-- 🔸 Contact -->
