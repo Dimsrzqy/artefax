@@ -79,13 +79,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
             </li>
            <li class="nav-item active">
-              <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+              <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
             </li>
             <li class="nav-item">
               <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-            </li>
-            <li class="nav-item">
-              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
             </li>
            <li class="nav-item">
              <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
@@ -184,11 +181,16 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
+             <div class="component-item">
+                    <label>Menu User</label>
+                    <nav class="nav flex-column">
+                        <a href="form-user.php" class="nav-link">Daftar User</a>
+                    </nav>
+                </div>
                 <div class="component-item">
                     <label>Menu Karyawan</label>
                     <nav class="nav flex-column">
                         <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
-                        <a href="absensi-karyawan.php" class="nav-link">Absensi</a>
                     </nav>
                 </div>
             </div>
