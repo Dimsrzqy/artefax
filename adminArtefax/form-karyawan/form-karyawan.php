@@ -12,11 +12,23 @@ if (!$conn) {
 }
 
 $user = new User($conn);
-$karyawanList = $user->getKaryawan();
+
+/* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
+$limit  = 10;
+$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
+// Pastikan method ini ADA di class User
+$totalKaryawan = $user->getTotalKaryawan();           
+$totalPages    = ceil($totalKaryawan / $limit);
+
+// Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
+$karyawanList  = $user->getKaryawan($limit, $offset);  
+/* ================================================================== */
 
 // Handle feedback messages
 $success_message = $_SESSION['success_message'] ?? '';
-$error_message = $_SESSION['error_message'] ?? '';
+$error_message   = $_SESSION['error_message'] ?? '';
 unset($_SESSION['success_message'], $_SESSION['error_message']);
 ?>
 
@@ -59,19 +71,28 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
     <!-- Custom CSS (External) -->
     <link rel="stylesheet" href="css/form-karyawan.css">
+
+    <!-- Perbaikan jarak agar lebih rapat & rapi -->
+    <style>
+        .az-content-title { margin-bottom: 10px !important; }
+        .d-flex.justify-content-end { margin-bottom: 15px !important; }
+        .table-responsive { margin-top: 0 !important; }
+        .pagination { margin: 20px 0 10px !important; }
+        .text-center.text-muted.small { margin-bottom: 0; }
+    </style>
 </head>
 <body class="az-body">
 <div class="az-header">
       <div class="container">
         <div class="az-header-left">
-          <a href="index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
         <div class="az-header-menu">
           <div class="az-header-menu-header">
             <a href="index.html" class="az-logo"><span></span> Artefax</a>
-            <a href="" class="close">&times;</a>
+            <a href="" class="close">×</a>
           </div>
           <!-- az-header-menu-header -->
           <ul class="nav">
@@ -80,6 +101,9 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </li>
            <li class="nav-item active">
               <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
             </li>
             <li class="nav-item">
               <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
@@ -100,7 +124,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     </nav>
                   </div>
                 </div>
-                <!-- container -->
               </div>
             </li>
           </ul>
@@ -181,17 +204,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
-             <div class="component-item">
+                <div class="component-item">
                     <label>Menu User</label>
                     <nav class="nav flex-column">
                         <a href="form-user.php" class="nav-link">Daftar User</a>
                     </nav>
-                </div>
-                <div class="component-item">
                     <label>Menu Karyawan</label>
-                    <nav class="nav flex-column">
-                        <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
-                    </nav>
+                    <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
                 </div>
             </div>
 
@@ -200,9 +219,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <span>Data</span>
                     <span>Karyawan</span>
                 </div>
-
-                <div class="d-flex justify-content-between align-items-center mg-b-20">
-                    <h4 class="tx-20 tx-bold mg-b-0">Daftar Karyawan</h4>
+                  <h2 class="az-content-title">Daftar Karyawan</h2>
+                <div class="d-flex justify-content-end align-items-center mg-b-20">
                     <button class="btn btn-primary btn-with-icon" onclick="openTambahPopup()">
                         <i class="fas fa-plus"></i> Tambah Karyawan
                     </button>
@@ -212,13 +230,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <?php if ($success_message): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <?php echo htmlspecialchars($success_message); ?>
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <button type="button" class="close" data-dismiss="alert">×</button>
                     </div>
                 <?php endif; ?>
                 <?php if ($error_message): ?>
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <?php echo htmlspecialchars($error_message); ?>
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <button type="button" class="close" data-dismiss="alert">×</button>
                     </div>
                 <?php endif; ?>
 
@@ -238,7 +256,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php $no = 1; foreach ($karyawanList as $karyawan): ?>
+                                <?php $no = $offset + 1; foreach ($karyawanList as $karyawan): ?>
                                     <tr>
                                         <td><?php echo $no++; ?></td>
                                         <td><?php echo htmlspecialchars($karyawan['UserNama']); ?></td>
@@ -258,6 +276,45 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+
+                        <!-- PAGINATION HANYA MUNCUL KALAU DATA > 10 -->
+                        <?php if ($totalPages > 1): ?>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
+                                </li>
+
+                                <?php
+                                $start = max(1, $page - 2);
+                                $end   = min($totalPages, $page + 2);
+
+                                if ($start > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+
+                                for ($i = $start; $i <= $end; $i++) {
+                                    $active = ($i == $page) ? 'active' : '';
+                                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                                }
+
+                                if ($end < $totalPages) {
+                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                                }
+                                ?>
+
+                                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalKaryawan ?> karyawan
+                        </div>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <div class="text-center py-5">
                             <p class="text-muted">Belum ada karyawan terdaftar.</p>
@@ -275,7 +332,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 id="popupTitle" class="modal-title">Tambah Karyawan</h5>
-                    <button type="button" class="close" onclick="closePopup()">&times;</button>
+                    <button type="button" class="close" onclick="closePopup()">×</button>
                 </div>
                 <div class="modal-body">
                     <form id="formKaryawan" action="tambah_karyawan.php" method="POST">
@@ -325,11 +382,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/azia.js"></script> <!-- Uncommented untuk fungsi navbar/hamburger -->
+    <script src="../js/azia.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Toggle hamburger menu untuk mobile (jika azia.js tidak handle)
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
@@ -342,12 +398,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 $('#azMenuShow').removeClass('open');
             });
 
-            // Auto-dismiss alerts
             setTimeout(function() {
                 $('.alert').fadeOut('slow');
             }, 5000);
 
-            // Modal Control
             function openTambahPopup() {
                 document.getElementById('popupTitle').textContent = 'Tambah Karyawan';
                 document.getElementById('formKaryawan').reset();
@@ -368,7 +422,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 }
             };
 
-            // Expose functions globally
             window.openTambahPopup = openTambahPopup;
             window.closePopup = closePopup;
         });

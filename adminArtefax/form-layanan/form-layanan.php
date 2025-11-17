@@ -246,17 +246,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     </style>
   </head>
   <body>
-    <div class="az-header">
+<div class="az-header">
       <div class="container">
         <div class="az-header-left">
-          <a href="index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
         <div class="az-header-menu">
           <div class="az-header-menu-header">
-            <a href="index.html" class="az-logo"><span></span> azia</a>
-            <a href="" class="close">&times;</a>
+            <a href="index.html" class="az-logo"><span></span> Artefax</a>
+            <a href="" class="close">×</a>
           </div>
           <!-- az-header-menu-header -->
           <ul class="nav">
@@ -264,14 +264,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
             </li>
            <li class="nav-item">
-              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+              <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
             </li>
             <li class="nav-item active">
               <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
             </li>
-            <li class="nav-item">
-              <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-            </li>
+           <li class="nav-item">
+             <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+           </li>
             <li class="nav-item">
               <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
               <div class="az-menu-sub">
@@ -285,7 +288,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     </nav>
                   </div>
                 </div>
-                <!-- container -->
               </div>
             </li>
           </ul>
@@ -361,6 +363,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         </div><!-- az-header-right -->
       </div><!-- container -->
     </div><!-- az-header -->
+
 
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
       <div class="container">
