@@ -36,29 +36,36 @@
     <link rel="stylesheet" href="css/absensi-karyawan.css">
 </head>
 <body>
-
-<!-- HEADER -->
 <div class="az-header">
-    <div class="container">
+      <div class="container">
         <div class="az-header-left">
-            <a href="../index.html" class="az-logo"><span></span> Artefax</a>
-            <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
+        <!-- az-header-left -->
         <div class="az-header-menu">
-            <ul class="nav">
-                <li class="nav-item">
-                    <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
-                </li>
-                <li class="nav-item">
-                    <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-                </li>
-                <li class="nav-item active">
-                    <a href="LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-                </li>
-               <li class="nav-item">
+          <div class="az-header-menu-header">
+            <a href="index.html" class="az-logo"><span></span> Artefax</a>
+            <a href="" class="close">×</a>
+          </div>
+          <!-- az-header-menu-header -->
+          <ul class="nav">
+            <li class="nav-item">
+              <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+            </li>
+           <li class="nav-item">
+              <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+            </li>
+           <li class="nav-item active">
+             <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+           </li>
+            <li class="nav-item">
               <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
               <div class="az-menu-sub">
                 <div class="container">
@@ -71,10 +78,8 @@
                     </nav>
                   </div>
                 </div>
-                <!-- container -->
               </div>
             </li>
-            
           </ul>
         </div><!-- az-header-menu -->
         <div class="az-header-right">
@@ -148,7 +153,6 @@
         </div><!-- az-header-right -->
       </div><!-- container -->
     </div><!-- az-header -->
-</div>
 
 <!-- CONTENT -->
 <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">

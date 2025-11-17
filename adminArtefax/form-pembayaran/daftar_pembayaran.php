@@ -249,7 +249,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-header">
       <div class="container">
         <div class="az-header-left">
-          <a href="index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
@@ -261,7 +261,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <!-- az-header-menu-header -->
           <ul class="nav">
             <li class="nav-item">
-              <a href="index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+              <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
             </li>
             <li class="nav-item">
               <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
