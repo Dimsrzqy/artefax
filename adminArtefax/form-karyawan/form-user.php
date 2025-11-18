@@ -21,9 +21,13 @@ $limit = 10;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-// Hitung total data
+// Hitung total data TANPA ADMIN
 try {
-    $total_result = $conn->query("SELECT COUNT(*) as total FROM users");
+    $total_result = $conn->query("
+        SELECT COUNT(*) as total 
+        FROM users 
+        WHERE UserRole != 'Admin'
+    ");
     $total_row = $total_result->fetch_assoc();
     $total_data = $total_row['total'] ?? 0;
     $total_pages = $total_data > 0 ? ceil($total_data / $limit) : 1;
@@ -31,10 +35,11 @@ try {
     die("Error hitung total: " . $e->getMessage());
 }
 
-// Ambil data dengan pagination
+// Ambil data tanpa Admin
 $sql = "
     SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole 
     FROM users 
+    WHERE UserRole != 'Admin'
     ORDER BY IDUser ASC 
     LIMIT ? OFFSET ?
 ";
@@ -92,7 +97,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             overflow: hidden;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
         .custom-table th,
         .custom-table td {
             border: 1px solid #ccc;
@@ -100,7 +104,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             text-align: center;
             font-size: 14px;
         }
-
         .custom-table th {
             background-color: #3366ff;
             color: white;
@@ -108,41 +111,15 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             text-transform: uppercase;
             font-size: 13px;
         }
+        .custom-table tr:nth-child(even) { background-color: #f8f9fa; }
+        .custom-table tr:hover { background-color: #fff3cd; transition: background-color 0.3s; }
 
-        .custom-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        .custom-table tr:hover {
-            background-color: #fff3cd;
-            transition: background-color 0.3s;
-        }
-
-        /* Badge Role */
-        .badge {
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
+        .badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-Admin { background-color: #dc3545; color: white; }
-        .badge-Karyawan { 
-         background-color: #3366ff; 
-        color: #ffffff; }
-
+        .badge-Karyawan { background-color: #3366ff; color: white; }
         .badge-Customer { background-color: #28a745; color: white; }
 
-        /* Pagination */
-        .pagination {
-            display: flex;
-            padding-left: 0;
-            list-style: none;
-            border-radius: 0.35rem;
-            margin-top: 20px;
-            justify-content: center;
-        }
-
+        .pagination { display: flex; justify-content: center; margin-top: 20px; }
         .page-item { margin: 0 2px; }
         .page-link {
             padding: 0.5rem 0.75rem;
@@ -155,52 +132,19 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             min-width: 40px;
             text-align: center;
         }
-        .page-link:hover {
-            color: #fff;
-            background-color: #3366ff;
-            border-color: #3366ff;
-        }
-        .page-item.active .page-link {
-            color: #fff;
-            background-color: #3366ff;
-            border-color: #3366ff;
-        }
-        .page-item.disabled .page-link {
-            color: #6c757d;
-            pointer-events: none;
-            background-color: #fff;
-            border-color: #dee2e6;
-        }
+        .page-link:hover { color: #fff; background-color: #3366ff; border-color: #3366ff; }
+        .page-item.active .page-link { background-color: #3366ff; color: #fff; }
 
-        /* Alert */
-        .alert {
-            padding: 12px 20px;
-            margin: 15px 0;
-            border-radius: 6px;
-            font-size: 14px;
-            border: none;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-left: 4px solid #dc3545;
-        }
-
-        @media (max-width: 768px) {
-            .custom-table { font-size: 12px; }
-            .custom-table th, .custom-table td { padding: 8px 10px; }
-        }
+        .alert { padding: 12px 20px; margin: 15px 0; border-radius: 6px; font-size:14px; }
+        .alert-success { background:#d4edda; color:#155724; border-left:4px solid #28a745; }
+        .alert-danger { background:#f8d7da; color:#721c24; border-left:4px solid #dc3545; }
     </style>
 </head>
+
 <body class="az-body">
 
-    <!-- Header -->
- <div class="az-header">
+<!-- HEADER -->
+<div class="az-header">
       <div class="container">
         <div class="az-header-left">
           <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
@@ -209,16 +153,16 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <!-- az-header-left -->
         <div class="az-header-menu">
           <div class="az-header-menu-header">
-            <a href="index.html" class="az-logo"><span></span> azia</a>
-            <a href="" class="close">&times;</a>
+            <a href="index.html" class="az-logo"><span></span> Artefax</a>
+            <a href="" class="close">×</a>
           </div>
           <!-- az-header-menu-header -->
           <ul class="nav">
             <li class="nav-item">
               <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
             </li>
-            <li class="nav-item active">
-              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+           <li class="nav-item active">
+              <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
             </li>
             <li class="nav-item">
               <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
@@ -226,9 +170,9 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <li class="nav-item">
               <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
             </li>
-            <li class="nav-item">
-              <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-            </li>
+           <li class="nav-item">
+             <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+           </li>
             <li class="nav-item">
               <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
               <div class="az-menu-sub">
@@ -242,7 +186,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     </nav>
                   </div>
                 </div>
-                <!-- container -->
               </div>
             </li>
           </ul>
@@ -318,7 +261,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         </div><!-- az-header-right -->
       </div><!-- container -->
     </div><!-- az-header -->
-
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -338,13 +280,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <span>Data</span>
                     <span>User</span>
                 </div>
+
                 <h2 class="az-content-title">Daftar User</h2>
-        
 
                 <!-- Feedback -->
                 <?php if ($success_message): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
                 <?php endif; ?>
+
                 <?php if ($error_message): ?>
                     <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
                 <?php endif; ?>
@@ -376,27 +319,23 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                         default => 'badge-secondary'
                                     };
                                 ?>
-                                    <tr>
-                                        <td><?= $no++ ?></td>
-                                        <td><?= htmlspecialchars($karyawan['UserNama']) ?></td>
-                                        <td><?= htmlspecialchars($karyawan['UserEmail']) ?></td>
-                                        <td><?= htmlspecialchars($karyawan['UserNoHP']) ?></td>
-                                        <td><?= htmlspecialchars($karyawan['UserAlamat']) ?></td>
-                                        <td>
-                                            <span class="badge <?= $badgeClass ?>">
-                                                <?= $role ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <form action="hapus_karyawan.php" method="POST" style="display:inline;"
-                                                  onsubmit="return confirm('Yakin hapus <?= htmlspecialchars($karyawan['UserNama']) ?>?');">
-                                                <input type="hidden" name="id" value="<?= $karyawan['IDUser'] ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
+                                <tr>
+                                    <td><?= $no++ ?></td>
+                                    <td><?= htmlspecialchars($karyawan['UserNama']) ?></td>
+                                    <td><?= htmlspecialchars($karyawan['UserEmail']) ?></td>
+                                    <td><?= htmlspecialchars($karyawan['UserNoHP']) ?></td>
+                                    <td><?= htmlspecialchars($karyawan['UserAlamat']) ?></td>
+                                    <td><span class="badge <?= $badgeClass ?>"><?= $role ?></span></td>
+                                    <td>
+                                        <form action="hapus_karyawan.php" method="POST" style="display:inline;"
+                                              onsubmit="return confirm('Yakin hapus <?= htmlspecialchars($karyawan['UserNama']) ?>?');">
+                                            <input type="hidden" name="id" value="<?= $karyawan['IDUser'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -406,22 +345,21 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                             <nav aria-label="Page navigation">
                                 <ul class="pagination">
                                     <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $page - 1 ?>" aria-label="Previous">
-                                            <span aria-hidden="true">Previous</span>
-                                        </a>
+                                        <a class="page-link" href="?page=<?= $page - 1 ?>">Previous</a>
                                     </li>
+
                                     <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
                                         <li class="page-item <?= $i === $page ? 'active' : '' ?>">
                                             <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
                                         </li>
                                     <?php endfor; ?>
+
                                     <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $page + 1 ?>" aria-label="Next">
-                                            <span aria-hidden="true">Next</span>
-                                        </a>
+                                        <a class="page-link" href="?page=<?= $page + 1 ?>">Next</a>
                                     </li>
                                 </ul>
                             </nav>
+
                             <p class="text-center text-muted small">
                                 Menampilkan <?= count($karyawanList) ?> dari <?= $total_data ?> user
                             </p>
@@ -434,6 +372,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         </div>
                     <?php endif; ?>
                 </div>
+
             </div>
         </div>
     </div>

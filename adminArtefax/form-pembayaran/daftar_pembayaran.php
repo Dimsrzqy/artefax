@@ -249,7 +249,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-header">
       <div class="container">
         <div class="az-header-left">
-          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="../template/inde" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
