@@ -1,38 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-90680653-2"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'UA-90680653-2');
-    </script>
-
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Responsive Bootstrap 4 Dashboard Template">
-    <meta name="author" content="BootstrapDash">
+    <title>Laporan Absensi Karyawan | Artefax</title>
 
-    <title>Absensi Karyawan</title>
-
-    <!-- vendor css -->
+    <!-- Vendor CSS -->
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
-    <link href="../lib/spectrum-colorpicker/spectrum.css" rel="stylesheet">
-    <link href="../lib/select2/css/select2.min.css" rel="stylesheet">
-    <link href="../lib/ion-rangeslider/css/ion.rangeSlider.css" rel="stylesheet">
-    <link href="../lib/ion-rangeslider/css/ion.rangeSlider.skinFlat.css" rel="stylesheet">
-    <link href="../lib/amazeui-datetimepicker/css/amazeui.datetimepicker.css" rel="stylesheet">
-    <link href="../lib/jquery-simple-datetimepicker/jquery.simple-dtpicker.css" rel="stylesheet">
-    <link href="../lib/pickerjs/picker.min.css" rel="stylesheet">
-
-    <!-- azia CSS -->
     <link rel="stylesheet" href="../css/azia.css">
-
-    <!-- CSS eksternal -->
     <link rel="stylesheet" href="css/absensi-karyawan.css">
 </head>
 <body>
@@ -153,122 +130,177 @@
         </div><!-- az-header-right -->
       </div><!-- container -->
     </div><!-- az-header -->
-
 <!-- CONTENT -->
 <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
-  <div class="container">
-    <div class="az-content-left az-content-left-components">
-      <div class="component-item">
-        <label>Laporan</label>
-        <nav class="nav flex-column">
-          <a href="LaporanAbsensiKaryawan.php" class="nav-link active">Absensi</a>
-        </nav>
-      </div>
-    </div>
+    <div class="container">
+        <div class="az-content-left az-content-left-components">
+            <div class="component-item">
+                <label>Laporan</label>
+                <nav class="nav flex-column">
+                    <a href="LaporanAbsensiKaryawan.php" class="nav-link active">Absensi</a>
+                    <a href="LaporanPenugasan.php" class="nav-link">Penugasan</a>
+                </nav>
+            </div>
+        </div>
 
-    <div class="az-content-body pd-lg-l-40 d-flex flex-column">
-      <div class="az-content-breadcrumb">
-        <span>Laporan</span>
-        <span>Absensi</span>
-      </div>
-      <h2 class="az-content-title">Daftar Absensi Karyawan</h2>
+        <div class="az-content-body pd-lg-l-40 d-flex flex-column">
+            <div class="az-content-breadcrumb">
+                <span>Laporan</span>
+                <span>Absensi</span>
+            </div>
+            <h2 class="az-content-title">Daftar Absensi Karyawan</h2>
 
-      <div class="col-lg-12 mg-t-20" style="max-width: 100%;">
-        <?php
-        require_once __DIR__ . "/../../config/koneksi.php";
-        require_once __DIR__ . "/../../class/Absensi.php";
+            <div class="col-lg-12 mg-t-20" style="max-width: 100%; margin-top: 5px !important;">
+                <?php
+                require_once __DIR__ . "/../../config/koneksi.php";
+                require_once __DIR__ . "/../../class/Absensi.php";
 
-        $db = new Database();
-        $conn = $db->getConnection();
+                $db = new Database();
+                $conn = $db->getConnection();
 
-        if (!$conn) {
-            echo "<div class='alert alert-danger text-center'>Koneksi database gagal.</div>";
-        } else {
-            $absensi = new Absensi($conn);
-            $result = $absensi->tampilSemua();
+                // PAGINASI
+                $limit = 10;
+                $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                $offset = ($page - 1) * $limit;
 
-            if ($result === false) {
-                echo "<div class='alert alert-warning text-center'>Gagal mengambil data.</div>";
-            } elseif ($result->num_rows === 0) {
-                echo "<div class='no-data'>
-                        <i class='typcn typcn-document-text'></i>
-                        <p><strong>Belum ada data absensi.</strong></p>
-                        <small>Data akan muncul setelah karyawan presensi.</small>
-                      </div>";
-            } else {
-                echo "<table class='custom-table'>
-                        <thead>
-                            <tr>
-                                <th>Nama Karyawan</th>
-                                <th>Waktu</th>
-                                <th>Lokasi</th>
-                                <th>Foto</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>";
+                if (!$conn) {
+                    echo "<div class='alert alert-danger text-center'>Koneksi database gagal.</div>";
+                } else {
+                    $absensi = new Absensi($conn);
 
-                while ($row = $result->fetch_assoc()) {
-                    $status = strtolower($row['PsnStatus'] ?? 'alpha');
-                    $statusClass = 'status-' . $status;
+                    // Total data
+                    $totalResult = $absensi->tampilSemua();
+                    $totalRows = $totalResult ? $totalResult->num_rows : 0;
+                    $totalPages = ceil($totalRows / $limit);
 
-                    $nama = htmlspecialchars($row['UserNama'] ?? 'Tidak Diketahui');
-                    $waktu = !empty($row['PsnWaktu']) ? date('d/m/Y H:i', strtotime($row['PsnWaktu'])) : '-';
-                    $lokasi = htmlspecialchars($row['PsnLokasi'] ?? '-');
-                    $statusText = htmlspecialchars($row['PsnStatus'] ?? 'Alpha');
+                    // Data untuk halaman ini
+                    $sql = "SELECT p.IDPresensi, p.PsnWaktu, p.PsnLokasi, p.PsnFoto, p.PsnStatus, u.UserNama
+                            FROM presensi p
+                            LEFT JOIN users u ON p.IDUser = u.IDUser
+                            ORDER BY p.PsnWaktu DESC
+                            LIMIT ? OFFSET ?";
+                    $stmt = $conn->prepare($sql);
+                    $stmt->bind_param("ii", $limit, $offset);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
 
-                    // Ambil foto sesuai database
-                    if (!empty($row['PsnFoto'])) {
-                        // Jika data panjang, berarti BLOB (base64)
-                        if (strlen($row['PsnFoto']) > 200) {
-                            $fotoData = base64_encode($row['PsnFoto']);
-                            $fotoPath = "data:image/jpeg;base64,$fotoData";
-                        } else {
-                            // Jika hanya nama file, ambil dari folder uploads
-                            $fotoFile = htmlspecialchars($row['PsnFoto']);
-                            $fotoPath = "../../uploads/$fotoFile";
-                        }
+                    if ($result->num_rows === 0) {
+                        echo "<div class='text-center py-5'>
+                                <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
+                                <h5 class='mt-3'>Belum ada data absensi</h5>
+                              </div>";
                     } else {
-                        $fotoPath = "../../img/no-photo.png";
+                        // TOMBOL EXPORT KE EXCEL (.XLSX) DENGAN IKON EXCEL PREMIUM
+                      echo "<div class='export-container d-flex justify-content-end align-items-center'
+                                  style='margin-bottom:18px !important; margin-top:-8px;'>
+
+                              <form action='export_absensi_excel.php' method='post' target='exportFrame'>
+
+                                  <button type='submit'
+                                      style='background:#0f8f4f;
+                                            color:white;
+                                            border:none;
+                                            padding:10px 22px;
+                                            border-radius:10px;
+                                            font-size:14.2px;
+                                            font-weight:600;
+                                            display:flex;
+                                            align-items:center;
+                                            gap:8px;
+                                            box-shadow:0 4px 14px rgba(0,0,0,0.15);
+                                            transition:0.25s ease;'>
+                                      
+                                      <i class='fas fa-file-excel' style='font-size:17px;'></i>
+                                      Export Excel
+                                  </button>
+
+                              </form>
+                          </div>";
+
+
+                        echo "<table class='custom-table' style='margin-top: 2px;'>
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Nama Karyawan</th>
+                                        <th>Tanggal</th>
+                                        <th>Jam</th>
+                                        <th>Lokasi</th>
+                                        <th>Foto</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>";
+
+                        $no = $offset + 1;
+                        while ($row = $result->fetch_assoc()) {
+                            $nama = htmlspecialchars($row['UserNama'] ?? 'Tidak Diketahui');
+                            $waktuRaw = $row['PsnWaktu'];
+                            $tanggal = $waktuRaw ? (new DateTime($waktuRaw))->format('d/m/Y') : '-';
+                            $jam = $waktuRaw ? (new DateTime($waktuRaw))->format('H:i') : '-';
+                            $lokasi = htmlspecialchars($row['PsnLokasi'] ?? '-');
+                            $status = strtolower($row['PsnStatus'] ?? 'alpha');
+                            $statusText = ucfirst($status);
+                            $statusClass = 'status-' . $status;
+
+                            // Foto
+                            if (!empty($row['PsnFoto'])) {
+                                $fotoPath = strlen($row['PsnFoto']) > 200 
+                                    ? "data:image/jpeg;base64," . base64_encode($row['PsnFoto'])
+                                    : "../../uploads/" . htmlspecialchars($row['PsnFoto']);
+                            } else {
+                                $fotoPath = "../../img/no-photo.png";
+                            }
+
+                            echo "<tr>
+                                    <td>$no</td>
+                                    <td><strong>$nama</strong></td>
+                                    <td>$tanggal</td>
+                                    <td><strong>$jam</strong></td>
+                                    <td>$lokasi</td>
+                                    <td>
+                                        <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
+                                                style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
+                                            Lihat
+                                        </button>
+                                    </td>
+                                    <td class='$statusClass'>$statusText</td>
+                                  </tr>";
+                            $no++;
+                        }
+                        echo "</tbody></table>";
+
+                        // PAGINASI
+                        if ($totalPages > 1) {
+                            echo "<nav class='mt-4'><ul class='pagination justify-content-center'>";
+                            for ($i = 1; $i <= $totalPages; $i++) {
+                                $active = ($i == $page) ? "active" : "";
+                                echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                            }
+                            echo "</ul></nav>";
+                        }
                     }
-
-                    echo "<tr>
-                            <td>$nama</td>
-                            <td>$waktu</td>
-                            <td>$lokasi</td>
-                            <td>
-                                <button class='btn btn-sm lihat-foto' 
-                                        data-foto='$fotoPath' 
-                                        style='background-color:#5d5dfb; color:white; border:none; padding:6px 12px; border-radius:6px;'>
-                                    <i class='fas fa-camera'></i> Lihat
-                                </button>
-                            </td>
-                            <td class='$statusClass'>$statusText</td>
-                          </tr>";
+                    $stmt->close();
                 }
-
-                echo "</tbody></table>";
-            }
-        }
-        ?>
-      </div>
+                ?>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
+<!-- Hidden iframe untuk export (anti error header) -->
+<iframe name="exportFrame" style="display:none;"></iframe>
 
 <!-- Modal Foto -->
-<div class="modal fade" id="fotoModal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-body text-center" style="padding:20px;">
-        <img id="modalFoto" src="" alt="Foto Absensi" 
-             style="max-width:80%; max-height:80vh; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
-      </div>
+<div class="modal fade" id="fotoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <img id="modalFoto" src="" alt="Foto Absensi" style="max-width:100%; max-height:80vh; border-radius:12px; box-shadow:0 15px 35px rgba(0,0,0,0.3);">
+            </div>
+        </div>
     </div>
-  </div>
 </div>
-
 
 <!-- JS -->
 <script src="../lib/jquery/jquery.min.js"></script>
@@ -276,24 +308,12 @@
 <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
 
 <script>
-$(document).ready(function(){
-  // Saat tombol "Lihat" diklik
-  $(document).on('click', '.lihat-foto', function(e){
-    e.preventDefault();
-
-    const fotoPath = $(this).data('foto');
-    if (fotoPath && fotoPath.trim() !== "") {
-      $('#modalFoto').attr('src', fotoPath);
-      $('#fotoModal').modal('show');
-    } else {
-      alert('Foto tidak tersedia.');
-    }
-  });
-
-  // Kosongkan src setelah modal ditutup
-  $('#fotoModal').on('hidden.bs.modal', function(){
+$(document).on('click', '.lihat-foto', function(){
+    $('#modalFoto').attr('src', $(this).data('foto'));
+    $('#fotoModal').modal('show');
+});
+$('#fotoModal').on('hidden.bs.modal', function(){
     $('#modalFoto').attr('src', '');
-  });
 });
 </script>
 
