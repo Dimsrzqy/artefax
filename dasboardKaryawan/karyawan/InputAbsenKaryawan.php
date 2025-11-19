@@ -36,15 +36,12 @@ $stmt->close();
 $namaEvent    = '';
 $idEventAktif = 0;
 $sudahAbsen   = false;
-
-// Cek apakah ada event aktif
 $adaEventAktif = ($eventAktif !== null);
 
 if ($adaEventAktif) {
     $idEventAktif = $eventAktif['IDEvent'];
     $namaEvent    = $eventAktif['EventNama'];
 
-    // Cek apakah sudah absen untuk event ini
     $cekAbsen = $conn->prepare("SELECT 1 FROM presensi WHERE IDUser = ? AND IDEvent = ?");
     $cekAbsen->bind_param("ii", $idKaryawan, $idEventAktif);
     $cekAbsen->execute();
@@ -53,56 +50,46 @@ if ($adaEventAktif) {
     $cekAbsen->close();
 }
 
-// === Proses absensi (hanya jika ada event aktif dan belum absen) ===
+// === Proses absensi ===
+$absenBerhasil = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
-    $latitude  = $_POST['latitude'] ?? '';
-    $longitude = $_POST['longitude'] ?? '';
-    $fotoData  = $_POST['foto'] ?? '';
+    $latitude   = $_POST['latitude'] ?? '';
+    $longitude  = $_POST['longitude'] ?? '';
+    $fotoData   = $_POST['foto'] ?? '';
+    $clientTime = $_POST['client_time'] ?? '';
 
     if (empty($fotoData)) {
-        echo "<script>alert('Ambil foto dulu ya!'); history.back();</script>";
-        exit();
-    }
-
-    // Simpan foto
-    if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
-        $data = substr($fotoData, strpos($fotoData, ',') + 1);
-        $type = strtolower($type[1]);
-        $data = base64_decode($data);
-        if (!is_dir('../../uploads')) mkdir('../../uploads', 0777, true);
-        $fileName = 'absensi_'.$idKaryawan.'_'.time().'.'.$type;
-        file_put_contents('../../uploads/'.$fileName, $data);
+        $errorMsg = "Ambil foto dulu ya!";
     } else {
-        $fileName = '';
-    }
+        // Simpan foto
+        if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $type)) {
+            $data = substr($fotoData, strpos($fotoData, ',') + 1);
+            $type = strtolower($type[1]);
+            $data = base64_decode($data);
+            if (!is_dir('../../uploads')) mkdir('../../uploads', 0777, true);
+            $fileName = 'absensi_'.$idKaryawan.'_'.time().'.'.$type;
+            file_put_contents('../../uploads/'.$fileName, $data);
+        } else {
+            $fileName = '';
+        }
 
-    $lokasiString = (!empty($latitude) && !empty($longitude))
-        ? "Lat: {$latitude}, Lon: {$longitude}"
-        : "Tidak terdeteksi";
+        $lokasiString = (!empty($latitude) && !empty($longitude))
+            ? "Lat: {$latitude}, Lon: {$longitude}"
+            : "Tidak terdeteksi";
 
-    $absensi = new Absensi($conn);
-    $absensi->IDUser     = $idKaryawan;
-    $absensi->IDEvent    = $idEventAktif;
-    $absensi->PsnWaktu   = date('Y-m-d H:i:s');
-    $absensi->PsnLokasi  = $lokasiString;
-    $absensi->PsnFoto    = $fileName;
-    $absensi->PsnStatus  = 'Hadir';
+        $absensi = new Absensi($conn);
+        $absensi->IDUser    = $idKaryawan;
+        $absensi->IDEvent   = $idEventAktif;
+        $absensi->PsnWaktu  = ($clientTime && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $clientTime)) ? $clientTime : date('Y-m-d H:i:s');
+        $absensi->PsnLokasi = $lokasiString;
+        $absensi->PsnFoto   = $fileName;
+        $absensi->PsnStatus = 'Hadir';
 
-    if ($absensi->tambah()) {
-        echo "<script>
-            Swal.fire({
-                icon: 'success',
-                title: 'Absensi Berhasil!',
-                text: 'Terima kasih, absensi Anda untuk event {$namaEvent} telah tercatat.',
-                timer: 3000,
-                showConfirmButton: false
-            }).then(() => {
-                window.location.reload();
-            });
-        </script>";
-        exit();
-    } else {
-        echo "<script>Swal.fire('Error', 'Gagal menyimpan absensi.', 'error');</script>";
+        if ($absensi->tambah()) {
+            $absenBerhasil = true;
+        } else {
+            $errorMsg = "Gagal menyimpan absensi.";
+        }
     }
 }
 ?>
@@ -118,7 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../css/karyawan.css" rel="stylesheet">
     <link href="../css/absensi.css" rel="stylesheet">
+
+    <!-- SweetAlert2 harus di-load DULU -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         .no-event-notif, .sudah-absen-notif {
             text-align: center;
@@ -130,29 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             color: #4a5568;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .no-event-notif i {
-            font-size: 70px;
-            color: #a0aec0;
-            margin-bottom: 20px;
-        }
-        .no-event-notif h3, .sudah-absen-notif h3 {
-            color: #2d3748;
-            font-size: 24px;
-            margin-bottom: 12px;
-        }
-        .sudah-absen-notif {
-            background: rgba(16, 185, 129, 0.15);
-            border: 2px solid #10b981;
-            color: #065f46;
-        }
-        .sudah-absen-notif h3 {
-            color: #10b981;
-        }
-        .sudah-absen-notif i {
-            font-size: 70px;
-            color: #10b981;
-            margin: 20px 0;
-        }
+        .no-event-notif i {font-size:70px;color:#a0aec0;margin-bottom:20px;}
+        .no-event-notif h3, .sudah-absen-notif h3 {color:#2d3748;font-size:24px;margin-bottom:12px;}
+        .sudah-absen-notif {background:rgba(16,185,129,0.15);border:2px solid #10b981;color:#065f46;}
+        .sudah-absen-notif h3 {color:#10b981;}
+        .sudah-absen-notif i {font-size:70px;color:#10b981;margin:20px 0;}
     </style>
 </head>
 <body class="az-body">
@@ -189,11 +161,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <!-- CONTENT -->
     <div class="az-content">
         <div class="az-content-body d-flex justify-content-center align-items-center min-vh-100">
-
             <div class="absensi-card">
 
                 <?php if (!$adaEventAktif): ?>
-                    <!-- TIDAK ADA EVENT AKTIF -->
                     <div class="no-event-notif">
                         <i class="fas fa-calendar-times"></i>
                         <h3>Tidak Ada Event yang Sedang Berlangsung</h3>
@@ -202,18 +172,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                     </div>
 
                 <?php elseif ($sudahAbsen): ?>
-                    <!-- SUDAH ABSEN -->
                     <div class="sudah-absen-notif">
                         <i class="fas fa-check-circle"></i>
                         <h3>Absensi Sudah Tercatat</h3>
                         <p>Terima kasih <strong><?= htmlspecialchars($namaKaryawan) ?></strong>,<br>
                         Anda sudah melakukan absensi untuk event:</p>
-                        <h4 style="margin: 15px 0; color:#10b981; font-weight:700;"><?= htmlspecialchars($namaEvent) ?></h4>
+                        <h4 style="margin:15px 0;color:#10b981;font-weight:700;"><?= htmlspecialchars($namaEvent) ?></h4>
                         <p>Selamat bekerja!</p>
                     </div>
 
                 <?php else: ?>
-                    <!-- BELUM ABSEN → TAMPILKAN FORM ABSEN -->
                     <h2>Absensi Event: <span><?= htmlspecialchars($namaEvent) ?></span></h2>
 
                     <button id="ambilLokasi" class="btn btn-primary">Deteksi Lokasi</button>
@@ -234,7 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                         <input type="hidden" name="latitude" id="latitude">
                         <input type="hidden" name="longitude" id="longitude">
                         <input type="hidden" name="foto" id="foto">
-                        <button type="submit" class="btn btn-info">Kirim Absensi</button>
+                        <input type="hidden" name="client_time" id="client_time">
+                        <button type="submit" class="btn btn-info mt-3">Kirim Absensi</button>
                     </form>
                 <?php endif; ?>
 
@@ -242,20 +211,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         </div>
     </div>
 
+    <!-- JS harus di-load SETELAH SweetAlert2 -->
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
 
     <?php if ($adaEventAktif && !$sudahAbsen): ?>
     <script>
-        const video = document.getElementById('kamera');
-        const canvas = document.getElementById('preview');
-        const lokasiTeks = document.getElementById('lokasi');
+        // Update waktu lokal tiap detik
+        function updateClientTime() {
+            const now = new Date();
+            const time = now.getFullYear() + '-' +
+                String(now.getMonth()+1).padStart(2,'0') + '-' +
+                String(now.getDate()).padStart(2,'0') + ' ' +
+                String(now.getHours()).padStart(2,'0') + ':' +
+                String(now.getMinutes()).padStart(2,'0') + ':' +
+                String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('client_time').value = time;
+        }
+        setInterval(updateClientTime, 1000);
+        updateClientTime();
 
+        // Kamera
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(stream => video.srcObject = stream)
+            .then(stream => document.getElementById('kamera').srcObject = stream)
             .catch(err => Swal.fire("Error", "Kamera tidak dapat diakses: " + err.message, "error"));
 
+        // Lokasi
         document.getElementById('ambilLokasi').onclick = e => {
             e.preventDefault();
             if (!navigator.geolocation) return Swal.fire("Error", "Geolocation tidak didukung", "error");
@@ -264,13 +246,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                 const lon = pos.coords.longitude.toFixed(6);
                 document.getElementById('latitude').value = lat;
                 document.getElementById('longitude').value = lon;
-                lokasiTeks.textContent = `Latitude: ${lat}, Longitude: ${lon}`;
-                lokasiTeks.classList.add("detected");
+                document.getElementById('lokasi').textContent = `Latitude: ${lat}, Longitude: ${lon}`;
+                document.getElementById('lokasi').classList.add("detected");
             }, () => Swal.fire("Error", "Gagal mendeteksi lokasi", "warning"));
         };
 
+        // Foto
         document.getElementById('ambilFoto').onclick = e => {
             e.preventDefault();
+            const video = document.getElementById('kamera');
+            const canvas = document.getElementById('preview');
             const ctx = canvas.getContext('2d');
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
@@ -279,5 +264,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         };
     </script>
     <?php endif; ?>
+
+    <!-- Notifikasi hasil absensi (harus di paling bawah agar Swal sudah ter-load) -->
+    <?php if (!empty($absenBerhasil)): ?>
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: 'Absensi Berhasil!',
+            text: 'Terima kasih, absensi Anda untuk event <?= addslashes($namaEvent) ?> telah tercatat.',
+            timer: 3000,
+            showConfirmButton: false
+        }).then(() => location.reload());
+    </script>
+    <?php elseif (!empty($errorMsg)): ?>
+    <script>
+        Swal.fire('Gagal', '<?= addslashes($errorMsg) ?>', 'error');
+    </script>
+    <?php endif; ?>
+
 </body>
 </html>
