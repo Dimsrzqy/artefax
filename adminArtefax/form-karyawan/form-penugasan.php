@@ -13,13 +13,20 @@ $eventAssign = new EventAssignment($conn);
 
 /* ============== BOOKING BELUM JADI EVENT ============== */
 $stmt = $conn->prepare("
-    SELECT b.*, u.UserNama AS CustomerNama 
+    SELECT b.*, 
+           u.UserNama AS CustomerNama,
+           p.PaketNama AS NamaPaket
     FROM booking b
     LEFT JOIN users u ON b.IDUser = u.IDUser
+    LEFT JOIN paketjasa p ON b.IDPaket = p.IDPaket
     WHERE b.BkgStatus = 'Diterima'
+      AND b.BkgJenis = 'Jasa'
       AND b.IDBooking NOT IN (SELECT IDBooking FROM event)
     ORDER BY b.CreatedAt DESC
 ");
+
+
+
 $stmt->execute();
 $bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -210,6 +217,95 @@ unset($_SESSION['success_message']);
     <style>
         .select2-container { width: 100% !important; }
         .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); }
+        /* ==================== STYLING TABEL PENUGASAN ==================== */
+    .table-responsive {
+        margin-top: 20px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .table {
+        margin-bottom: 0;
+        background-color: #fff;
+    }
+
+    .table thead th {
+        background-color: #2852d4;        /* warna header gelap elegan */
+        color: #ffffff;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border: none;
+        padding: 14px 12px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .table tbody td {
+        padding: 14px 12px;
+        vertical-align: middle;
+        border-color: #e2e8f0;
+        font-size: 0.95rem;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .table tbody tr:nth-child(even) {
+        background-color: #f9fbfc;
+    }
+
+    /* Tombol Tugaskan lebih menarik */
+    .btn-sm {
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+    /* Responsif pada layar kecil */
+    @media (max-width: 768px) {
+        .table thead {
+            display: none;
+        }
+        .table, .table tbody, .table tr, .table td {
+            display: block;
+            width: 100%;
+        }
+        .table tr {
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .table td {
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+        }
+        .table td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 12px;
+            width: 45%;
+            font-weight: 600;
+            text-align: left;
+            color: #4a5568;
+        }
+        .table td:last-child {
+            text-align: center;
+        }
+    }
     </style>
 </head>
 <body class="az-body">
@@ -385,10 +481,10 @@ unset($_SESSION['success_message']);
                                 <td>
                                     <button class="btn btn-primary btn-sm"
                                             onclick="openPopup(
-                                            <?= $b['IDBooking'] ?>, 
-                                            '<?= addslashes($b['BkgJenis']) ?>',
-                                            '<?= addslashes($b['BkgAlamat']) ?>',
-                                            '<?= $b['BkgTglMulai'] ?>'
+                                                <?= $b['IDBooking'] ?>, 
+                                                '<?= addslashes($b['NamaPaket']) ?>',
+                                                '<?= addslashes($b['BkgAlamat']) ?>',
+                                                '<?= $b['BkgTglMulai'] ?>'
                                             )">
                                         Tugaskan
                                     </button>
@@ -420,7 +516,7 @@ unset($_SESSION['success_message']);
 
                 <div class="form-group">
                     <label>Nama Event</label>
-                    <input type="text" name="event_nama" id="event_nama" class="form-control" required>
+                    <input type="text" name="event_nama" id="event_nama" class="form-control" required readonly>
                 </div>
 
                 <div class="form-group">
@@ -469,20 +565,26 @@ unset($_SESSION['success_message']);
 
 <script>
 function openPopup(id, jenis, alamat, tgl) {
+
     $('#formEvent')[0].reset();
+
+    // === SET VALUE ===
     $('#id_booking').val(id);
-    $('#event_nama').val(jenis);
+    $('#event_nama').val(jenis);   // Nama event otomatis = BkgJenis
     $('#event_lokasi').val(alamat);
     $('#event_tanggal').val(tgl.split(" ")[0]);
 
+    // === TAMPILKAN POPUP ===
     $("#popupForm").show();
 
+    // === REINIT SELECT2 ===
     setTimeout(() => {
         $("#selectKaryawan").select2({
             dropdownParent: $('#popupForm')
         });
     }, 200);
 }
+
 
 function closePopup() {
     $("#popupForm").hide();

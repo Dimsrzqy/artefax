@@ -80,7 +80,7 @@ if ($stmt) {
       content: ""; position: absolute; bottom: -6px; left: 50%; width: 0; height: 3px;
       background: #4b4be5; transition: all 0.3s; transform: translateX(-50%);
     }
-    .az-header-menu .nav-item.active .nav-link::after,
+    .az-header-menu .nav-item.nav-link::after,
     .az-header-menu .nav-link:hover::after { width: 70%; }
 
     .az-content { margin-top: 85px; }
