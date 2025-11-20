@@ -37,14 +37,40 @@ class Pembayaran {
     public function readJoin() {
         $query = "
             SELECT 
-                p.IDPembayaran, p.IDBooking, p.PbrMetode, p.PbrJumlah, 
-                p.PbrStatus, p.PbrConfirmed, p.CreatedAt,
-                b.IDUser, b.BkgJenis, b.IDPaket, b.BkgTotalHarga
-            FROM " . $this->table . " p
-            JOIN booking b ON p.IDBooking = b.IDBooking
-            JOIN users u ON b.IDUser = u.IDUser
-            ORDER BY p.CreatedAt DESC
-        ";
+                p.IDPembayaran,
+                p.IDBooking,
+                p.PbrJumlah,
+                p.PbrMetode,
+                p.PbrStatus,
+                p.CreatedAt,
+                            
+                u.UserNama,
+                u.IDUser,
+          
+            GROUP_CONCAT(
+            DISTINCT 
+            CASE 
+            WHEN g.BkgDetailJenis = 'Paket Jasa' THEN j.PaketNama
+            WHEN g.BkgDetailJenis = 'Alat' THEN a.AlatNama
+            ELSE g.BkgDetailJenis
+            END
+            SEPARATOR ', '
+                ) AS DaftarPesanan,
+                        
+                
+            GROUP_CONCAT(DISTINCT g.BkgDetailJenis 
+                SEPARATOR ', ') AS JenisBooking
+
+            FROM pembayaran p
+                LEFT JOIN booking b ON p.IDBooking = b.IDBooking
+                LEFT JOIN users u ON b.IDUser = u.IDUser
+                LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
+                LEFT JOIN alat a ON g.IDAlat = a.IDAlat
+                LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
+            WHERE p.IDPembayaran IS NOT NULL
+            GROUP BY p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.CreatedAt, u.UserNama, u.IDUser
+                    ORDER BY p.CreatedAt DESC
+            ";
 
         $result = $this->conn->query($query); 
         
@@ -57,18 +83,45 @@ class Pembayaran {
     // READ Status Pending
     // =============================
     public function readPending() {
-        // Query dimodifikasi: menambahkan klausa WHERE dan mengurutkan berdasarkan CreatedAt DESC
-        $query = "
-            SELECT 
-                p.IDPembayaran, p.IDBooking, p.PbrMetode, p.PbrJumlah, 
-                p.PbrStatus, p.PbrConfirmed, p.CreatedAt,
-                b.IDUser, b.BkgJenis, b.IDPaket, b.BkgTotalHarga,
-                u.UserNama 
-            FROM " . $this->table . " p
-            JOIN booking b ON p.IDBooking = b.IDBooking
-            JOIN users u ON b.IDUser = u.IDUser
-            WHERE p.PbrStatus = 'Pending' 
-            ORDER BY p.CreatedAt DESC
+    $query = "
+            SELECT
+                p.IDPembayaran, 
+                p.IDBooking,    
+                p.PbrJumlah,
+                p.PbrMetode,
+                p.CreatedAt,
+                
+                COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
+                u.IDUser,
+                
+                GROUP_CONCAT(
+                    DISTINCT
+                    CASE 
+                        WHEN g.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(j.PaketNama, 'Paket Dihapus')
+                        WHEN g.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
+                        ELSE g.BkgDetailJenis 
+                    END
+                    ORDER BY g.BkgDetailJenis
+                    SEPARATOR ', '
+                ) AS DaftarPesanan,
+                b.BkgTglMulai,
+                b.BkgTotalHarga,
+                GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
+
+            FROM pembayaran p
+            LEFT JOIN booking b ON p.IDBooking = b.IDBooking
+            LEFT JOIN users u ON b.IDUser = u.IDUser
+            LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
+            LEFT JOIN alat a ON g.IDAlat = a.IDAlat
+            LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
+
+            WHERE 
+                p.PbrStatus = 'pending' 
+
+            GROUP BY 
+                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.CreatedAt, u.UserNama, u.IDUser
+            ORDER BY 
+                p.CreatedAt ASC -- (pertama masuk)
         ";
 
         

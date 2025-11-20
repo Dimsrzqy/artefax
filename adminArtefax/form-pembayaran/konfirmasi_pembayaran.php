@@ -117,6 +117,7 @@ unset($_SESSION['success'], $_SESSION['error']);
 
         /* Modal Konfirmasi - Fixed & Lebih Jelas */
         #modalKonfirmasi {
+            pointer-events: none;
             display: none;
             position: fixed;
             top: 0; left: 0;
@@ -134,6 +135,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             max-width: 420px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             animation: fadeIn 0.3s ease;
+            pointer-events: auto;
         }
         .modal-header {
             padding: 15px 20px;
@@ -334,14 +336,14 @@ unset($_SESSION['success'], $_SESSION['error']);
                             $tglKirim = date('d M Y, H:i', strtotime($p['CreatedAt'])) . ' WIB';
                             $tglBooking = date('d M Y', strtotime($p['BkgTglMulai'] ?? $p['CreatedAt']));
                             ?>
-                            <div class="col-md-6 col-lg-4">
-                                <div class="card-payment">
+                            <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $p['IDPembayaran'] ?>">
+                            <div class="card-pending shadow-sm h-100">
                                     <div class="card-header">
                                         BOOK#<?= str_pad($p['IDBooking'], 6, '0', STR_PAD_LEFT) ?>
                                     </div>
                                     <div class="card-body">
                                         <div class="info-row">
-                                            <span class="info-label">Nama Pemesan</span>
+                                            <span class="info-label">Nama Pelanggan</span>
                                             <span class="info-value"><?= htmlspecialchars($namaCustomer) ?></span>
                                         </div>
                                         <div class="info-row">
@@ -400,60 +402,66 @@ unset($_SESSION['success'], $_SESSION['error']);
     </div>
 
     <!-- Modal Konfirmasi -->
-    <div id="modalKonfirmasi">
-        <div class="modal-dialog">
-            <div class="modal-header" id="modalHeader">
-                <h5 id="modalTitle">Konfirmasi</h5>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="modalMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
-                <button id="btnKonfirmasi" class="btn btn-primary">Ya, Lanjutkan</button>
-            </div>
+    <div id="modalKonfirmasi" class="modal-overlay">
+    <div class="modal-dialog">
+        <div class="modal-header" id="modalHeader">
+            <h5 id="modalTitle">Konfirmasi</h5>
+            <button type="button" class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
+            <button type="button" id="btnKonfirmasi" class="btn btn-primary">Ya, Lanjutkan</button>
         </div>
     </div>
+</div>
 
     <script>
         let currentId, currentStatus;
 
-        function konfirmasiAksi(id, status) {
-            currentId = id;
-            currentStatus = status;
+function konfirmasiAksi(id, status) {
+    currentId = id;
+    currentStatus = status;
 
-            const isSetuju = status === 'Sukses';
-            const header = document.getElementById('modalHeader');
-            const title = document.getElementById('modalTitle');
-            const message = document.getElementById('modalMessage');
+    const isSetuju = status === 'Sukses';
+    const header = document.getElementById('modalHeader');
+    const title = document.getElementById('modalTitle');
+    const message = document.getElementById('modalMessage');
 
-            if (isSetuju) {
-                header.className = 'modal-header setuju';
-                title.textContent = 'Setujui Pembayaran';
-                message.innerHTML = 'Setujui pembayaran ini? Status akan menjadi <strong>Sukses</strong>.';
-            } else {
-                header.className = 'modal-header tolak';
-                title.textContent = 'Tolak Pembayaran';
-                message.innerHTML = 'Tolak pembayaran ini? Status akan menjadi <strong>Gagal</strong>.';
-            }
+    if (isSetuju) {
+        header.className = 'modal-header setuju';
+        title.textContent = 'Setujui Pembayaran';
+        message.innerHTML = 'Setujui pembayaran ini? Status akan menjadi <strong>Sukses</strong>.';
+    } else {
+        header.className = 'modal-header tolak';
+        title.textContent = 'Tolak Pembayaran';
+        message.innerHTML = 'Tolak pembayaran ini? Status akan menjadi <strong>Gagal</strong>.';
+    }
 
-            document.getElementById('modalKonfirmasi').style.display = 'flex';
-        }
+    document.getElementById('modalKonfirmasi').style.display = 'flex';
+}
 
-        document.getElementById('btnKonfirmasi').onclick = function() {
-            window.location = `proses_konfirmasi.php?id=${currentId}&status=${currentStatus}`;
-        };
+function closeModal() {
+    document.getElementById('modalKonfirmasi').style.display = 'none';
+}
 
-        function closeModal() {
-            document.getElementById('modalKonfirmasi').style.display = 'none';
-        }
+// === PERUBAHAN PALING PENTING ===
+const modalOverlay = document.getElementById('modalKonfirmasi');
 
-        // Tutup saat klik luar
-        window.addEventListener('click', function(e) {
-            const modal = document.getElementById('modalKonfirmasi');
-            if (e.target === modal) closeModal();
-        });
+modalOverlay.addEventListener('click', function(e) {
+    // Hanya tutup kalau klik tepat di backdrop (bukan di dalam dialog)
+    if (e.target === modalOverlay) {
+        closeModal();
+    }
+});
+// ====================================
+
+// Tombol Ya, Lanjutkan
+document.getElementById('btnKonfirmasi').addEventListener('click', function() {
+    window.location.href = `proses_konfirmasi.php?id=${currentId}&status=${currentStatus === 'Sukses' ? 'Sukses' : 'Gagal'}`;
+});
     </script>
 
     <!-- Scripts -->
