@@ -399,60 +399,72 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
                 <!-- Tabel Pembayaran -->
                 <div class="table-container">
-                    <?php if ($daftarPembayaran && count($daftarPembayaran) > 0): ?>
-                        <table class="custom-table">
-                            <thead>
-                                <tr>
-                                    <th width="5%">No</th>
-                                    <th>Pelanggan</th>
-                                    <th>Jenis</th>
-                                    <th>Paket</th>
-                                    <th>Jumlah</th>
-                                    <th>Metode</th>
-                                    <th>Status</th>
-                                    <th width="15%">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php $no = 1; foreach ($daftarPembayaran as $p): ?>
-                                    <tr>
-                                        <td><?= $no++ ?></td>
-                                        <td>
-                                            User ID: <strong><?= $p['IDUser'] ?></strong>
-                                        </td>
-                                        <td><?= htmlspecialchars($p['BkgJenis']) ?></td>
-                                        <td>Paket #<?= $p['IDPaket'] ?></td>
-                                        <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
-                                        <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
-                                        <td>
-                                            <span class="badge badge-<?= strtolower($p['PbrStatus']) ?>">
-                                                <?= $p['PbrStatus'] ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="tombol-aksi">
-                                                <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($p) ?>)'>
-                                                    <i class="fas fa-eye"></i> Detail
-                                                </button>
-                                                <form action="hapus_pembayaran.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
-                                                    <input type="hidden" name="id" value="<?= $p['IDPembayaran'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-danger">
-                                                        <i class="fas fa-trash"></i> Hapus
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <div class="text-center py-5 bg-light rounded">
-                            <i class="fas fa-money-check-alt fa-3x text-muted mb-3"></i>
-                            <p class="text-muted mb-3">Belum ada data pembayaran.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                  <?php if ($daftarPembayaran && count($daftarPembayaran) > 0): ?>
+                      <table class="custom-table">
+                          <thead>
+                              <tr>
+                                  <th width="5%">No</th>
+                                  <th>Nama Pelanggan</th>
+                                  <th>Jenis</th>
+                                  <th>Pesanan</th> 
+                                  <th>Jumlah Pembayaran</th>
+                                  <th>Metode</th>
+                                  <th>Status</th>
+                                  <th>Waktu</th>
+                                  <th width="15%">Aksi</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <?php $no = 1; foreach ($daftarPembayaran as $p): ?>
+                                  <tr>
+                                      <td><?= $no++ ?></td>
+                                      <td>
+                                          <?= htmlspecialchars($p['UserNama']) ?><br>
+                                      </td>
+                                      <td>
+                                          <?php 
+                                          $jenis = $p['JenisBooking'] ?? '-';
+                                          echo $jenis == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($jenis);
+                                          ?>
+                                      </td>
+                                      <td>
+                                          <?php 
+                                          $pesanan = $p['DaftarPesanan'] ?? '-';
+                                          echo $pesanan !== '' ? htmlspecialchars($pesanan) : '-';
+                                          ?>
+                                      </td>
+                                      <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
+                                      <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
+                                      <td>
+                                          <span class="badge badge-<?= strtolower($p['PbrStatus']) ?>">
+                                              <?= htmlspecialchars($p['PbrStatus']) ?>
+                                          </span>
+                                      </td>
+                                      <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
+                                      <td>
+                                          <div class="tombol-aksi">
+                                              <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                                  <i class="fas fa-eye"></i> Detail
+                                              </button>
+                                              <form action="hapus_pembayaran.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
+                                                  <input type="hidden" name="id" value="<?= $p['IDPembayaran'] ?>">
+                                                  <button type="submit" class="btn btn-sm btn-danger">
+                                                      <i class="fas fa-trash"></i> Hapus
+                                                  </button>
+                                              </form>
+                                          </div>
+                                      </td>
+                                  </tr>
+                              <?php endforeach; ?>
+                          </tbody>
+                      </table>
+                  <?php else: ?>
+                      <div class="text-center py-5 bg-light rounded">
+                          <i class="fas fa-money-check-alt fa-3x text-muted mb-3"></i>
+                          <p class="text-muted mb-3">Belum ada data pembayaran.</p>
+                      </div>
+                  <?php endif; ?>
+              </div>
             </div>
         </div>
     </div>
