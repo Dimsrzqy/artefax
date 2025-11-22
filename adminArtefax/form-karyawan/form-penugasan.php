@@ -11,175 +11,93 @@ if (!$conn) die("<p style='color:red;'>Koneksi database gagal.</p>");
 $user        = new User($conn);
 $eventAssign = new EventAssignment($conn);
 
-/* ============== BOOKING BELUM JADI EVENT ============== */
-$stmt = $conn->prepare("
-    SELECT b.*, 
-           u.UserNama AS CustomerNama,
-           p.PaketNama AS NamaPaket
+// Update status semua event (opsional tapi bagus)
+$eventAssign->updateStatusOtomatis();
+
+/* ============== BOOKING YANG BELUM PERNAH DIBUATKAN EVENT ============== */
+$stmt_booking = $conn->prepare("
+    SELECT 
+        b.IDBooking,
+        b.BkgAlamat,
+        b.BkgTglMulai,
+        b.BkgTotalHarga,
+        b.CreatedAt,
+        u.UserNama AS CustomerNama,
+        COALESCE((
+            SELECT GROUP_CONCAT(DISTINCT p.PaketNama SEPARATOR ' + ')
+            FROM booking_detail bd
+            LEFT JOIN paketjasa p ON bd.IDPaket = p.IDPaket
+            WHERE bd.IDBooking = b.IDBooking 
+              AND bd.BkgDetailJenis = 'Paket Jasa'
+        ), 'Paket Jasa Custom') AS NamaPaket
     FROM booking b
     LEFT JOIN users u ON b.IDUser = u.IDUser
-    LEFT JOIN paketjasa p ON b.IDPaket = p.IDPaket
     WHERE b.BkgStatus = 'Diterima'
-      AND b.BkgJenis = 'Jasa'
-      AND b.IDBooking NOT IN (SELECT IDBooking FROM event)
+      AND EXISTS (
+          SELECT 1 
+          FROM booking_detail bd 
+          WHERE bd.IDBooking = b.IDBooking 
+            AND bd.BkgDetailJenis = 'Paket Jasa'
+      )
+      AND NOT EXISTS (
+          SELECT 1 
+          FROM event e 
+          WHERE e.IDBooking = b.IDBooking
+      )
     ORDER BY b.CreatedAt DESC
 ");
 
-
-
-$stmt->execute();
-$bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+if (!$stmt_booking) {
+    die("Query prepare gagal: " . $conn->error);
+}
+$stmt_booking->execute();
+$bookings = $stmt_booking->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_booking->close();
 
 /* ============== SEMUA KARYAWAN ============== */
-$stmt = $conn->prepare("SELECT IDUser, UserNama FROM users WHERE UserRole = 'Karyawan' ORDER BY UserNama");
-$stmt->execute();
-$karyawans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_karyawan = $conn->prepare("SELECT IDUser, UserNama FROM users WHERE UserRole = 'Karyawan' ORDER BY UserNama");
+$stmt_karyawan->execute();
+$karyawans = $stmt_karyawan->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_karyawan->close();
 
 /* ==========================================================
-   =============== PROSES BUAT EVENT (ROBUST) ================
+   =============== PROSES BUAT EVENT (PAKAI CLASS) =============
    ========================================================== */
 $success_message = $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buat_event'])) {
 
-    // sanitize & map
-    $idBooking    = isset($_POST['id_booking']) ? (int)$_POST['id_booking'] : 0;
-    $eventNama    = isset($_POST['event_nama']) ? trim($_POST['event_nama']) : '';
-    $eventLokasi  = isset($_POST['event_lokasi']) ? trim($_POST['event_lokasi']) : '';
-    $eventTanggal = isset($_POST['event_tanggal']) ? $_POST['event_tanggal'] : '';
-    $eventMulai   = isset($_POST['event_mulai']) ? $_POST['event_mulai'] : '';
-    $eventDurasi  = isset($_POST['event_durasi']) ? (int)$_POST['event_durasi'] : 0;
-    $karyawanIds  = isset($_POST['karyawan']) && is_array($_POST['karyawan']) ? array_map('intval', $_POST['karyawan']) : [];
+    $idBooking    = (int)($_POST['id_booking'] ?? 0);
+    $eventNama    = trim($_POST['event_nama'] ?? '');
+    $eventLokasi  = trim($_POST['event_lokasi'] ?? '');
+    $eventTanggal = $_POST['event_tanggal'] ?? '';
+    $eventMulai   = $_POST['event_mulai'] ?? '';
+    $eventDurasi  = (int)($_POST['event_durasi'] ?? 0);
+    $karyawanIds  = $_POST['karyawan'] ?? [];
 
-    // Basic validation
     if ($idBooking <= 0) {
         $error_message = "Booking tidak valid.";
-    } elseif ($eventNama === "" || $eventLokasi === "" || $eventTanggal === "" || $eventMulai === "" || $eventDurasi < 1) {
-        $error_message = "Lengkapi semua field event (nama, lokasi, tanggal, mulai, durasi).";
-    } elseif (empty($karyawanIds)) {
+    } elseif (empty($eventNama) || empty($eventLokasi) || empty($eventTanggal) || empty($eventMulai) || $eventDurasi < 1) {
+        $error_message = "Lengkapi semua field event.";
+    } elseif (empty($karyawanIds) || !is_array($karyawanIds)) {
         $error_message = "Pilih minimal 1 karyawan.";
     } else {
-        // lanjutkan validasi DB dan insert dalam transaction
-        try {
-            // 1) cek booking ada & status diterima
-            $stmt = $conn->prepare("SELECT IDBooking, BkgStatus FROM booking WHERE IDBooking = ? LIMIT 1");
-            $stmt->bind_param("i", $idBooking);
-            $stmt->execute();
-            $bk = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+        $result = $eventAssign->createEvent(
+            $idBooking,
+            $eventNama,
+            $eventLokasi,
+            $eventTanggal,
+            $eventMulai,
+            $eventDurasi,
+            $karyawanIds
+        );
 
-            if (!$bk) {
-                throw new Exception("Booking tidak ditemukan.");
-            }
-            if (strtolower(trim($bk['BkgStatus'])) !== 'diterima') {
-                throw new Exception("Booking belum berstatus 'Diterima'.");
-            }
-
-            // 2) cek apakah booking sudah dipakai (double-check)
-            $stmt = $conn->prepare("SELECT IDEvent FROM event WHERE IDBooking = ? LIMIT 1");
-            $stmt->bind_param("i", $idBooking);
-            $stmt->execute();
-            $exists = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            if ($exists) {
-                throw new Exception("Booking ini sudah dibuat event sebelumnya (IDEvent: " . $exists['IDEvent'] . ").");
-            }
-
-            // 3) validasi semua karyawan ada
-            // buat query dinamika dengan IN(...)
-            $placeholders = implode(',', array_fill(0, count($karyawanIds), '?'));
-            $types = str_repeat('i', count($karyawanIds));
-            $sql = "SELECT IDUser FROM users WHERE UserRole = 'Karyawan' AND IDUser IN ($placeholders)";
-            $stmt = $conn->prepare($sql);
-            // bind params dynamically
-            $bind_names = [];
-            foreach ($karyawanIds as $k => $val) {
-                $bind_names[] = &$karyawanIds[$k];
-            }
-            if ($bind_names) {
-                // mysqli_stmt::bind_param requires string types first, then references
-                array_unshift($bind_names, $types);
-                call_user_func_array([$stmt, 'bind_param'], $bind_names);
-            }
-            $stmt->execute();
-            $res = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            if (count($res) !== count($karyawanIds)) {
-                throw new Exception("Salah satu atau beberapa karyawan tidak ditemukan atau bukan role Karyawan.");
-            }
-
-            // 4) mulai transaction dan insert event + event_karyawan
-            $conn->autocommit(false);
-            $conn->begin_transaction();
-
-            // hitung waktu selesai
-            $startDt = new DateTime($eventTanggal . ' ' . $eventMulai);
-            $endDt   = clone $startDt;
-            $endDt->modify("+{$eventDurasi} hours");
-            // format time mysql TIME
-            $timeMulai = $startDt->format('H:i:s');
-            $timeSelesai = $endDt->format('H:i:s');
-
-            // Insert event
-            $sqlInsertEvent = "INSERT INTO event
-                (EventNama, EventLokasi, IDBooking, EventTanggal, EventDurasi, EventMulai, EventSelesai, EventStatus, CreatedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu', NOW())";
-            $stmt = $conn->prepare($sqlInsertEvent);
-            if (!$stmt) throw new Exception("Prepare insert event gagal: " . $conn->error);
-
-            // bind types: s s i s i s s  => "ssisiss"
-            $types_event = "ssisiss";
-            $stmt->bind_param(
-                $types_event,
-                $eventNama,
-                $eventLokasi,
-                $idBooking,
-                $eventTanggal,
-                $eventDurasi,
-                $timeMulai,
-                $timeSelesai
-            );
-
-            if (!$stmt->execute()) {
-                $err = $stmt->error;
-                $stmt->close();
-                throw new Exception("Insert event gagal: " . $err);
-            }
-            $idEvent = $conn->insert_id;
-            $stmt->close();
-
-            // Insert event_karyawan
-            $stmt = $conn->prepare("INSERT INTO event_karyawan (IDEvent, IDKaryawan) VALUES (?, ?)");
-            if (!$stmt) throw new Exception("Prepare insert event_karyawan gagal: " . $conn->error);
-            foreach ($karyawanIds as $idK) {
-                $idK = (int)$idK;
-                $stmt->bind_param("ii", $idEvent, $idK);
-                if (!$stmt->execute()) {
-                    $err = $stmt->error;
-                    $stmt->close();
-                    throw new Exception("Insert event_karyawan gagal untuk karyawan $idK: " . $err);
-                }
-            }
-            $stmt->close();
-
-            // commit
-            $conn->commit();
-            $conn->autocommit(true);
-
-            $_SESSION['success_message'] = "Event berhasil dibuat dan karyawan ditugaskan (Event ID: $idEvent).";
-            // redirect supaya menghindari resubmit form
+        if ($result !== false) {
+            $_SESSION['success_message'] = "Event berhasil dibuat! (ID Event: $result)";
             header("Location: " . $_SERVER['PHP_SELF']);
             exit;
-
-        } catch (Exception $e) {
-            // rollback dan tampilkan pesan
-            if ($conn->connect_errno === 0) {
-                $conn->rollback();
-                $conn->autocommit(true);
-            }
-            $error_message = "Gagal membuat event: " . $e->getMessage();
-            // juga tulis ke error_log agar bisa dicek di server
-            error_log("[form-penugasan] " . $e->getMessage());
+        } else {
+            $error_message = "Gagal membuat event. Silakan coba lagi.";
         }
     }
 }
@@ -191,126 +109,29 @@ unset($_SESSION['success_message']);
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Penugasan Event - Artefax</title>
-
-
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
-    <link href="../lib/spectrum-colorpicker/spectrum.css" rel="stylesheet">
-    <link href="../lib/select2/css/select2.min.css" rel="stylesheet">
-    <link href="../lib/ion-rangeslider/css/ion.rangeSlider.css" rel="stylesheet">
-    <link href="../lib/ion-rangeslider/css/ion.rangeSlider.skinFlat.css" rel="stylesheet">
-    <link href="../lib/amazeui-datetimepicker/css/amazeui.datetimepicker.css" rel="stylesheet">
-    <link href="../lib/jquery-simple-datetimepicker/jquery.simple-dtpicker.css" rel="stylesheet">
-    <link href="../lib/pickerjs/picker.min.css" rel="stylesheet">
-
-
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../lib/select2/css/select2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
-    <link rel="stylesheet" href="css/form-karyawan.css">
-    
-
     <style>
         .select2-container { width: 100% !important; }
-        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); }
-        /* ==================== STYLING TABEL PENUGASAN ==================== */
-    .table-responsive {
-        margin-top: 20px;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    .table {
-        margin-bottom: 0;
-        background-color: #fff;
-    }
-
-    .table thead th {
-        background-color: #2852d4;        /* warna header gelap elegan */
-        color: #ffffff;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-        border: none;
-        padding: 14px 12px;
-        text-align: center;
-        vertical-align: middle;
-    }
-
-    .table tbody td {
-        padding: 14px 12px;
-        vertical-align: middle;
-        border-color: #e2e8f0;
-        font-size: 0.95rem;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f8fafc;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    }
-
-    .table tbody tr:nth-child(even) {
-        background-color: #f9fbfc;
-    }
-
-    /* Tombol Tugaskan lebih menarik */
-    .btn-sm {
-        padding: 6px 14px;
-        font-size: 0.85rem;
-        border-radius: 6px;
-        font-weight: 500;
-    }
-
-    /* Responsif pada layar kecil */
-    @media (max-width: 768px) {
-        .table thead {
-            display: none;
+        .modal { 
+            display:none; 
+            position:fixed; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,.6); z-index:9999; 
+            justify-content:center; align-items:center; 
         }
-        .table, .table tbody, .table tr, .table td {
-            display: block;
-            width: 100%;
-        }
-        .table tr {
-            margin-bottom: 15px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .table td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-        }
-        .table td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 12px;
-            width: 45%;
-            font-weight: 600;
-            text-align: left;
-            color: #4a5568;
-        }
-        .table td:last-child {
-            text-align: center;
-        }
-    }
+        .modal .modal-dialog { max-width: 700px; }
+        .alert { margin:15px 0; padding:12px; border-radius:5px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-danger { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
     </style>
 </head>
 <body class="az-body">
-
-<!-- HEADER — TIDAK DIRUBAH -- kept exactly as original by you -->
 <div class="az-header">
       <div class="container">
         <div class="az-header-left">
@@ -428,7 +249,9 @@ unset($_SESSION['success_message']);
         </div><!-- az-header-right -->
       </div><!-- container -->
     </div><!-- az-header -->
-        <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
+
+    <!-- Content -->
+    <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
@@ -437,16 +260,17 @@ unset($_SESSION['success_message']);
                         <a href="form-user.php" class="nav-link">Daftar User</a>
                     </nav>
                     <label>Menu Karyawan</label>
-                    <a href="form-karyawan.php" class="nav-link">Daftar Karyawan</a>
-                    <a href="form-penugasan.php" class="nav-link active">Penugasan</a>
+                    <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
+                    <a href="form-penugasan.php" class="nav-link">Penugasan</a>
                 </div>
             </div>
-<div class="az-content-body pd-lg-l-40 d-flex flex-column">
-    <div class="container">
 
-        <div class="az-content-body">
-
-            <h2 class="az-content-title">Penugasan Event</h2>
+            <div class="az-content-body pd-lg-l-40 d-flex flex-column">
+                <div class="az-content-breadcrumb">
+                    <span>Data</span>
+                    <span>Karyawan</span>
+                </div>
+                  <h2 class="az-content-title">Penugasan</h2>
 
             <?php if ($success_message): ?>
                 <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
@@ -457,141 +281,150 @@ unset($_SESSION['success_message']);
 
             <div class="table-responsive">
                 <?php if ($bookings): ?>
-                    <table class="table table-bordered">
-                        <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Customer</th>
-                            <th>Jenis</th>
-                            <th>Tanggal</th>
-                            <th>Alamat</th>
-                            <th>Harga</th>
-                            <th>Aksi</th>
-                        </tr>
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Customer</th>
+                                <th>Paket</th>
+                                <th>Tanggal</th>
+                                <th>Alamat</th>
+                                <th>Harga</th>
+                                <th>Aksi</th>
+                            </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($bookings as $i => $b): ?>
-                            <tr>
-                                <td><?= $i+1 ?></td>
-                                <td><?= htmlspecialchars($b['CustomerNama']) ?></td>
-                                <td><?= htmlspecialchars($b['BkgJenis']) ?></td>
-                                <td><?= date('d/m/Y', strtotime($b['BkgTglMulai'])) ?></td>
-                                <td><?= htmlspecialchars($b['BkgAlamat']) ?></td>
-                                <td>Rp <?= number_format($b['BkgTotalHarga']) ?></td>
-                                <td>
-                                    <button class="btn btn-primary btn-sm"
+                            <?php foreach ($bookings as $i => $b): ?>
+                                <tr>
+                                    <td><?= $i + 1 ?></td>
+                                    <td><?= htmlspecialchars($b['CustomerNama']) ?></td>
+                                    <td><?= htmlspecialchars($b['NamaPaket'] ?? 'Custom') ?></td>
+                                    <td><?= date('d/m/Y', strtotime($b['BkgTglMulai'])) ?></td>
+                                    <td><?= htmlspecialchars($b['BkgAlamat']) ?></td>
+                                    <td>Rp <?= number_format($b['BkgTotalHarga'], 0, ',', '.') ?></td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" 
                                             onclick="openPopup(
-                                                <?= $b['IDBooking'] ?>, 
-                                                '<?= addslashes($b['NamaPaket']) ?>',
-                                                '<?= addslashes($b['BkgAlamat']) ?>',
-                                                '<?= $b['BkgTglMulai'] ?>'
+                                                <?= $b['IDBooking'] ?>,
+                                                '<?= addslashes(htmlspecialchars($b['NamaPaket'] ?? 'Event Jasa')) ?>',
+                                                '<?= addslashes(htmlspecialchars($b['BkgAlamat'])) ?>',
+                                                '<?= date('Y-m-d', strtotime($b['BkgTglMulai'])) ?>'
                                             )">
-                                        Tugaskan
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                                            Tugaskan
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 <?php else: ?>
-                    <p class="text-center text-muted">Tidak ada booking siap dijadwalkan.</p>
+                    <p class="text-center text-muted py-5">Tidak ada booking yang perlu ditugaskan saat ini.</p>
                 <?php endif; ?>
             </div>
-
         </div>
     </div>
 </div>
 
-
-<!-- ======================== MODAL TAMBAH EVENT ======================== -->
-<div id="popupForm" class="modal" style="display:none;">
+<!-- MODAL -->
+<div id="popupForm" class="modal">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content p-3">
-
-            <h5>Buat Event</h5>
-
+        <div class="modal-content p-4 bg-white rounded shadow">
+            <h4 class="mb-4 text-primary">Buat Event Baru</h4>
             <form id="formEvent" method="POST">
                 <input type="hidden" name="buat_event" value="1">
                 <input type="hidden" name="id_booking" id="id_booking">
 
-                <div class="form-group">
-                    <label>Nama Event</label>
-                    <input type="text" name="event_nama" id="event_nama" class="form-control" required readonly>
-                </div>
-
-                <div class="form-group">
-                    <label>Lokasi</label>
-                    <input type="text" name="event_lokasi" id="event_lokasi" class="form-control" required>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label>Nama Event</label>
+                        <input type="text" name="event_nama" id="event_nama" class="form-control" required>
+                    </div>
                 </div>
 
                 <div class="row">
-                    <div class="col">
-                        <label>Tanggal</label>
+                    <div class="col-md-12 mb-3">
+                        <label>Lokasi</label>
+                        <input type="text" name="event_lokasi" id="event_lokasi" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Tanggal Event</label>
                         <input type="date" name="event_tanggal" id="event_tanggal" class="form-control" required>
                     </div>
-                    <div class="col">
-                        <label>Mulai</label>
+                    <div class="col-md-4 mb-3">
+                        <label>Jam Mulai</label>
                         <input type="time" name="event_mulai" id="event_mulai" class="form-control" required>
                     </div>
-                    <div class="col">
+                    <div class="col-md-4 mb-3">
                         <label>Durasi (jam)</label>
                         <input type="number" name="event_durasi" id="event_durasi" class="form-control" min="1" max="24" value="8" required>
                     </div>
                 </div>
 
-                <div class="form-group mt-3">
-                    <label>Pilih Karyawan</label>
-                    <select name="karyawan[]" id="selectKaryawan" multiple class="form-control" required>
+                <div class="mb-4">
+                    <label>Pilih Karyawan <small class="text-muted">(bisa lebih dari satu)</small></label>
+                    <select name="karyawan[]" id="selectKaryawan" multiple class="form-control" style="height: 180px;" required>
                         <?php foreach ($karyawans as $k): ?>
                             <option value="<?= $k['IDUser'] ?>"><?= htmlspecialchars($k['UserNama']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
-                <div class="d-flex justify-content-end">
+                <div class="text-right">
                     <button type="button" class="btn btn-secondary mr-2" onclick="closePopup()">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan</button>
+                    <button type="submit" class="btn btn-primary">Simpan Event</button>
                 </div>
-
             </form>
-
         </div>
     </div>
 </div>
 
-
 <script src="../lib/jquery/jquery.min.js"></script>
 <script src="../lib/select2/js/select2.min.js"></script>
-
 <script>
-function openPopup(id, jenis, alamat, tgl) {
-
+function openPopup(id, namaPaket, alamat, tgl) {
     $('#formEvent')[0].reset();
-
-    // === SET VALUE ===
     $('#id_booking').val(id);
-    $('#event_nama').val(jenis);   // Nama event otomatis = BkgJenis
+    $('#event_nama').val(namaPaket);
     $('#event_lokasi').val(alamat);
-    $('#event_tanggal').val(tgl.split(" ")[0]);
+    $('#event_tanggal').val(tgl);
 
-    // === TAMPILKAN POPUP ===
-    $("#popupForm").show();
+    // WAKTU LOKAL DEVICE → dibulatkan ke 5 menit terdekat (super rapi!)
+    const now = new Date();
+    const roundedMinutes = Math.round(now.getMinutes() / 5) * 5;
+    const rounded = new Date(now);
+    rounded.setMinutes(roundedMinutes);
+    rounded.setSeconds(0);
 
-    // === REINIT SELECT2 ===
+    const jam   = String(rounded.getHours()).padStart(2, '0');
+    const menit = String(rounded.getMinutes()).padStart(2, '0');
+    $('#event_mulai').val(`${jam}:${menit}`);
+
+    $('#event_durasi').val('8');
+
+    $("#popupForm").fadeIn(200);
+
     setTimeout(() => {
         $("#selectKaryawan").select2({
-            dropdownParent: $('#popupForm')
+            dropdownParent: $('#popupForm'),
+            placeholder: "Pilih karyawan...",
+            width: '100%'
         });
-    }, 200);
+    }, 150);
 }
 
-
-function closePopup() {
-    $("#popupForm").hide();
-    if ($('#selectKaryawan').data('select2')) {
-        $('#selectKaryawan').select2('destroy');
+    function closePopup() {
+        $("#popupForm").fadeOut(200);
+        if ($('#selectKaryawan').data('select2')) {
+            $('#selectKaryawan').select2('destroy');
+        }
     }
-}
+
+    $(document).on('click', function(e) {
+        if ($(e.target).is('#popupForm')) closePopup();
+    });
 </script>
 
 </body>
