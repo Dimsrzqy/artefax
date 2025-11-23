@@ -186,30 +186,56 @@ class Pembayaran {
     // UPDATE DATA
     // =============================
     public function updateStatus() {
-        $query = "
-            UPDATE " . $this->table . " 
+        try {
+        $this->conn->beginTransaction();
+
+        if ($aksi === 'setuju') {
+            $pbrStatus     = 'Lunas';
+            $pbrConfirmed  = 1;
+            $bkgStatus     = 'Diterima';
+        } else {
+            $pbrStatus     = 'Gagal';
+            $pbrConfirmed  = 0;
+            $bkgStatus     = 'Batal';
+        }
+        $queryPbr = "
+            UPDATE pembayaran 
             SET 
-                PbrStatus = :PbrStatus,
-                PbrConfirmed = :PbrConfirmed,
+                PbrStatus = ?,
+                PbrConfirmed = ?,
                 UpdatedAt = NOW()
-            WHERE IDPembayaran = :IDPembayaran
+            WHERE IDPembayaran = ?
         ";
 
-        $stmt = $this->conn->prepare($query);
+        $stmt1 = $this->conn->prepare($queryPbr);
+        $stmt1->execute([$pbrStatus, $pbrConfirmed, $idPembayaran]);
 
-        // Sanitasi
-        $this->IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
-        $this->PbrStatus = htmlspecialchars(strip_tags($this->PbrStatus));
-        $this->PbrConfirmed = htmlspecialchars(strip_tags($this->PbrConfirmed));
+        $queryGetBooking = "SELECT IDBooking FROM pembayaran WHERE IDPembayaran = ?";
+        $stmtGet = $this->conn->prepare($queryGetBooking);
+        $stmtGet->execute([$idPembayaran]);
+        $idBooking = $stmtGet->fetchColumn();
 
-        // Bind
-        $stmt->bindParam(':IDPembayaran', $this->IDPembayaran);
-        $stmt->bindParam(':PbrStatus', $this->PbrStatus);
-        $stmt->bindParam(':PbrConfirmed', $this->PbrConfirmed);
+        if (!$idBooking) {
+            throw new Exception("ID Booking tidak ditemukan.");
+        }
 
-        return $stmt->execute();
+        // 3. Update tabel booking
+        $queryBooking = "UPDATE booking 
+                         SET BkgStatus = ?, 
+                             UpdatedAt = NOW() 
+                         WHERE IDBooking = ?";
+        $stmt2 = $this->conn->prepare($queryBooking);
+        $stmt2->execute([$bkgStatus, $idBooking]);
+
+        $this->conn->commit();
+        return true;
+
+    } catch (Exception $e) {
+        $this->conn->rollBack();
+        error_log("Error updateStatusDanBooking: " . $e->getMessage());
+        return false;
     }
-
+}
     // =============================
     // DELETE DATA
     // =============================

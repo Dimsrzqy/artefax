@@ -360,7 +360,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Bank Tujuan</span>
-                                            <span class="info-value">BCA a/n PT Artefax</span>
+                                            <span class="info-value"><?= htmlspecialchars($p['PbrMetode']) ?></span>
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Waktu Kirim</span>
@@ -376,10 +376,10 @@ unset($_SESSION['success'], $_SESSION['error']);
                                             <i class="fas fa-eye"></i> Detail
                                         </a>
                                         <div>
-                                            <button class="btn-action btn-setuju" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'Sukses')">
+                                            <button class="btn-action btn-setuju" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'setuju')">
                                                 <i class="fas fa-check"></i> Setuju
                                             </button>
-                                            <button class="btn-action btn-tolak" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'Gagal')">
+                                            <button class="btn-action btn-tolak" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'tolak')">
                                                 <i class="fas fa-times"></i> Tolak
                                             </button>
                                         </div>
@@ -412,57 +412,57 @@ unset($_SESSION['success'], $_SESSION['error']);
             <p id="modalMessage"></p>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
             <button type="button" id="btnKonfirmasi" class="btn btn-primary">Ya, Lanjutkan</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button> 
         </div>
     </div>
 </div>
 
     <script>
-        let currentId, currentStatus;
+        const modalOverlay = document.getElementById('modalKonfirmasi');
+let currentId = null;
 
-function konfirmasiAksi(id, status) {
-    currentId = id;
-    currentStatus = status;
+function konfirmasiAksi(id, aksi) {
+    currentId = id; 
 
-    const isSetuju = status === 'Sukses';
-    const header = document.getElementById('modalHeader');
+  const header = document.getElementById('modalHeader');
     const title = document.getElementById('modalTitle');
     const message = document.getElementById('modalMessage');
+    const btnKonfirmasi = document.getElementById('btnKonfirmasi');
 
-    if (isSetuju) {
+    if (aksi === 'setuju') {
         header.className = 'modal-header setuju';
         title.textContent = 'Setujui Pembayaran';
-        message.innerHTML = 'Setujui pembayaran ini? Status akan menjadi <strong>Sukses</strong>.';
+        message.innerHTML = 'Setujui pembayaran ini?<br>Status pembayaran menjadi <strong>Lunas</strong>.';
+        btnKonfirmasi.textContent = 'Ya, Setujui';
     } else {
         header.className = 'modal-header tolak';
         title.textContent = 'Tolak Pembayaran';
-        message.innerHTML = 'Tolak pembayaran ini? Status akan menjadi <strong>Gagal</strong>.';
+        message.innerHTML = 'Tolak pembayaran ini?<br>Status pembayaran menjadi <strong>Gagal</strong>.';
+        btnKonfirmasi.textContent = 'Ya, Tolak';
     }
+    
 
-    document.getElementById('modalKonfirmasi').style.display = 'flex';
+    btnKonfirmasi.onclick = () => prosesKonfirmasi(aksi);
+
+    modalOverlay.style.display = 'flex';
+}
+
+function prosesKonfirmasi(aksi) {
+    if (!currentId) return;
+    window.location.href = `proses_konfirmasi.php?id=${currentId}&aksi=${aksi}`;
 }
 
 function closeModal() {
-    document.getElementById('modalKonfirmasi').style.display = 'none';
-}
-
-// === PERUBAHAN PALING PENTING ===
-const modalOverlay = document.getElementById('modalKonfirmasi');
-
+    modalOverlay.style.display = 'none';
+    currentId = null;
+} 
 modalOverlay.addEventListener('click', function(e) {
-    // Hanya tutup kalau klik tepat di backdrop (bukan di dalam dialog)
-    if (e.target === modalOverlay) {
+  if (e.target === modalOverlay) {
         closeModal();
     }
 });
-// ====================================
-
-// Tombol Ya, Lanjutkan
-document.getElementById('btnKonfirmasi').addEventListener('click', function() {
-    window.location.href = `proses_konfirmasi.php?id=${currentId}&status=${currentStatus === 'Sukses' ? 'Sukses' : 'Gagal'}`;
-});
-    </script>
+</script>
 
     <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>

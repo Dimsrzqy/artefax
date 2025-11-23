@@ -49,7 +49,7 @@ class PaketJasa {
     // READ (TAMPIL SEMUA DATA)
     // =============================
     public function readAll() {
-        $query = "SELECT IDPaket, PaketNama, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus 
+        $query = "SELECT IDPaket, PaketNama, PaketDirGbr, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus 
                   FROM " . $this->table . " 
                   ORDER BY CreatedAt DESC";
         $stmt = $this->conn->prepare($query);

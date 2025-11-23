@@ -8,7 +8,7 @@ $conn = $db->getConnection();
 
 // Inisialisasi class
 $paket = new PaketJasa($conn);
-$paketList = $paket->readAll(); // Nanti akan tampilkan data
+$paketList = $paket->readAll(); 
 
 // Feedback
 $success_message = $_SESSION['success_message'] ?? '';
@@ -65,185 +65,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
     <!-- azia CSS -->
     <link rel="stylesheet" href="../css/azia.css" />
-    <!-- Custom Table & Modal Style -->
-    <style>
-        .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        margin-top: 20px;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        font-size: 14px;
-    }
-
-        .tombol-aksi {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-    }
-    .custom-table th,
-    .custom-table td {
-        border: 1px solid #ddd;
-        padding: 12px 15px;
-        text-align: left;
-    }
-
-    .custom-table th {
-        background-color: #3366ff;
-        color: white;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 13px;
-    }
-
-    .custom-table tbody tr:nth-child(even) {
-        background-color: #f8f9fa;
-    }
-
-    .custom-table tbody tr:hover {
-        background-color: #fff3cd;
-    }
-
-    .badge-active { background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .badge-inactive { background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-
-    .table-container {
-        overflow-x: auto;
-        border-radius: 10px;
-    }
-
-    .alert {
-        padding: 12px 16px;
-        border-radius: 6px;
-        margin-bottom: 20px;
-    }
-    
-    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-
-        /* Modal */
-        .modal {
-        display: none;
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.6);
-        z-index: 9999 !important;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        overflow: auto;
-    }
-
-    .modal-dialog {
-        background: white;
-        border-radius: 12px;
-        width: 100%;
-        max-width: 560px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-        position: relative;
-        animation: fadeIn 0.3s ease;
-        pointer-events: auto !important;
-    }
-
-    .modal * {
-        pointer-events: auto !important;
-    }
-
-    .modal input,
-    .modal select,
-    .modal textarea,
-    .modal button {
-        pointer-events: auto !important;
-        user-select: auto !important;
-        cursor: auto !important;
-    }
-
-    .modal input:focus,
-    .modal select:focus,
-    .modal textarea:focus {
-        outline: 2px solid #3366ff;
-    }
-
-    .modal-header {
-        padding: 15px 20px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header h5 {
-        margin: 0;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .modal-body {
-        padding: 20px;
-    }
-
-    .modal-footer {
-        padding: 15px 20px;
-        border-top: 1px solid #eee;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .close-btn {
-        background: none;
-        border: none;
-        font-size: 28px;
-        cursor: pointer;
-        color: #aaa;
-        font-weight: bold;
-    }
-
-    .close-btn:hover {
-        color: #333;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 14px;
-        transition: border 0.2s;
-    }
-
-    .form-control:focus {
-        border-color: #3366ff;
-        box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.1);
-    }
-
-    .btn {
-        padding: 8px 16px;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-primary {
-        background-color: #3366ff;
-        color: white;
-        border: none;
-    }
-
-    .btn-secondary {
-        background-color: #6c757d;
-        color: white;
-        border: none;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    </style>
+    <link rel="stylesheet" href="css/form-layanan.css">
+  
   </head>
   <body>
 <div class="az-header">
@@ -407,6 +230,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <tr>
                                     <th width="5%">No</th>
                                     <th>Layanan</th>
+                                    <th>Gambar</th>
                                     <th>Kategori</th>
                                     <th>Harga</th>
                                     <th>Durasi</th>
@@ -422,6 +246,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                             <strong><?= htmlspecialchars($p['PaketNama']) ?></strong><br>
                                             <small class="text-muted"><?= htmlspecialchars(substr($p['PaketDeskripsi'], 0, 60)) ?>...</small>
                                         </td>
+                                        <td class="text-center">
+                                          <?php if (!empty($p['PaketDirGbr'])): ?>
+                                              <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
+                                                      data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
+                                                      data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
+                                                  <i class="fas fa-image"></i> Detail
+                                              </button>
+                                          <?php else: ?>
+                                              <span class="text-muted">—</span>
+                                          <?php endif; ?>
+                                      </td>
                                         <td><?= htmlspecialchars($p['PaketKategori']) ?></td>
                                         <td>Rp <?= number_format($p['PaketHarga'], 0, ',', '.') ?></td>
                                         <td><?= htmlspecialchars($p['PaketDurasi']) ?></td>
@@ -460,6 +295,15 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
+
+    <!-- LIGHTBOX / POPUP GAMBAR -->
+<div id="gambarLightbox" class="lightbox-overlay" style="display:none;">
+    <div class="lightbox-content">
+        <span class="lightbox-close">&times;</span>
+        <h5 id="lightboxJudul" class="mb-3"></h5>
+        <img id="lightboxImg" src="" alt="Gambar Paket" style="max-width:100%; max-height:80vh; border-radius:8px;">
+    </div>
+</div>
 
     <!-- Modal Tambah/Edit -->
     <div id="layananModal" class="modal">
@@ -569,6 +413,58 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     });
 
     </script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+          const lightbox      = document.getElementById('gambarLightbox');
+          const lightboxImg   = document.getElementById('lightboxImg');
+          const lightboxJudul = document.getElementById('lightboxJudul');
+          const closeBtn      = document.querySelector('.lightbox-close');
+          const basePath      = '/artefax/Paket/img/produk/';
+          
+          // Buka lightbox saat tombol Detail diklik
+          document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
+              btn.addEventListener('click', function () {
+                  const imgFile = this.getAttribute('data-img');
+                  const nama    = this.getAttribute('data-nama');
+                  const fullPath = basePath + imgFile.trim();
+
+                  console.log('Mencoba load gambar:', fullPath);
+                   
+                  lightboxJudul.textContent = nama;
+                  lightboxImg.src = fullPath; 
+                  lightbox.style.display = 'flex';
+
+                  lightboxImg.onerror = function() {
+                  lightboxImg.src = '';
+                  lightboxJudul.textContent = 'Gambar tidak ditemukan!';
+                  console.error('Gagal load:', fullPath);
+              }});
+          });
+
+         
+          closeBtn.onclick = () => {
+              lightbox.style.display = 'none';
+              lightboxImg.src = '';
+          };
+
+         
+          lightbox.onclick = (e) => {
+              if (e.target === lightbox) {
+                  lightbox.style.display = 'none';
+                  lightboxImg.src = '';
+              }
+          };
+
+          // Tutup dengan tombol ESC
+          document.onkeyup = (e) => {
+              if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+                  lightbox.style.display = 'none';
+                  lightboxImg.src = '';
+              }
+          };
+      });
+      </script>
 
         </div><!-- az-content-body -->
       </div><!-- container -->
