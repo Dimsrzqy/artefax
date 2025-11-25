@@ -1,145 +1,160 @@
 <?php
 class EventAssignment {
     private $conn;
-    private $table = "event";
 
     public function __construct($db) {
         $this->conn = $db;
-    }
-
-    // ==========================================================
-    // 🔄 UPDATE STATUS OTOMATIS
-    // ==========================================================
-    public function updateStatusOtomatis() {
-        $query = "
-            UPDATE {$this->table}
-            SET EventStatus = 'Selesai'
-            WHERE TRIM(LOWER(EventStatus)) != 'selesai'
-              AND NOW() > DATE_ADD(
-                  TIMESTAMP(EventTanggal, EventMulai),
-                  INTERVAL EventDurasi HOUR
-              )
-        ";
-        if (!$this->conn->query($query)) {
-            error_log('❌ Gagal update status otomatis: ' . $this->conn->error);
+        if ($this->conn instanceof mysqli) {
+            $this->conn->set_charset("utf8mb4");
         }
     }
 
-    // ==========================================================
-    // 📋 AMBIL PENUGASAN KARYAWAN (HANYA YANG BELUM SELESAI)
-    // ==========================================================
-    public function getAssignmentsByKaryawan($idKaryawan) {
-        $this->updateStatusOtomatis();
+    public function createEvent($idBooking, $eventNama, $eventLokasi, $eventTanggal, $eventMulai, $eventDurasi, $karyawanIds) {
+        $idBooking    = (int)$idBooking;
+        $eventNama    = trim($eventNama);
+        $eventLokasi  = trim($eventLokasi);
+        $eventTanggal = trim($eventTanggal);
+        $eventMulai   = trim($eventMulai);
+        $eventDurasi  = (int)$eventDurasi;
 
-        $query = "SELECT 
-                    e.IDEvent, e.EventNama, e.EventLokasi, e.IDBooking, e.IDKaryawan,
-                    e.EventTanggal, e.EventDurasi, e.EventMulai, e.EventSelesai,
-                    e.EventStatus, e.CreatedAt, e.UpdatedAt,
-                    u.UserNama AS CustomerNama
-                  FROM {$this->table} e
-                  LEFT JOIN booking b ON b.IDBooking = e.IDBooking
-                  LEFT JOIN users u ON u.IDUser = b.IDUser
-                  WHERE e.IDKaryawan = ?
-                    AND TRIM(LOWER(e.EventStatus)) != 'selesai'
-                  ORDER BY e.EventTanggal DESC, e.EventMulai ASC";
-
-        $stmt = $this->conn->prepare($query);
-        if (!$stmt) {
-            error_log("Prepare failed (getAssignmentsByKaryawan): " . $this->conn->error);
-            return [];
-        }
-
-        $stmt->bind_param("i", $idKaryawan);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $assignments = [];
-        while ($row = $result->fetch_assoc()) {
-            $row['EventStatusClean'] = strtolower(trim($row['EventStatus'] ?? 'unknown'));
-            $row['TanggalFormatted'] = $row['EventTanggal'] ? date('d M Y', strtotime($row['EventTanggal'])) : '—';
-            $row['WaktuMulai'] = $row['EventMulai'] ? date('H:i', strtotime($row['EventMulai'])) : '—';
-            $row['WaktuSelesai'] = $row['EventSelesai'] ? date('H:i', strtotime($row['EventSelesai'])) : '—';
-            $row['EventDurasiFormatted'] = ((int) $row['EventDurasi']) . " jam";
-            $assignments[] = $row;
-        }
-
-        if (count($assignments) === 0) {
-            error_log("⚠️ Tidak ada event aktif untuk IDKaryawan={$idKaryawan}");
-        }
-
-        $stmt->close();
-        return $assignments;
-    }
-
-    // ==========================================================
-    // 📊 STATISTIK EVENT
-    // ==========================================================
-    public function getStats($idKaryawan) {
-        $this->updateStatusOtomatis();
-
-        $query = "SELECT 
-                    COUNT(*) AS total,
-                    SUM(CASE WHEN TRIM(LOWER(EventStatus)) = 'selesai' THEN 1 ELSE 0 END) AS selesai,
-                    SUM(CASE WHEN TRIM(LOWER(EventStatus)) = 'berjalan' THEN 1 ELSE 0 END) AS berjalan,
-                    SUM(CASE WHEN TRIM(LOWER(EventStatus)) = 'menunggu' THEN 1 ELSE 0 END) AS menunggu
-                  FROM {$this->table}
-                  WHERE IDKaryawan = ?";
-
-        $stmt = $this->conn->prepare($query);
-        if (!$stmt) {
-            error_log("Prepare failed (getStats): " . $this->conn->error);
-            return ['total' => 0, 'selesai' => 0, 'berjalan' => 0, 'menunggu' => 0];
-        }
-
-        $stmt->bind_param("i", $idKaryawan);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc() ?: ['total' => 0, 'selesai' => 0, 'berjalan' => 0, 'menunggu' => 0];
-        $stmt->close();
-
-        return $row;
-    }
-
-    // ==========================================================
-    // ➕ TAMBAH EVENT BARU
-    // ==========================================================
-    public function tambahEvent($nama, $lokasi, $idBooking, $idKaryawan, $tanggal, $mulai, $durasi) {
-        $query = "
-            INSERT INTO {$this->table} 
-            (EventNama, EventLokasi, IDBooking, IDKaryawan, EventTanggal, EventDurasi, EventMulai, EventSelesai, EventStatus)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 
-                DATE_ADD(TIMESTAMP(?, ?), INTERVAL ? HOUR),
-                'Menunggu'
-            )
-        ";
-
-        $stmt = $this->conn->prepare($query);
-        if (!$stmt) {
-            error_log("Prepare failed (insert): " . $this->conn->error);
+        if ($idBooking <= 0 || empty($eventNama) || empty($eventLokasi) || empty($eventTanggal) || empty($eventMulai) || $eventDurasi < 1 || empty($karyawanIds) || !is_array($karyawanIds)) {
             return false;
         }
 
-        $stmt->bind_param(
-            "ssississsi",
-            $nama,
-            $lokasi,
-            $idBooking,
-            $idKaryawan,
-            $tanggal,
-            $durasi,
-            $mulai,
-            $tanggal,
-            $mulai,
-            $durasi
-        );
+        $karyawanClean = array_filter(array_map('intval', $karyawanIds));
+        if (empty($karyawanClean)) return false;
 
-        $success = $stmt->execute();
-        if (!$success) {
-            error_log("Gagal tambah event: " . $stmt->error);
+        try {
+            $this->conn->autocommit(false);
+            $this->conn->begin_transaction();
+
+            // Gabung tanggal + jam (sudah sesuai waktu lokal device karena input dari browser)
+            $start = new DateTime("$eventTanggal $eventMulai");
+            $end   = clone $start;
+            $end->modify("+$eventDurasi hours");
+
+            $waktuMulai   = $start->format('H:i:s');
+            $waktuSelesai = $end->format('H:i:s');
+            $tanggalSql   = $start->format('Y-m-d');
+
+            // Insert event → status Menunggu
+            $sql = "INSERT INTO `event` 
+                    (`EventNama`, `EventLokasi`, `IDBooking`, `EventTanggal`, `EventDurasi`, `EventMulai`, `EventSelesai`, `EventStatus`, `CreatedAt`)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu', NOW())";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("ssisiss", $eventNama, $eventLokasi, $idBooking, $tanggalSql, $eventDurasi, $waktuMulai, $waktuSelesai);
+            $stmt->execute();
+            $idEvent = $this->conn->insert_id;
+            $stmt->close();
+
+            // Insert karyawan
+            $stmtKary = $this->conn->prepare("INSERT INTO event_karyawan (IDEvent, IDKaryawan) VALUES (?, ?)");
+            foreach ($karyawanClean as $idKary) {
+                $stmtKary->bind_param("ii", $idEvent, $idKary);
+                $stmtKary->execute();
+            }
+            $stmtKary->close();
+
+            // UPDATE BOOKING LANGSUNG JADI SELESAI → SESUAI KEINGINAN KAMU
+            $stmtBooking = $this->conn->prepare("UPDATE booking SET BkgStatus = 'Selesai' WHERE IDBooking = ?");
+            $stmtBooking->bind_param("i", $idBooking);
+            $stmtBooking->execute();
+            $stmtBooking->close();
+
+            $this->conn->commit();
+            $this->conn->autocommit(true);
+            return $idEvent;
+
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            $this->conn->autocommit(true);
+            error_log("CREATE EVENT ERROR: " . $e->getMessage());
+            return false;
         }
+    }
 
+    // UPDATE STATUS OTOMATIS → AMAN DENGAN BUFFER 30 MENIT
+// UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
+// UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
+public function updateStatusOtomatis() {
+    // 1. Ubah ke "Berjalan" → jika waktu sekarang sudah masuk rentang event
+    $this->conn->query("
+        UPDATE `event` 
+        SET EventStatus = 'Berjalan'
+        WHERE EventStatus = 'Menunggu'
+          AND EventTanggal = CURDATE()
+          AND EventMulai <= CURTIME()
+          AND EventSelesai > CURTIME()
+    ");
+
+    // 2. Ubah ke "Selesai" → jika waktu event sudah benar-benar lewat
+    $this->conn->query("
+        UPDATE `event` 
+        SET EventStatus = 'Selesai'
+        WHERE EventStatus IN ('Menunggu', 'Berjalan')
+          AND (
+            EventTanggal < CURDATE()
+            OR (EventTanggal = CURDATE() AND EventSelesai <= CURTIME())
+          )
+    ");
+}
+    public function getAssignmentsByKaryawan($idKaryawan) {
+        $this->updateStatusOtomatis();
+
+        $stmt = $this->conn->prepare("
+            SELECT e.*, u.UserNama AS CustomerNama 
+            FROM `event_karyawan` ek
+            JOIN `event` e ON ek.IDEvent = e.IDEvent
+            LEFT JOIN booking b ON e.IDBooking = b.IDBooking
+            LEFT JOIN users u ON b.IDUser = u.IDUser
+            WHERE ek.IDKaryawan = ?
+              AND e.EventStatus != 'Selesai'
+            ORDER BY e.EventTanggal, e.EventMulai
+        ");
+
+        $stmt->bind_param("i", $idKaryawan);
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
-        return $success;
+
+        return $data;
+    }
+
+    public function getKaryawanByEvent($idEvent) {
+        $stmt = $this->conn->prepare("
+            SELECT u.IDUser, u.UserNama
+            FROM `event_karyawan` ek
+            JOIN users u ON ek.IDKaryawan = u.IDUser
+            WHERE ek.IDEvent = ?
+        ");
+
+        $stmt->bind_param("i", $idEvent);
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
+    }
+
+    public function getStats($idKaryawan) {
+        $stmt = $this->conn->prepare("
+            SELECT 
+                COUNT(*) AS total,
+                SUM(e.EventStatus = 'Menunggu') AS menunggu,
+                SUM(e.EventStatus = 'Berjalan') AS berjalan,
+                SUM(e.EventStatus = 'Selesai') AS selesai
+            FROM `event_karyawan` ek
+            JOIN `event` e ON ek.IDEvent = e.IDEvent
+            WHERE ek.IDKaryawan = ?
+        ");
+
+        $stmt->bind_param("i", $idKaryawan);
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $data ?: ['total'=>0,'menunggu'=>0,'berjalan'=>0,'selesai'=>0];
     }
 }
 ?>

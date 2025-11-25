@@ -1,80 +1,36 @@
 <?php
+// checkout.php
 session_start();
-if (isset($_SESSION['success_checkout'])) :
-?>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    Swal.fire({
-        title: "Berhasil!",
-        text: "<?php echo $_SESSION['success_checkout']; ?>",
-        icon: "success",
-        timer: 2000,
-        showConfirmButton: false,
-    });
-});
-</script>
-<?php
-unset($_SESSION['success_checkout']);
-endif;
-?>
-<?php
-include 'config/koneksi.php'; // Pastikan file ini ada dan mendefinisikan $pdo
-session_start();
+include __DIR__ . '/../config/koneksi.php'; // sesuaikan path jika perlu
 
-// Get cart items from session
-$cart_items = $_SESSION['cart'] ?? [];
+// Ambil user dari session (fallback jika struktur berbeda)
+$userId = $_SESSION['user']['IDUser'] ?? $_SESSION['IDUser'] ?? null;
+$userName = $_SESSION['user']['Nama'] ?? $_SESSION['nama'] ?? ($_SESSION['username'] ?? '');
 
-// Calculate totals
-$subtotal = 0;
-foreach ($cart_items as $item) {
-    $subtotal += $item['price'] * $item['quantity'];
+// Ambil cart dari session (harus terisi oleh logic add-to-cart)
+$cart = $_SESSION['cart'] ?? []; // setiap item: id, name, price, quantity, jenis('alat'|'paket'), image
+
+// Hitung total dan deteksi apakah hanya alat / hanya paket / campuran
+$total = 0.0;
+$hasAlat = false;
+$hasPaket = false;
+foreach ($cart as $it) {
+    $qty = (int)($it['quantity'] ?? $it['qty'] ?? 1);
+    $price = (float)($it['price'] ?? $it['harga'] ?? 0);
+    $total += $price * $qty;
+    $jenis = strtolower($it['jenis'] ?? '');
+    if ($jenis === 'alat' || ($it['tipe'] ?? '') === 'alat') $hasAlat = true;
+    if ($jenis === 'paket' || ($it['tipe'] ?? '') === 'paket') $hasPaket = true;
 }
+$onlyAlat = $hasAlat && !$hasPaket;
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    try {
-        // Sanitize input
-        $data = [
-            'first_name' => trim($_POST['first_name'] ?? ''),
-            'last_name' => trim($_POST['last_name'] ?? ''),
-            'company' => trim($_POST['company'] ?? ''),
-            'address' => trim($_POST['address'] ?? ''),
-            'city' => trim($_POST['city'] ?? ''),
-            'country' => trim($_POST['country'] ?? ''),
-            'postcode' => trim($_POST['postcode'] ?? ''),
-            'phone' => trim($_POST['phone'] ?? ''),
-            'email' => trim($_POST['email'] ?? ''),
-            'notes' => trim($_POST['notes'] ?? ''),
-            'shipping_method' => $_POST['shipping'] ?? 'free',
-            'payment_method' => $_POST['payment'] ?? 'bank',
-            'total_amount' => $subtotal
-        ];
+// simple rupiah formatter
+function rupiah($n){ return 'Rp ' . number_format((float)$n,0,',','.'); }
 
-        // Basic validation
-        if (empty($data['first_name']) || empty($data['last_name']) || empty($data['address']) || empty($data['email'])) {
-            throw new Exception("Please fill in all required fields.");
-        }
-
-        // Insert order
-        $sql = "INSERT INTO orders (first_name, last_name, company, address, city, country, 
-                postcode, phone, email, notes, shipping_method, payment_method, total_amount) 
-                VALUES (:first_name, :last_name, :company, :address, :city, :country,
-                :postcode, :phone, :email, :notes, :shipping_method, :payment_method, :total_amount)";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($data);
-
-        // Clear cart and set success message
-        unset($_SESSION['cart']);
-        $_SESSION['success_checkout'] = "Order placed successfully!";
-        header('Location: checkoutproses.php');
-        exit;
-    } catch (Exception $e) {
-        $_SESSION['error_checkout'] = $e->getMessage();
-        header('Location: checkout.php'); // Redirect back to show error
-        exit;
-    }
-}
+// Read flash messages
+$success = $_SESSION['success_checkout'] ?? null;
+$error = $_SESSION['error_checkout'] ?? null;
+unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -104,6 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <!-- Template Stylesheet -->
     <link href="css/style.css" rel="stylesheet">
+
+    <!-- jQuery & SweetAlert -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -180,156 +140,249 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </div>
 <!-- Navbar End -->
 
-    <!-- Modal Search Start -->
-    <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content rounded-0">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Search by keyword</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body d-flex align-items-center">
-                    <div class="input-group w-75 mx-auto d-flex">
-                        <input type="search" class="form-control p-3" placeholder="keywords" aria-describedby="search-icon-1">
-                        <span id="search-icon-1" class="input-group-text p-3"><i class="fa fa-search"></i></span>
-                    </div>
-                </div>
-            </div>
+<!-- ============================================
+     NOTIFIKASI: SUCCESS
+     ============================================ -->
+<?php if($success): ?>
+<script>
+document.addEventListener('DOMContentLoaded', ()=> {
+  Swal.fire({
+    icon:'success',
+    title:'Berhasil',
+    text: <?= json_encode($success) ?>,
+    timer:2000,
+    showConfirmButton:false
+  });
+});
+</script>
+<?php endif; ?>
+
+<!-- ============================================
+     NOTIFIKASI: ERROR
+     ============================================ -->
+<?php if($error): ?>
+<script>
+document.addEventListener('DOMContentLoaded', ()=> {
+  Swal.fire({
+    icon:'error',
+    title:'Gagal',
+    text: <?= json_encode($error) ?>
+  });
+});
+</script>
+<?php endif; ?>
+
+
+<!-- ============================================
+     CONTAINER FORM CHECKOUT
+     ============================================ -->
+<div class="container py-5" style="margin-top:80px;">
+  <h2>Checkout</h2>
+
+  <!-- Nama user -->
+  <p>Halo <strong><?= htmlspecialchars($userName ?: 'Pengunjung') ?></strong>. Lengkapi data pemesanan.</p>
+
+  
+  <!-- FORM UTAMA -->
+  <form id="checkoutForm" action="process_checkout.php" method="POST">
+
+    <!-- Kirim user ID ke backend -->
+    <input type="hidden" name="user_id" value="<?= htmlspecialchars($userId) ?>">
+
+    <div class="row">
+
+      <!-- ============================================
+           BAGIAN KIRI — FORM DATA PEMESAN
+           ============================================ -->
+      <div class="col-lg-7">
+
+        <!-- Nama user / readonly -->
+        <div class="mb-3">
+          <label class="form-label">Nama (sesuai akun)</label>
+          <input type="text" class="form-control" name="name"
+          value="<?= htmlspecialchars($userName) ?>" readonly>
         </div>
-    </div>
-    <!-- Modal Search End -->
 
-    <!-- Single Page Header start -->
-    <div class="container-fluid page-header py-5">
-        <h1 class="text-center text-white display-6">Checkout</h1>
-        <ol class="breadcrumb justify-content-center mb-0">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item"><a href="#">Pages</a></li>
-            <li class="breadcrumb-item active text-white">Checkout</li>
-        </ol>
-    </div>
-    <!-- Single Page Header End -->
+        <!-- ALAMAT ACARA — auto disable jika sewa alat -->
+        <div class="mb-3">
+          <label class="form-label">
+            Alamat lokasi acara 
+            <small class="text-muted">(dinonaktifkan bila hanya sewa alat)</small>
+          </label>
 
-    <!-- Checkout Page Start -->
-    <div class="container-fluid py-5">
-        <div class="container py-5">
-            <h1 class="mb-4">Billing details</h1>
-            <form action="" method="POST">
-                <div class="row g-5">
-                    <div class="col-md-12 col-lg-6 col-xl-7">
-                        <div class="row">
-                            <div class="col-md-12 col-lg-6">
-                                <div class="form-item w-100">
-                                    <label class="form-label my-3">First Name<sup>*</sup></label>
-                                    <input type="text" name="first_name" required class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-md-12 col-lg-6">
-                                <div class="form-item w-100">
-                                    <label class="form-label my-3">Last Name<sup>*</sup></label>
-                                    <input type="text" name="last_name" required class="form-control">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Company Name</label>
-                            <input type="text" name="company" class="form-control">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Address <sup>*</sup></label>
-                            <input type="text" name="address" required class="form-control" placeholder="House Number Street Name">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Town/City<sup>*</sup></label>
-                            <input type="text" name="city" required class="form-control">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Country<sup>*</sup></label>
-                            <input type="text" name="country" required class="form-control">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Postcode/Zip<sup>*</sup></label>
-                            <input type="text" name="postcode" required class="form-control">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Mobile<sup>*</sup></label>
-                            <input type="tel" name="phone" required class="form-control">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label my-3">Email Address<sup>*</sup></label>
-                            <input type="email" name="email" required class="form-control">
-                        </div>
-                        <div class="form-check my-3">
-                            <input type="checkbox" class="form-check-input" id="Account-1" name="Accounts" value="Accounts">
-                            <label class="form-check-label" for="Account-1">Create an account?</label>
-                        </div>
-                        <hr>
-                        <div class="form-check my-3">
-                            <input class="form-check-input" type="checkbox" id="Address-1" name="Address" value="Address">
-                            <label class="form-check-label" for="Address-1">Ship to a different address?</label>
-                        </div>
-                        <div class="form-item">
-                            <textarea name="notes" class="form-control" spellcheck="false" cols="30" rows="11" placeholder="Order Notes (Optional)"></textarea>
-                        </div>
-                    </div>
-                    <div class="col-md-12 col-lg-6 col-xl-5">
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Name</th>
-                                        <th>Price</th>
-                                        <th>Qty</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($cart_items as $item): ?>
-                                    <tr>
-                                        <td>
-                                            <img src="<?= htmlspecialchars($item['image']); ?>" 
-                                                 class="img-fluid rounded-circle" 
-                                                 style="width: 90px; height: 90px;" alt="">
-                                        </td>
-                                        <td><?= htmlspecialchars($item['name']); ?></td>
-                                        <td>$<?= number_format($item['price'], 2); ?></td>
-                                        <td><?= $item['quantity']; ?></td>
-                                        <td>$<?= number_format($item['price'] * $item['quantity'], 2); ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                    <tr>
-                                        <td colspan="4" class="text-end">Subtotal:</td>
-                                        <td>$<?= number_format($subtotal, 2); ?></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Payment Methods -->
-                        <div class="payment-methods mt-4">
-                            <div class="form-check mb-3">
-                                <input type="radio" name="payment" value="bank" checked class="form-check-input" id="bank">
-                                <label class="form-check-label" for="bank">Direct Bank Transfer</label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <input type="radio" name="payment" value="paypal" class="form-check-input" id="paypal">
-                                <label class="form-check-label" for="paypal">PayPal</label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <input type="radio" name="payment" value="cod" class="form-check-input" id="cod">
-                                <label class="form-check-label" for="cod">Cash on Delivery</label>
-                            </div>
-                        </div>
-
-                        <!-- Place Order Button -->
-                        <button type="submit" class="btn btn-primary w-100 mt-4">Place Order</button>
-                    </div>
-                </div>
-            </form>
+          <!-- Jika hanya sewa alat → disabled -->
+          <textarea id="alamatField" name="alamat"
+            class="form-control" rows="3"
+            <?= $onlyAlat ? 'disabled' : 'required' ?>
+            placeholder="Alamat lokasi acara / penyewaan"></textarea>
         </div>
-    </div>
-    <!-- Checkout Page End -->
+
+        <!-- JAMINAN + NOMOR HP -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Jaminan (opsi)</label>
+            <select name="jaminan" class="form-select">
+              <option value="">-- Pilih (opsional) --</option>
+              <option value="KTP">KTP</option>
+              <option value="SIM">SIM</option>
+              <option value="STNK">STNK</option>
+            </select>
+            <small class="text-muted">Kolom opsional dan bisa dimatikan kapan saja.</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Nomor HP</label>
+            <input type="tel" name="phone" class="form-control"
+            placeholder="08xxxxxxxxxx" required>
+          </div>
+        </div>
+
+
+        <!-- TANGGAL MULAI / SELESAI -->
+        <div class="row g-3 mt-3">
+          <div class="col-md-6">
+            <label class="form-label">Tanggal Mulai acara</label>
+            <input type="datetime-local" name="tgl_mulai" class="form-control" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Tanggal Selesai acara</label>
+            <input type="datetime-local" name="tgl_selesai" class="form-control" required>
+          </div>
+        </div>
+
+
+        <!-- PEMBAYARAN: DP atau Lunas -->
+        <div class="mt-3">
+          <label class="form-label">Pembayaran</label>
+
+          <!-- Opsi DP -->
+          <div class="form-check">
+            <input class="form-check-input paymentOpt" type="radio"
+            name="payment" id="pay_dp" value="dp"
+            <?= (!isset($_POST['payment']) || $_POST['payment']==='dp') ? 'checked' : '' ?>>
+            <label class="form-check-label" for="pay_dp">
+              DP 50% (Pelunasan saat acara)
+            </label>
+          </div>
+
+          <!-- Opsi Lunas -->
+          <div class="form-check">
+            <input class="form-check-input paymentOpt" type="radio"
+            name="payment" id="pay_full" value="lunas"
+            <?= (isset($_POST['payment']) && $_POST['payment']==='lunas') ? 'checked' : '' ?>>
+            <label class="form-check-label" for="pay_full">
+              Lunas
+            </label>
+          </div>
+
+          <!-- Keterangan DP -->
+          <small id="dpNote" class="form-text text-muted mt-1">
+            Jika memilih DP, sistem akan menghitung 50% dari total.
+          </small>
+        </div>
+
+
+        <!-- CATATAN -->
+        <div class="mt-4">
+          <label class="form-label">Catatan / Deskripsi (opsional)</label>
+          <textarea name="deskripsi" class="form-control" rows="4"></textarea>
+        </div>
+
+      </div> <!-- end col kiri -->
+
+
+
+      <!-- ============================================
+           BAGIAN KANAN — RINGKASAN PESANAN
+           ============================================ -->
+      <div class="col-lg-5">
+
+        <h5>Ringkasan Pesanan</h5>
+
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr><th>Produk</th><th>Qty</th><th class="text-end">Subtotal</th></tr>
+            </thead>
+
+            <tbody>
+
+              <?php if(empty($cart)): ?>
+                <tr><td colspan="3">Keranjang kosong.</td></tr>
+
+              <?php else: ?>
+
+              <!-- LOOP PRODUK DALAM CART -->
+              <?php foreach($cart as $it):
+                $qty   = (int)($it['quantity'] ?? $it['qty'] ?? 1);
+                $price = (float)($it['price'] ?? 0);
+                $line  = $price * $qty;
+              ?>
+              <tr>
+                <td style="max-width:180px;">
+                  <div class="d-flex align-items-center">
+
+                    <!-- Gambar produk -->
+                    <?php $img = htmlspecialchars($it['image'] ?? ''); ?>
+                    <?php if($img): ?>
+                      <img src="<?= $img ?>" style="width:56px;height:56px;object-fit:cover;margin-right:8px">
+                    <?php endif; ?>
+
+                    <!-- Nama + Jenis -->
+                    <div>
+                      <div><?= htmlspecialchars($it['name']) ?></div>
+                      <div class="text-muted" style="font-size:0.8rem">
+                        <?= htmlspecialchars($it['jenis'] ?? ($it['tipe'] ?? '')) ?>
+                      </div>
+                    </div>
+
+                  </div>
+                </td>
+
+                <td><?= $qty ?></td>
+                <td class="text-end"><?= rupiah($line) ?></td>
+              </tr>
+              <?php endforeach; ?>
+
+              <?php endif; ?>
+
+              <!-- TOTAL FULL -->
+              <tr>
+                <td colspan="2" class="text-end"><strong>Total:</strong></td>
+                <td class="text-end">
+                    <strong id="totalFull"><?= rupiah($total) ?></strong>
+                </td>
+              </tr>
+
+              <!-- TOTAL DP (Hidden awalnya) -->
+              <tr id="dpRow" style="display:none;">
+                <td colspan="2" class="text-end"><strong>DP 50%:</strong></td>
+                <td class="text-end">
+                    <strong id="totalDp"><?= rupiah($total * 0.5) ?></strong>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tombol submit -->
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary w-100">
+            Konfirmasi Checkout
+          </button>
+          <a href="shop.php" class="btn btn-outline-secondary w-100 mt-2">
+            Kembali ke Shop
+          </a>
+        </div>
+
+      </div> <!-- end col kanan -->
+
+    </div> <!-- end row -->
+  </form>
+</div>
+
 <!-- Footer Start -->
 <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
     <div class="container py-5">
@@ -434,9 +487,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <!-- Template Javascript -->
 <script src="js/main.js"></script>
-</body>
 
-</html>
+<!-- ============================================
+     SCRIPT JAVASCRIPT
+============================================ -->
+<script>
+$(function(){
+
+  // -----------------------------
+  // Tampilkan DP Row jika payment = DP
+  // -----------------------------
+  function updateDpVisibility(){
+    const payment = $('input[name=payment]:checked').val();
+    if(payment === 'dp'){
+      $('#dpRow').show();
+    } else {
+      $('#dpRow').hide();
+    }
+  }
+
+  updateDpVisibility();
+  $('input[name=payment]').on('change', updateDpVisibility);
+
+
+  // -----------------------------
+  // Jika hanya sewa alat → disable alamat
+  // -----------------------------
+  var onlyAlat = <?= $onlyAlat ? 'true' : 'false' ?>;
+
+  if(onlyAlat){
+    $('#alamatField')
+      .prop('disabled', true)
+      .attr('placeholder','(Dinonaktifkan karena hanya sewa alat)');
+  } else {
+    $('#alamatField').prop('disabled', false);
+  }
+
+
+  // -----------------------------
+  // Saat submit, cart tidak dikirim,
+  // karena process_checkout membaca dari session.
+  // -----------------------------
+  $('#checkoutForm').on('submit', function(){
+    return true;
+  });
+
+});
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -471,3 +568,6 @@ if (isset($_SESSION['error_checkout'])) {
     unset($_SESSION['error_checkout']);
 }
 ?>
+
+</body>
+</html>

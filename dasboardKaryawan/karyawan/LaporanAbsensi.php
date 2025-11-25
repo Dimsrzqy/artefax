@@ -68,125 +68,39 @@ if ($stmt) {
       color: #1a1a1a;
     }
 
-    /* ===== HEADER ===== */
-    .az-header {
-      background: #fff;
-      border-bottom: 1px solid #e4e6eb;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      z-index: 1000;
+    .az-header { 
+      background: #fff; border-bottom: 1px solid #e4e6eb; padding: 10px 0; 
+      position: fixed; width: 100%; top: 0; left: 0; z-index: 1000; 
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
+    .az-header .container { display: flex; justify-content: space-between; align-items: center; }
+    .az-logo { font-size: 20px; font-weight: 700; color: #4b4be5; text-decoration: none; }
 
-    .az-header .container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      height: 100%;
+    /* Navbar aktif */
+    .az-header-menu .nav-link { position: relative; color: #1a1a1a; font-weight: 500; padding: 0 15px; }
+    .az-header-menu .nav-link::after {
+      content: ""; position: absolute; bottom: -6px; left: 50%; width: 0; height: 3px;
+      background: #4b4be5; transition: all 0.3s; transform: translateX(-50%);
     }
+    .az-header-menu .nav-item.nav-link::after,
+    .az-header-menu .nav-link:hover::after { width: 70%; }
 
-    .az-logo {
-      font-size: 20px;
-      font-weight: 700;
-      color: #4b4be5;
-      text-decoration: none;
-    }
-
-    /* NAV MENU */
-    .az-header-menu .nav {
-      display: flex;
-      align-items: center;
-      gap: 30px;
-      list-style: none;
-    }
-
-    .az-header-menu .nav-link {
-      position: relative;
-      font-weight: 500;
-      font-size: 14px;
-      color: #1a1a1a;
-      text-decoration: none;
-      transition: all 0.25s ease;
-    }
-
-    .az-header-menu .nav-link:hover,
-    .az-header-menu .nav-item.active .nav-link {
-      color: #4b4be5;
-    }
-
-    .az-header-menu::after {
-      content: "";
-      position: absolute;
-      bottom: -6px;
-      left: 50%;
-      width: 0%;
-      height: 2px;
-      background-color: #4b4be5;
-      transform: translateX(-50%);
-      transition: all 0.25s ease-in-out;
-      border-radius: 2px;
-    }
-
-    .az-header-menu .nav-item.active .nav-link::after,
-    .az-header-menu .nav-link:hover::after {
-      width: 100%;
-    }
-
-    .az-header-right img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-    }
-
-    .az-content {
-      margin-top: 90px;
-    }
-
-    .az-content-body {
-      display: flex;
-      gap: 30px;
-    }
-
-    /* SIDEBAR */
+    .az-content { margin-top: 85px; }
+    .az-content-body { display: flex; gap: 30px; }
+    
+    /* Sidebar */
     .az-content-left {
-      background: #fff;
-      border: 1px solid #e4e6eb;
-      border-radius: 10px;
-      padding: 20px;
-      flex: 0 0 220px;
-      height: fit-content;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+      background: #fff; border: 1px solid #e4e6eb; border-radius: 10px; padding: 20px;
+      flex: 0 0 220px; box-shadow: 0 3px 10px rgba(0,0,0,0.05);
     }
+    .az-content-left label { 
+      font-weight: 600; font-size: 13px; color: #333; 
+      border-bottom: 2px solid #007bff; padding-bottom: 5px; 
+      display: block; margin-bottom: 15px; 
+    }
+    .az-content-left .nav-link { display: block; padding: 8px 0; color: #444; font-size: 14px; }
+    .az-content-left .nav-link:hover, .az-content-left .nav-link.active { color: #007bff; font-weight: 600; }
 
-    .az-content-left label {
-      font-weight: 600;
-      font-size: 13px;
-      color: #333;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
-      display: block;
-    }
-
-    .az-content-left .nav-link {
-      color: #444;
-      font-size: 14px;
-      display: block;
-      margin: 8px 0;
-      transition: 0.3s;
-    }
-
-    .az-content-left .nav-link:hover,
-    .az-content-left .nav-link.active {
-      color: #007bff;
-      font-weight: 600;
-      padding-left: 4px;
-    }
 
     /* TABEL */
     .table-wrapper {
@@ -291,7 +205,7 @@ if ($stmt) {
       </ul>
     </div>
     <div class="az-header-right">
-      <img src="../img/faces/face1.jpg" alt="user">
+      <img src="../img/faces/face1.jpg" alt="user" style="width:35px;height:35px;border-radius:50%;">
     </div>
   </div>
 </div>
@@ -300,11 +214,13 @@ if ($stmt) {
 <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
   <div class="container">
     <div class="az-content-body">
+
+      <!-- SIDEBAR -->
       <div class="az-content-left">
         <label>Menu Karyawan</label>
         <nav class="nav flex-column">
-          <a href="LaporanPenugasan.php" class="nav-link">Laporan Penugasan</a>
-          <a href="LaporanAbsensi.php" class="nav-link active">Laporan Absensi</a>
+          <a href="LaporanPenugasan.php" class="nav-link active">Laporan Penugasan Selesai</a>
+          <a href="LaporanAbsensi.php" class="nav-link">Laporan Absensi</a>
         </nav>
       </div>
 

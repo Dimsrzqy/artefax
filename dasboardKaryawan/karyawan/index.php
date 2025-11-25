@@ -1,12 +1,10 @@
 <?php
 session_start();
-
 // === CEK LOGIN ===
 if (!isset($_SESSION['user']) || $_SESSION['user']['UserRole'] !== 'Karyawan') {
     header('Location: ../../View/login.php');
     exit();
 }
-
 $userData = $_SESSION['user'];
 $idKaryawan = $userData['IDUser'];
 $namaKaryawan = $userData['UserNama'];
@@ -14,29 +12,25 @@ $namaKaryawan = $userData['UserNama'];
 // === KONEKSI DB ===
 require_once '../../config/koneksi.php';
 require_once '../../class/EventAssignment.php';
-
 $db = new Database();
 $conn = $db->getConnection();
 if ($conn === null) die("Database gagal terkoneksi!");
 
 $assignment = new EventAssignment($conn);
-$assignments = $assignment->getAssignmentsByKaryawan($idKaryawan);
+$assignments = $assignment->getAssignmentsByKaryawan($idKaryawan); // otomatis update status
 $stats = $assignment->getStats($idKaryawan);
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Penugasan - <?= htmlspecialchars($namaKaryawan) ?> | Artefax</title>
-
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../css/karyawan.css" rel="stylesheet">
 </head>
 <body class="az-body">
-
     <!-- HEADER -->
     <div class="az-header">
         <div class="container">
@@ -104,15 +98,34 @@ $stats = $assignment->getStats($idKaryawan);
                             </thead>
                             <tbody>
                                 <?php foreach ($assignments as $t): ?>
-                                <tr>
-                                    <td><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
-                                    <td><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></td>
-                                    <td><?= htmlspecialchars($t['CustomerNama'] ?? '—') ?></td>
-                                    <td><?= $t['TanggalFormatted'] ?><br><strong><?= $t['WaktuMulai'] ?></strong></td>
-                                    <td><?= $t['TanggalFormatted'] ?><br><strong><?= $t['WaktuSelesai'] ?></strong></td>
-                                    <td><?= $t['EventDurasiFormatted'] ?></td>
-                                    <td><span class="badge-kotak status-<?= $t['EventStatusClean'] ?>"><?= ucfirst($t['EventStatus']) ?></span></td>
-                                </tr>
+                                    <?php
+                                        // Format tanggal Indonesia (contoh: 18 Nov 2025)
+                                        $dateObj = new DateTime($t['EventTanggal']);
+                                        $tanggalFormatted = $dateObj->format('d M Y');
+
+                                        // Format durasi biar bagus
+                                        $durasiJam = (int)$t['EventDurasi'];
+                                        if ($durasiJam >= 24) {
+                                            $hari = floor($durasiJam / 24);
+                                            $jam  = $durasiJam % 24;
+                                            $durasiTxt = $hari . ' hari' . ($jam > 0 ? ' ' . $jam . ' jam' : '');
+                                        } else {
+                                            $durasiTxt = $durasiJam . ' jam';
+                                        }
+
+                                        // Status untuk class badge
+                                        $status = strtolower(trim($t['EventStatus']));
+                                        $statusClean = ($status === 'menunggu') ? 'menunggu' : (($status === 'berjalan') ? 'berjalan' : 'selesai');
+                                    ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
+                                        <td><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></td>
+                                        <td><?= htmlspecialchars($t['CustomerNama'] ?? '—') ?></td>
+                                        <td><?= $tanggalFormatted ?><br><strong><?= substr($t['EventMulai'], 0, 5) ?></strong></td>
+                                        <td><?= $tanggalFormatted ?><br><strong><?= substr($t['EventSelesai'], 0, 5) ?></strong></td>
+                                        <td><?= $durasiTxt ?></td>
+                                        <td><span class="badge-kotak status-<?= $statusClean ?>"><?= ucfirst($t['EventStatus']) ?></span></td>
+                                    </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
