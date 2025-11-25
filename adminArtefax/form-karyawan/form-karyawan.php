@@ -211,6 +211,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     </nav>
                     <label>Menu Karyawan</label>
                     <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
+                    <a href="form-booking-active.php" class="nav-link">Booking Paket</a>
                     <a href="form-penugasan.php" class="nav-link">Penugasan</a>
                 </div>
             </div>

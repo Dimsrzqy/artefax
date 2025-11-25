@@ -125,6 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         .sudah-absen-notif {background:rgba(16,185,129,0.15);border:2px solid #10b981;color:#065f46;}
         .sudah-absen-notif h3 {color:#10b981;}
         .sudah-absen-notif i {font-size:70px;color:#10b981;margin:20px 0;}
+
+        /* PERBAIKAN MIRROR - Hanya tambahan ini */
+        #kamera, #preview {
+            transform: scaleX(-1);
+            display: block;
+        }
     </style>
 </head>
 <body class="az-body">
@@ -251,21 +257,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             }, () => Swal.fire("Error", "Gagal mendeteksi lokasi", "warning"));
         };
 
-        // Foto
+        // FOTO - PERBAIKAN UTAMA: hasil foto TIDAK mirror
         document.getElementById('ambilFoto').onclick = e => {
             e.preventDefault();
             const video = document.getElementById('kamera');
             const canvas = document.getElementById('preview');
             const ctx = canvas.getContext('2d');
+
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Karena video sudah di-mirror oleh CSS, kita gambar ULANG dengan flip lagi
+            // agar hasilnya menjadi NORMAL (tidak terbalik)
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+
+            // Reset transform supaya toDataURL tidak error
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
             document.getElementById('foto').value = canvas.toDataURL('image/jpeg', 0.8);
         };
     </script>
     <?php endif; ?>
 
-    <!-- Notifikasi hasil absensi (harus di paling bawah agar Swal sudah ter-load) -->
+    <!-- Notifikasi hasil absensi -->
     <?php if (!empty($absenBerhasil)): ?>
     <script>
         Swal.fire({
