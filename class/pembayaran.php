@@ -30,11 +30,21 @@ class Pembayaran {
     public function __construct($db) {
         $this->conn = $db;
     }
-
+    // =============================
+    // Total DATA
+    // =============================
+    public function TotalBooking() {
+        $query = "SELECT COUNT(*) AS total FROM {$this->table}";
+        $result = $this->conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            return (int)$row['total'];
+        }
+        return 0;
+    }
     // =============================
     // READ DATA
     // =============================
-    public function readJoin() {
+    public function readJoin($limit = null, $offset = null) {
         $query = "
             SELECT 
                 p.IDPembayaran,
@@ -72,12 +82,20 @@ class Pembayaran {
                     ORDER BY p.CreatedAt DESC
             ";
 
-        $result = $this->conn->query($query); 
-        
-        if ($result && $result->num_rows > 0) {
-            return $result->fetch_all(MYSQLI_ASSOC);
+        if ($limit !== null && $offset !== null) {
+            $query .= " LIMIT ? OFFSET ?";
         }
-        return [];
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) return [];
+
+        if ($limit !== null && $offset !== null) {
+            $stmt->bind_param("ii", $limit, $offset);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
     // =============================
     // READ Status Pending

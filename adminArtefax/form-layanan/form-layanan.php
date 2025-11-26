@@ -8,7 +8,18 @@ $conn = $db->getConnection();
 
 // Inisialisasi class
 $paket = new PaketJasa($conn);
-$paketList = $paket->readAll(); 
+/* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
+$limit  = 10;
+$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
+// Pastikan method ini ADA di class User
+$totalPaket = $paket->TotalLayanan();           
+$totalPages    = ceil($totalPaket / $limit);
+
+// Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
+$paketList  = $paket->readAll($limit, $offset);  
+/* ================================================================== */
 
 // Feedback
 $success_message = $_SESSION['success_message'] ?? '';
@@ -195,7 +206,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         
             <label>Layanan</label>
             <nav class="nav flex-column">
-              <a href="../form-layanan/daftarlayanan.html" class="nav-link active">Daftar Layanan</a> 
+              <a href="../form-layanan/daftarlayanan.html" class="nav-link active">Daftar Paket Jasa</a> 
             </nav>
         </div><!-- component-item -->
 
@@ -203,12 +214,12 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <div class="az-content-body pd-lg-l-40 d-flex flex-column">
           <div class="az-content-breadcrumb">
             <span>Layanan</span>
-            <span>Daftar Layanan</span>
+            <span>Daftar Paket Jasa</span>
           </div>
-          <h2 class="az-content-title">Daftar Layanan</h2>
+          <h2 class="az-content-title">Daftar Paket Jasa</h2>
 
           <div class="d-flex justify-content-between align-items-center mg-b-20">
-                    <p class="mg-b-0">Kelola semua paket layanan di sini.</p>
+                    <p class="mg-b-0">Kelola semua paket jasa di sini.</p>
                     <button class="btn btn-primary" onclick="openTambahPopup()">
                         <i class="fas fa-plus"></i> Tambah Layanan
                     </button>
@@ -229,7 +240,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                             <thead>
                                 <tr>
                                     <th width="5%">No</th>
-                                    <th>Layanan</th>
+                                    <th>Nama Paket</th>
                                     <th>Gambar</th>
                                     <th>Kategori</th>
                                     <th>Harga</th>
@@ -282,6 +293,43 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        <?php if ($totalPages > 1): ?>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
+                                </li>
+
+                                <?php
+                                $start = max(1, $page - 2);
+                                $end   = min($totalPages, $page + 2);
+
+                                if ($start > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+
+                                for ($i = $start; $i <= $end; $i++) {
+                                    $active = ($i == $page) ? 'active' : '';
+                                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                                }
+
+                                if ($end < $totalPages) {
+                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                                }
+                                ?>
+
+                                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
+                        </div>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <div class="text-center py-5 bg-light rounded">
                             <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
@@ -306,20 +354,46 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 </div>
 
     <!-- Modal Tambah/Edit -->
-    <div id="layananModal" class="modal">
-        <div class="modal-dialog">
+    <div id="layananModal" class="modal" style="display:none;">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
             <div class="modal-header">
                 <h5 id="modalTitle">Tambah Layanan</h5>
                 <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-            <form id="formLayanan" action="tambah_layanan.php" method="POST">
+            <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="idPaket" name="IDPaket">
+                    <input type="hidden" id="gambarLama" name="gambarLama">
 
                     <div class="form-group">
-                        <label>Nama Layanan <span class="text-danger">*</span></label>
+                        <label>Nama Paket <span class="text-danger">*</span></label>
                         <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
                     </div>
+                    
+                    <div class="form-group">
+                      <label>Gambar <span class="text-danger">*</span></label>
+
+                      <!-- Preview Gambar -->
+                      <div id="previewContainer" class="text-center mb-4" style="display:none;">
+                          <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
+                          <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
+                      </div>
+
+                      <!-- Field + Tombol Hapus + Browse -->
+                      <div class="input-group">
+                          <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
+                          <button type="button" class="btn btn-sm btn-danger position-absolute end-0 me-1" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
+                              <i class="fas fa-times" style="font-size:12px;"></i>
+                          </button>
+                          <label for="gambar_layanan" class="btn btn-primary">
+                              <i class="fas fa-camera me-1"></i> Browse
+                          </label>
+                      </div>
+
+                      <input type="file" name="gambar" id="gambar_layanan" accept="image/*" style="display:none;">
+                      <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG, JPEG, PNG, GIF</small>
+                  </div>
 
                     <div class="form-group">
                         <label>Kategori <span class="text-danger">*</span></label>
@@ -360,6 +434,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>
+           </div>
         </div>
     </div>
 
@@ -367,13 +442,20 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         const modal = document.getElementById('layananModal');
         const form = document.getElementById('formLayanan');
 
+        document.addEventListener('DOMContentLoaded', function() {
+            modal.style.display = 'none'; // PAKSA TUTUP
+            document.body.style.overflow = 'auto'; // biar scroll balik normal
+        });
         function openTambahPopup() {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
         form.action = 'tambah_layanan.php';
         form.reset();
         document.getElementById('idPaket').value = '';
-        modal.style.display = 'flex';
-        setTimeout(() => form.PaketNama.focus(), 100);
+        document.getElementById('gambarLama').value = '';
+        document.getElementById('fileNameDisplay').value = '';
+        document.getElementById('btnHapusGambar').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'none';
+        modal.style.display = 'flex'; 
     }
 
         function openEditPopup(data) {
@@ -386,14 +468,60 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         form.PaketHarga.value = data.PaketHarga;
         form.PaketDurasi.value = data.PaketDurasi;
         form.PaketStatus.value = data.PaketStatus;
-        modal.style.display = 'flex';
-        setTimeout(() => form.PaketNama.focus(), 100);
+        
+        const imgPath = data.PaketDirGbr;
+        if (imgPath && imgPath.trim() !== '') {
+            document.getElementById('gambarLama').value = imgPath;
+            previewImg.src = '../../../Paket/img/produk/' + imgPath;
+            previewContainer.style.display = 'block';
+            document.getElementById('previewText').textContent = 'Gambar saat ini';
+            document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();
+            document.getElementById('btnHapusGambar').style.display = 'block';
+    } else {
+            resetGambarPreview();
+    }
+        modal.style.display = 'flex'; 
     }
 
         function closeModal() {
         modal.style.display = 'none';
-        form.reset();
+        document.body.style.overflow = 'auto';
     }
+    function resetGambarPreview() {
+        document.getElementById('gambar_layanan').value = '';
+        document.getElementById('fileNameDisplay').value = '';
+        document.getElementById('btnHapusGambar').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'none';
+    }
+
+    // Preview Gambar Baru
+    document.getElementById('gambar_layanan').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) {
+        resetGambarPreview();
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran maksimal 5MB!');
+        resetGambarPreview();
+        return;
+    }
+
+    document.getElementById('fileNameDisplay').value = file.name;
+    document.getElementById('btnHapusGambar').style.display = 'block';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('previewContainer').style.display = 'block';
+        document.getElementById('previewText').textContent = 'Preview gambar baru';
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('btnHapusGambar').addEventListener('click', resetGambarPreview);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
     // Tutup saat klik luar
     window.addEventListener('click', function(e) {
@@ -401,7 +529,11 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             closeModal();
         }
     });
-
+    form.addEventListener('submit', function() {
+        setTimeout(function() {
+            closeModal();
+        }, 100);
+    });
     // Pastikan input bisa diketik
     document.addEventListener('DOMContentLoaded', function() {
         const inputs = modal.querySelectorAll('input, select, textarea, button');
