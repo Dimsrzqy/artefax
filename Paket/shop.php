@@ -157,6 +157,8 @@ $placeholder = '../img/noimage.png'; // siapkan placeholder
 function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
 }
+// cart
+$cart = $_SESSION['cart'] ?? [];
 
 ?>
 <!DOCTYPE html>
@@ -239,13 +241,13 @@ function rupiah($n) {
                             data-bs-toggle="modal" data-bs-target="#searchModal">
                         <i class="fas fa-search text-primary"></i>
                     </button>
-
-                    <!-- Keranjang -->
-                    <a href="#" class="position-relative me-4 my-auto">
-                        <i class="fa fa-shopping-bag fa-2x"></i>
-                        <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1"
-                              style="top: -5px; left: 15px; height: 20px; min-width: 20px;">3</span>
-                    </a>
+                  <!-- Keranjang -->
+                  <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
+                  <i class="fa fa-shopping-bag fa-2x"></i>
+                  <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1" style="top: -5px; left: 15px; height: 20px; min-width: 20px;" id="cart-count">
+                        3
+                  </span>
+                  </a>
 
                     <!-- Akun -->
                     <a href="#" class="my-auto">
@@ -276,6 +278,40 @@ function rupiah($n) {
   </div>
 </div>
 <!-- ========== Modal Search End ========== -->
+
+<!-- Modal keranjang -->
+<?php include 'cart_modal.php'; ?>
+
+<!-- Script AJAX untuk update qty & hapus item -->
+<script>
+document.querySelectorAll('.qtyUpdate').forEach(el => {
+    el.addEventListener('change', () => {
+        let index = el.dataset.index;
+        let qty = el.value;
+
+        fetch('cart_update.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'index=' + index + '&qty=' + qty
+        }).then(() => location.reload());
+    });
+});
+
+document.querySelectorAll('.deleteItem').forEach(btn => {
+    btn.addEventListener('click', () => {
+        let index = btn.dataset.index;
+        fetch('cart_delete.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'index=' + index
+        }).then(() => location.reload());
+    });
+});
+</script>
+
+</body>
+</html>
+
 
 <!-- ========== Header / Breadcrumb ========== -->
 <div class="container-fluid page-header py-5" style="margin-top:90px;">
@@ -516,6 +552,76 @@ function rupiah($n) {
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+ <!--Keranjang -->
+<div class="modal fade" id="cartModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Keranjang Belanja</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <?php if (empty($cart)): ?>
+            <p class="text-center text-muted">Keranjang masih kosong.</p>
+        <?php else: ?>
+
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Produk</th>
+              <th>Harga</th>
+              <th>Qty</th>
+              <th>Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php 
+            $grand = 0; 
+            foreach ($cart as $idx => $c):
+              $subtotal = $c['qty'] * $c['price'];
+              $grand += $subtotal;
+          ?>
+            <tr>
+              <td><?= htmlspecialchars($c['name']) ?></td>
+              <td>Rp <?= number_format($c['price'],0,',','.') ?></td>
+
+              <td width="100">
+                <input type="number" min="1" class="form-control qtyUpdate" 
+                       data-index="<?= $idx ?>" value="<?= $c['qty'] ?>">
+              </td>
+
+              <td>Rp <?= number_format($subtotal,0,',','.') ?></td>
+
+              <td>
+                <button class="btn btn-danger btn-sm deleteItem" data-index="<?= $idx ?>">
+                    <i class="fa fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+
+        <h5 class="text-end">Total: <strong>Rp <?= number_format($grand,0,',','.') ?></strong></h5>
+
+        <?php endif; ?>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <?php if (!empty($cart)): ?>
+            <a href="checkout.php" class="btn btn-success">Checkout</a>
+        <?php endif; ?>
+      </div>
+
     </div>
   </div>
 </div>
