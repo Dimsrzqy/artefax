@@ -113,6 +113,7 @@ unset($_SESSION['success'], $_SESSION['error']);
 
         /* Modal Konfirmasi - Fixed & Lebih Jelas */
         #modalKonfirmasi {
+            pointer-events: none;
             display: none;
             position: fixed;
             top: 0; left: 0;
@@ -130,6 +131,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             max-width: 420px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             animation: fadeIn 0.3s ease;
+            pointer-events: auto;
         }
         .modal-header {
             padding: 15px 20px;
@@ -213,14 +215,14 @@ unset($_SESSION['success'], $_SESSION['error']);
                             $tglKirim = date('d M Y, H:i', strtotime($p['CreatedAt'])) . ' WIB';
                             $tglBooking = date('d M Y', strtotime($p['BkgTglMulai'] ?? $p['CreatedAt']));
                             ?>
-                            <div class="col-md-6 col-lg-4">
-                                <div class="card-payment">
+                            <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $p['IDPembayaran'] ?>">
+                            <div class="card-pending shadow-sm h-100">
                                     <div class="card-header">
                                         BOOK#<?= str_pad($p['IDBooking'], 6, '0', STR_PAD_LEFT) ?>
                                     </div>
                                     <div class="card-body">
                                         <div class="info-row">
-                                            <span class="info-label">Nama Pemesan</span>
+                                            <span class="info-label">Nama Pelanggan</span>
                                             <span class="info-value"><?= htmlspecialchars($namaCustomer) ?></span>
                                         </div>
                                         <div class="info-row">
@@ -237,7 +239,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Bank Tujuan</span>
-                                            <span class="info-value">BCA a/n PT Artefax</span>
+                                            <span class="info-value"><?= htmlspecialchars($p['PbrMetode']) ?></span>
                                         </div>
                                         <div class="info-row">
                                             <span class="info-label">Waktu Kirim</span>
@@ -253,10 +255,10 @@ unset($_SESSION['success'], $_SESSION['error']);
                                             <i class="fas fa-eye"></i> Detail
                                         </a>
                                         <div>
-                                            <button class="btn-action btn-setuju" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'Sukses')">
+                                            <button class="btn-action btn-setuju" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'setuju')">
                                                 <i class="fas fa-check"></i> Setuju
                                             </button>
-                                            <button class="btn-action btn-tolak" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'Gagal')">
+                                            <button class="btn-action btn-tolak" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'tolak')">
                                                 <i class="fas fa-times"></i> Tolak
                                             </button>
                                         </div>
@@ -279,61 +281,67 @@ unset($_SESSION['success'], $_SESSION['error']);
     </div>
 
     <!-- Modal Konfirmasi -->
-    <div id="modalKonfirmasi">
-        <div class="modal-dialog">
-            <div class="modal-header" id="modalHeader">
-                <h5 id="modalTitle">Konfirmasi</h5>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="modalMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
-                <button id="btnKonfirmasi" class="btn btn-primary">Ya, Lanjutkan</button>
-            </div>
+    <div id="modalKonfirmasi" class="modal-overlay">
+    <div class="modal-dialog">
+        <div class="modal-header" id="modalHeader">
+            <h5 id="modalTitle">Konfirmasi</h5>
+            <button type="button" class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="btnKonfirmasi" class="btn btn-primary">Ya, Lanjutkan</button>
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button> 
         </div>
     </div>
+</div>
 
     <script>
-        let currentId, currentStatus;
+        const modalOverlay = document.getElementById('modalKonfirmasi');
+let currentId = null;
 
-        function konfirmasiAksi(id, status) {
-            currentId = id;
-            currentStatus = status;
+function konfirmasiAksi(id, aksi) {
+    currentId = id; 
 
-            const isSetuju = status === 'Sukses';
-            const header = document.getElementById('modalHeader');
-            const title = document.getElementById('modalTitle');
-            const message = document.getElementById('modalMessage');
+  const header = document.getElementById('modalHeader');
+    const title = document.getElementById('modalTitle');
+    const message = document.getElementById('modalMessage');
+    const btnKonfirmasi = document.getElementById('btnKonfirmasi');
 
-            if (isSetuju) {
-                header.className = 'modal-header setuju';
-                title.textContent = 'Setujui Pembayaran';
-                message.innerHTML = 'Setujui pembayaran ini? Status akan menjadi <strong>Sukses</strong>.';
-            } else {
-                header.className = 'modal-header tolak';
-                title.textContent = 'Tolak Pembayaran';
-                message.innerHTML = 'Tolak pembayaran ini? Status akan menjadi <strong>Gagal</strong>.';
-            }
+    if (aksi === 'setuju') {
+        header.className = 'modal-header setuju';
+        title.textContent = 'Setujui Pembayaran';
+        message.innerHTML = 'Setujui pembayaran ini?<br>Status pembayaran menjadi <strong>Lunas</strong>.';
+        btnKonfirmasi.textContent = 'Ya, Setujui';
+    } else {
+        header.className = 'modal-header tolak';
+        title.textContent = 'Tolak Pembayaran';
+        message.innerHTML = 'Tolak pembayaran ini?<br>Status pembayaran menjadi <strong>Gagal</strong>.';
+        btnKonfirmasi.textContent = 'Ya, Tolak';
+    }
+    
 
-            document.getElementById('modalKonfirmasi').style.display = 'flex';
-        }
+    btnKonfirmasi.onclick = () => prosesKonfirmasi(aksi);
 
-        document.getElementById('btnKonfirmasi').onclick = function() {
-            window.location = `proses_konfirmasi.php?id=${currentId}&status=${currentStatus}`;
-        };
+    modalOverlay.style.display = 'flex';
+}
 
-        function closeModal() {
-            document.getElementById('modalKonfirmasi').style.display = 'none';
-        }
+function prosesKonfirmasi(aksi) {
+    if (!currentId) return;
+    window.location.href = `proses_konfirmasi.php?id=${currentId}&aksi=${aksi}`;
+}
 
-        // Tutup saat klik luar
-        window.addEventListener('click', function(e) {
-            const modal = document.getElementById('modalKonfirmasi');
-            if (e.target === modal) closeModal();
-        });
-    </script>
+function closeModal() {
+    modalOverlay.style.display = 'none';
+    currentId = null;
+} 
+modalOverlay.addEventListener('click', function(e) {
+  if (e.target === modalOverlay) {
+        closeModal();
+    }
+});
+</script>
 
     <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>

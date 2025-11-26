@@ -11,7 +11,6 @@ if (!$conn) die("<p style='color:red;'>Koneksi database gagal.</p>");
 $user        = new User($conn);
 $eventAssign = new EventAssignment($conn);
 
-// Update status semua event (opsional tapi bagus)
 $eventAssign->updateStatusOtomatis();
 
 /* ============== BOOKING YANG BELUM PERNAH DIBUATKAN EVENT ============== */
@@ -129,9 +128,45 @@ unset($_SESSION['success_message']);
         .alert { margin:15px 0; padding:12px; border-radius:5px; }
         .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
         .alert-danger { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+        /* TABEL 100% SAMA DENGAN BOOKING AKTIF */
+        .table {
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            margin-bottom:0;
+        }
+        .table thead th {
+            background:#3366ff !important;
+            color:#ffffff !important;
+            font-weight:600;
+            text-transform:uppercase;
+            font-size:13px;
+            letter-spacing:0.5px;
+            border:none;
+            padding:15px 20px;
+        }
+        .table tbody td {
+            padding:18px 20px;
+            vertical-align:middle;
+            border-top:1px solid #eef2f7;
+            font-size:14px;
+        }
+        .table tbody tr:hover {
+            background:#f1f5f9;
+            transition:all 0.2s ease;
+        }
+        .table tbody tr:last-child td {
+            border-bottom:none;
+        }
+        .table-responsive {
+            border-radius:12px;
+            overflow:hidden;
+        }
     </style>
 </head>
 <body class="az-body">
+<!-- HEADER & SIDEBAR TETAP SAMA -->
 <div class="az-header">
       <div class="container">
         <div class="az-header-left">
@@ -260,8 +295,9 @@ unset($_SESSION['success_message']);
                         <a href="form-user.php" class="nav-link">Daftar User</a>
                     </nav>
                     <label>Menu Karyawan</label>
-                    <a href="form-karyawan.php" class="nav-link active">Daftar Karyawan</a>
-                    <a href="form-penugasan.php" class="nav-link">Penugasan</a>
+                    <a href="form-karyawan.php" class="nav-link">Daftar Karyawan</a>
+                    <a href="form-booking-active.php" class="nav-link">Booking Paket</a>
+                    <a href="form-penugasan.php" class="nav-link active">Penugasan</a>
                 </div>
             </div>
 
@@ -270,7 +306,7 @@ unset($_SESSION['success_message']);
                     <span>Data</span>
                     <span>Karyawan</span>
                 </div>
-                  <h2 class="az-content-title">Penugasan</h2>
+                  <h2 class="az-content-title">Penugasan Event</h2>
 
             <?php if ($success_message): ?>
                 <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
@@ -325,7 +361,7 @@ unset($_SESSION['success_message']);
     </div>
 </div>
 
-<!-- MODAL -->
+<!-- MODAL — Nama Event & Lokasi jadi readonly -->
 <div id="popupForm" class="modal">
     <div class="modal-dialog modal-lg">
         <div class="modal-content p-4 bg-white rounded shadow">
@@ -337,19 +373,19 @@ unset($_SESSION['success_message']);
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label>Nama Event</label>
-                        <input type="text" name="event_nama" id="event_nama" class="form-control" required>
+                        <input type="text" name="event_nama" id="event_nama" class="form-control" readonly>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-12 mb-3">
                         <label>Lokasi</label>
-                        <input type="text" name="event_lokasi" id="event_lokasi" class="form-control" required>
+                        <input type="text" name="event_lokasi" id="event_lokasi" class="form-control" readonly>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-4  mb-3">
                         <label>Tanggal Event</label>
                         <input type="date" name="event_tanggal" id="event_tanggal" class="form-control" required>
                     </div>
@@ -391,15 +427,23 @@ function openPopup(id, namaPaket, alamat, tgl) {
     $('#event_lokasi').val(alamat);
     $('#event_tanggal').val(tgl);
 
-    // WAKTU LOKAL DEVICE → dibulatkan ke 5 menit terdekat (super rapi!)
+    // AMBIL JAM SEKARANG DARI DEVICE (LOCAL TIME) — DIBULATKAN KE 5 MENIT TERDEKAT
     const now = new Date();
-    const roundedMinutes = Math.round(now.getMinutes() / 5) * 5;
-    const rounded = new Date(now);
-    rounded.setMinutes(roundedMinutes);
-    rounded.setSeconds(0);
+    const minutes = now.getMinutes();
+    const remainder = minutes % 5;
+    const roundedMinutes = remainder < 3 ? minutes - remainder : minutes + (5 - remainder);
 
-    const jam   = String(rounded.getHours()).padStart(2, '0');
-    const menit = String(rounded.getMinutes()).padStart(2, '0');
+    if (roundedMinutes >= 60) {
+        now.setHours(now.getHours() + 1);
+        now.setMinutes(0);
+    } else {
+        now.setMinutes(roundedMinutes);
+    }
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+
+    const jam   = String(now.getHours()).padStart(2, '0');
+    const menit = String(now.getMinutes()).padStart(2, '0');
     $('#event_mulai').val(`${jam}:${menit}`);
 
     $('#event_durasi').val('8');
@@ -415,16 +459,16 @@ function openPopup(id, namaPaket, alamat, tgl) {
     }, 150);
 }
 
-    function closePopup() {
-        $("#popupForm").fadeOut(200);
-        if ($('#selectKaryawan').data('select2')) {
-            $('#selectKaryawan').select2('destroy');
-        }
+function closePopup() {
+    $("#popupForm").fadeOut(200);
+    if ($('#selectKaryawan').data('select2')) {
+        $('#selectKaryawan').select2('destroy');
     }
+}
 
-    $(document).on('click', function(e) {
-        if ($(e.target).is('#popupForm')) closePopup();
-    });
+$(document).on('click', function(e) {
+    if ($(e.target).is('#popupForm')) closePopup();
+});
 </script>
 
 </body>
