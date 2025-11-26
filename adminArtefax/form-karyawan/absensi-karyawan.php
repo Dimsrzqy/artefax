@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-90680653-2"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'UA-90680653-2');
+        window.dataLayer = window.dataLayer || [];
+
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+        gtag('config', 'UA-90680653-2');
     </script>
 
     <meta charset="utf-8">
@@ -34,8 +38,9 @@
 
     <!-- CSS EKSTERNAL BARU -->
     <link rel="stylesheet" href="css/absensi-karyawan.css">
-  </head>
-  <body>
+</head>
+
+<body>
 
     <!-- HEADER -->
     <div class="az-header">
@@ -60,10 +65,10 @@
                         <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                       <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
+                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
                     </li>
                     <li class="nav-item">
-                       <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                     <li class="nav-item">
                         <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -155,48 +160,48 @@
 
     <!-- CONTENT -->
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
-      <div class="container">
-        <div class="az-content-left az-content-left-components">
-          <div class="component-item">
-            <label>Karyawan</label>
-            <nav class="nav flex-column">
-              <a href="../form-karyawan/form-karyawan.php" class="nav-link">Karyawan</a>
-              <a href="absensi-karyawan.php" class="nav-link active">Absensi</a>
-            </nav>
-          </div>
-        </div>
+        <div class="container">
+            <div class="az-content-left az-content-left-components">
+                <div class="component-item">
+                    <label>Karyawan</label>
+                    <nav class="nav flex-column">
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link">Karyawan</a>
+                        <a href="absensi-karyawan.php" class="nav-link active">Absensi</a>
+                    </nav>
+                </div>
+            </div>
 
-        <div class="az-content-body pd-lg-l-40 d-flex flex-column">
-          <div class="az-content-breadcrumb">
-            <span>Karyawan</span>
-            <span>Absensi</span>
-          </div>
-          <h2 class="az-content-title">Daftar Absensi Karyawan</h2>
+            <div class="az-content-body pd-lg-l-40 d-flex flex-column">
+                <div class="az-content-breadcrumb">
+                    <span>Karyawan</span>
+                    <span>Absensi</span>
+                </div>
+                <h2 class="az-content-title">Daftar Absensi Karyawan</h2>
 
-          <div class="col-lg-12 mg-t-20" style="max-width: 100%;">
-            <?php
-            require_once __DIR__ . "/../../config/koneksi.php";
-            require_once __DIR__ . "/../../class/Absensi.php";
+                <div class="col-lg-12 mg-t-20" style="max-width: 100%;">
+                    <?php
+                    require_once __DIR__ . "/../../config/koneksi.php";
+                    require_once __DIR__ . "/../../class/Absensi.php";
 
-            $db = new Database();
-            $conn = $db->getConnection();
+                    $db = new Database();
+                    $conn = $db->getConnection();
 
-            if (!$conn) {
-                echo "<div class='alert alert-danger text-center'>Koneksi database gagal.</div>";
-            } else {
-                $absensi = new Absensi($conn);
-                $result = $absensi->tampilSemua();
+                    if (!$conn) {
+                        echo "<div class='alert alert-danger text-center'>Koneksi database gagal.</div>";
+                    } else {
+                        $absensi = new Absensi($conn);
+                        $result = $absensi->tampilSemua();
 
-                if ($result === false) {
-                    echo "<div class='alert alert-warning text-center'>Gagal mengambil data.</div>";
-                } elseif ($result->num_rows === 0) {
-                    echo "<div class='no-data'>
+                        if ($result === false) {
+                            echo "<div class='alert alert-warning text-center'>Gagal mengambil data.</div>";
+                        } elseif ($result->num_rows === 0) {
+                            echo "<div class='no-data'>
                             <i class='typcn typcn-document-text'></i>
                             <p><strong>Belum ada data absensi.</strong></p>
                             <small>Data akan muncul setelah karyawan presensi.</small>
                           </div>";
-                } else {
-                    echo "<table class='custom-table'>
+                        } else {
+                            echo "<table class='custom-table'>
                             <thead>
                                 <tr>
                                     <th>Nama Karyawan</th>
@@ -234,15 +239,16 @@
                                       </tr>";
                             }
 
-                    echo "</tbody></table>";
-                }
-            }
-            ?>
-          </div>
+                            echo "</tbody></table>";
+                        }
+                    }
+                    ?>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- PASTIKAN JS DI AKHIR -->
-  </body>
+</body>
+
 </html>

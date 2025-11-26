@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../../config/koneksi.php'; 
+require_once '../../config/koneksi.php';
 require_once '../../class/Absensi.php';
 
 $db = new Database();
@@ -67,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             $type = strtolower($type[1]);
             $data = base64_decode($data);
             if (!is_dir('../../uploads')) mkdir('../../uploads', 0777, true);
-            $fileName = 'absensi_'.$idKaryawan.'_'.time().'.'.$type;
-            file_put_contents('../../uploads/'.$fileName, $data);
+            $fileName = 'absensi_' . $idKaryawan . '_' . time() . '.' . $type;
+            file_put_contents('../../uploads/' . $fileName, $data);
         } else {
             $fileName = '';
         }
@@ -96,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -110,7 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        .no-event-notif, .sudah-absen-notif {
+        .no-event-notif,
+        .sudah-absen-notif {
             text-align: center;
             padding: 50px 30px;
             background: rgba(255, 255, 255, 0.95);
@@ -118,21 +120,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             border: 2px solid #e2e8f0;
             margin: 30px 0;
             color: #4a5568;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
-        .no-event-notif i {font-size:70px;color:#a0aec0;margin-bottom:20px;}
-        .no-event-notif h3, .sudah-absen-notif h3 {color:#2d3748;font-size:24px;margin-bottom:12px;}
-        .sudah-absen-notif {background:rgba(16,185,129,0.15);border:2px solid #10b981;color:#065f46;}
-        .sudah-absen-notif h3 {color:#10b981;}
-        .sudah-absen-notif i {font-size:70px;color:#10b981;margin:20px 0;}
+
+        .no-event-notif i {
+            font-size: 70px;
+            color: #a0aec0;
+            margin-bottom: 20px;
+        }
+
+        .no-event-notif h3,
+        .sudah-absen-notif h3 {
+            color: #2d3748;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .sudah-absen-notif {
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid #10b981;
+            color: #065f46;
+        }
+
+        .sudah-absen-notif h3 {
+            color: #10b981;
+        }
+
+        .sudah-absen-notif i {
+            font-size: 70px;
+            color: #10b981;
+            margin: 20px 0;
+        }
 
         /* PERBAIKAN MIRROR - Hanya tambahan ini */
-        #kamera, #preview {
+        #kamera,
+        #preview {
             transform: scaleX(-1);
             display: block;
         }
     </style>
 </head>
+
 <body class="az-body">
 
     <!-- HEADER -->
@@ -182,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                         <i class="fas fa-check-circle"></i>
                         <h3>Absensi Sudah Tercatat</h3>
                         <p>Terima kasih <strong><?= htmlspecialchars($namaKaryawan) ?></strong>,<br>
-                        Anda sudah melakukan absensi untuk event:</p>
+                            Anda sudah melakukan absensi untuk event:</p>
                         <h4 style="margin:15px 0;color:#10b981;font-weight:700;"><?= htmlspecialchars($namaEvent) ?></h4>
                         <p>Selamat bekerja!</p>
                     </div>
@@ -223,81 +251,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <script src="../js/azia.js"></script>
 
     <?php if ($adaEventAktif && !$sudahAbsen): ?>
-    <script>
-        // Update waktu lokal tiap detik
-        function updateClientTime() {
-            const now = new Date();
-            const time = now.getFullYear() + '-' +
-                String(now.getMonth()+1).padStart(2,'0') + '-' +
-                String(now.getDate()).padStart(2,'0') + ' ' +
-                String(now.getHours()).padStart(2,'0') + ':' +
-                String(now.getMinutes()).padStart(2,'0') + ':' +
-                String(now.getSeconds()).padStart(2,'0');
-            document.getElementById('client_time').value = time;
-        }
-        setInterval(updateClientTime, 1000);
-        updateClientTime();
+        <script>
+            // Update waktu lokal tiap detik
+            function updateClientTime() {
+                const now = new Date();
+                const time = now.getFullYear() + '-' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(now.getDate()).padStart(2, '0') + ' ' +
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+                document.getElementById('client_time').value = time;
+            }
+            setInterval(updateClientTime, 1000);
+            updateClientTime();
 
-        // Kamera
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(stream => document.getElementById('kamera').srcObject = stream)
-            .catch(err => Swal.fire("Error", "Kamera tidak dapat diakses: " + err.message, "error"));
+            // Kamera
+            navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user"
+                    }
+                })
+                .then(stream => document.getElementById('kamera').srcObject = stream)
+                .catch(err => Swal.fire("Error", "Kamera tidak dapat diakses: " + err.message, "error"));
 
-        // Lokasi
-        document.getElementById('ambilLokasi').onclick = e => {
-            e.preventDefault();
-            if (!navigator.geolocation) return Swal.fire("Error", "Geolocation tidak didukung", "error");
-            navigator.geolocation.getCurrentPosition(pos => {
-                const lat = pos.coords.latitude.toFixed(6);
-                const lon = pos.coords.longitude.toFixed(6);
-                document.getElementById('latitude').value = lat;
-                document.getElementById('longitude').value = lon;
-                document.getElementById('lokasi').textContent = `Latitude: ${lat}, Longitude: ${lon}`;
-                document.getElementById('lokasi').classList.add("detected");
-            }, () => Swal.fire("Error", "Gagal mendeteksi lokasi", "warning"));
-        };
+            // Lokasi
+            document.getElementById('ambilLokasi').onclick = e => {
+                e.preventDefault();
+                if (!navigator.geolocation) return Swal.fire("Error", "Geolocation tidak didukung", "error");
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const lat = pos.coords.latitude.toFixed(6);
+                    const lon = pos.coords.longitude.toFixed(6);
+                    document.getElementById('latitude').value = lat;
+                    document.getElementById('longitude').value = lon;
+                    document.getElementById('lokasi').textContent = `Latitude: ${lat}, Longitude: ${lon}`;
+                    document.getElementById('lokasi').classList.add("detected");
+                }, () => Swal.fire("Error", "Gagal mendeteksi lokasi", "warning"));
+            };
 
-        // FOTO - PERBAIKAN UTAMA: hasil foto TIDAK mirror
-        document.getElementById('ambilFoto').onclick = e => {
-            e.preventDefault();
-            const video = document.getElementById('kamera');
-            const canvas = document.getElementById('preview');
-            const ctx = canvas.getContext('2d');
+            // FOTO - PERBAIKAN UTAMA: hasil foto TIDAK mirror
+            document.getElementById('ambilFoto').onclick = e => {
+                e.preventDefault();
+                const video = document.getElementById('kamera');
+                const canvas = document.getElementById('preview');
+                const ctx = canvas.getContext('2d');
 
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Karena video sudah di-mirror oleh CSS, kita gambar ULANG dengan flip lagi
-            // agar hasilnya menjadi NORMAL (tidak terbalik)
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                // Karena video sudah di-mirror oleh CSS, kita gambar ULANG dengan flip lagi
+                // agar hasilnya menjadi NORMAL (tidak terbalik)
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
 
-            // Reset transform supaya toDataURL tidak error
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
+                // Reset transform supaya toDataURL tidak error
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-            document.getElementById('foto').value = canvas.toDataURL('image/jpeg', 0.8);
-        };
-    </script>
+                document.getElementById('foto').value = canvas.toDataURL('image/jpeg', 0.8);
+            };
+        </script>
     <?php endif; ?>
 
     <!-- Notifikasi hasil absensi -->
     <?php if (!empty($absenBerhasil)): ?>
-    <script>
-        Swal.fire({
-            icon: 'success',
-            title: 'Absensi Berhasil!',
-            text: 'Terima kasih, absensi Anda untuk event <?= addslashes($namaEvent) ?> telah tercatat.',
-            timer: 3000,
-            showConfirmButton: false
-        }).then(() => location.reload());
-    </script>
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Absensi Berhasil!',
+                text: 'Terima kasih, absensi Anda untuk event <?= addslashes($namaEvent) ?> telah tercatat.',
+                timer: 3000,
+                showConfirmButton: false
+            }).then(() => location.reload());
+        </script>
     <?php elseif (!empty($errorMsg)): ?>
-    <script>
-        Swal.fire('Gagal', '<?= addslashes($errorMsg) ?>', 'error');
-    </script>
+        <script>
+            Swal.fire('Gagal', '<?= addslashes($errorMsg) ?>', 'error');
+        </script>
     <?php endif; ?>
 
 </body>
+
 </html>

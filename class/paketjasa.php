@@ -1,5 +1,6 @@
 <?php
-class PaketJasa {
+class PaketJasa
+{
     private $conn;
     private $table = "paketjasa";
 
@@ -15,14 +16,16 @@ class PaketJasa {
     public $CreatedAt;
     public $UpdatedAt;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->conn = $db;
     }
 
     // =============================
     // CREATE DATA
     // =============================
-    public function create() {
+    public function create()
+    {
         $query = "INSERT INTO " . $this->table . " 
                   (PaketNama, PaketDirGbr, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus, CreatedAt)
                   VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
@@ -34,7 +37,7 @@ class PaketJasa {
         }
 
         $stmt->bind_param(
-            "ssssiss", 
+            "ssssiss",
             $this->PaketNama,
             $this->PaketDirGbr,
             $this->PaketKategori,
@@ -49,7 +52,8 @@ class PaketJasa {
     // =============================
     // Total Layanan 
     // =============================
-    public function TotalLayanan() {
+    public function TotalLayanan()
+    {
         $query = "SELECT COUNT(*) AS total FROM {$this->table}";
         $result = $this->conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
@@ -60,13 +64,14 @@ class PaketJasa {
     // =============================
     // READ (TAMPIL SEMUA DATA)
     // =============================
-    public function readAll($limit = null, $offset = null) {
+    public function readAll($limit = null, $offset = null)
+    {
         $query = "SELECT IDPaket, PaketNama, PaketDirGbr, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus 
                   FROM " . $this->table . " 
                   ORDER BY CreatedAt ASC";
         if ($limit !== null && $offset !== null) {
             $query .= " LIMIT ? OFFSET ?";
-        }    
+        }
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return [];
 
@@ -83,7 +88,8 @@ class PaketJasa {
     // =============================
     // READ BY ID
     // =============================
-    public function readOne() {
+    public function readOne()
+    {
         $query = "SELECT * FROM " . $this->table . " WHERE IDPaket = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param("i", $this->IDPaket);
@@ -109,7 +115,8 @@ class PaketJasa {
     // =============================
     // UPDATE DATA
     // =============================
-    public function update() {
+    public function update()
+    {
         $query = "UPDATE " . $this->table . " 
                   SET PaketNama = ?, PaketDirGbr = ?, PaketKategori = ?, PaketDeskripsi = ?, 
                       PaketHarga = ?, PaketDurasi = ?, PaketStatus = ?, UpdatedAt = NOW()
@@ -136,7 +143,8 @@ class PaketJasa {
     // =============================
     // DELETE DATA
     // =============================
-    public function delete() {
+    public function delete()
+    {
         $query = "DELETE FROM " . $this->table . " WHERE IDPaket = ?";
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param("i", $this->IDPaket);
@@ -146,7 +154,8 @@ class PaketJasa {
     // =============================
     // SEARCH DATA
     // =============================
-    public function search($keyword) {
+    public function search($keyword)
+    {
         $keyword = "%" . $this->conn->real_escape_string($keyword) . "%";
         $query = "SELECT * FROM " . $this->table . " 
                   WHERE PaketNama LIKE ? OR PaketKategori LIKE ? OR PaketDeskripsi LIKE ?";
@@ -155,4 +164,4 @@ class PaketJasa {
         $stmt->execute();
         return $stmt->get_result();
     }
-}?>
+}

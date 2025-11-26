@@ -22,6 +22,7 @@ $stats = $assignment->getStats($idKaryawan);
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,6 +31,7 @@ $stats = $assignment->getStats($idKaryawan);
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../css/karyawan.css" rel="stylesheet">
 </head>
+
 <body class="az-body">
     <!-- HEADER -->
     <div class="az-header">
@@ -69,10 +71,30 @@ $stats = $assignment->getStats($idKaryawan);
 
                 <!-- STATISTIK -->
                 <div class="row row-sm mg-b-30">
-                    <div class="col-3"><div class="card card-stat bg-menunggu"><h6>Menunggu</h6><h3><?= $stats['menunggu'] ?></h3></div></div>
-                    <div class="col-3"><div class="card card-stat bg-berjalan"><h6>Berjalan</h6><h3><?= $stats['berjalan'] ?></h3></div></div>
-                    <div class="col-3"><div class="card card-stat bg-selesai"><h6>Selesai</h6><h3><?= $stats['selesai'] ?></h3></div></div>
-                    <div class="col-3"><div class="card card-stat bg-total"><h6>Total</h6><h3><?= $stats['total'] ?></h3></div></div>
+                    <div class="col-3">
+                        <div class="card card-stat bg-menunggu">
+                            <h6>Menunggu</h6>
+                            <h3><?= $stats['menunggu'] ?></h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="card card-stat bg-berjalan">
+                            <h6>Berjalan</h6>
+                            <h3><?= $stats['berjalan'] ?></h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="card card-stat bg-selesai">
+                            <h6>Selesai</h6>
+                            <h3><?= $stats['selesai'] ?></h3>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="card card-stat bg-total">
+                            <h6>Total</h6>
+                            <h3><?= $stats['total'] ?></h3>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- TABEL PENUGASAN -->
@@ -99,23 +121,23 @@ $stats = $assignment->getStats($idKaryawan);
                             <tbody>
                                 <?php foreach ($assignments as $t): ?>
                                     <?php
-                                        // Format tanggal Indonesia (contoh: 18 Nov 2025)
-                                        $dateObj = new DateTime($t['EventTanggal']);
-                                        $tanggalFormatted = $dateObj->format('d M Y');
+                                    // Format tanggal Indonesia (contoh: 18 Nov 2025)
+                                    $dateObj = new DateTime($t['EventTanggal']);
+                                    $tanggalFormatted = $dateObj->format('d M Y');
 
-                                        // Format durasi biar bagus
-                                        $durasiJam = (int)$t['EventDurasi'];
-                                        if ($durasiJam >= 24) {
-                                            $hari = floor($durasiJam / 24);
-                                            $jam  = $durasiJam % 24;
-                                            $durasiTxt = $hari . ' hari' . ($jam > 0 ? ' ' . $jam . ' jam' : '');
-                                        } else {
-                                            $durasiTxt = $durasiJam . ' jam';
-                                        }
+                                    // Format durasi biar bagus
+                                    $durasiJam = (int)$t['EventDurasi'];
+                                    if ($durasiJam >= 24) {
+                                        $hari = floor($durasiJam / 24);
+                                        $jam  = $durasiJam % 24;
+                                        $durasiTxt = $hari . ' hari' . ($jam > 0 ? ' ' . $jam . ' jam' : '');
+                                    } else {
+                                        $durasiTxt = $durasiJam . ' jam';
+                                    }
 
-                                        // Status untuk class badge
-                                        $status = strtolower(trim($t['EventStatus']));
-                                        $statusClean = ($status === 'menunggu') ? 'menunggu' : (($status === 'berjalan') ? 'berjalan' : 'selesai');
+                                    // Status untuk class badge
+                                    $status = strtolower(trim($t['EventStatus']));
+                                    $statusClean = ($status === 'menunggu') ? 'menunggu' : (($status === 'berjalan') ? 'berjalan' : 'selesai');
                                     ?>
                                     <tr>
                                         <td><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
@@ -139,4 +161,5 @@ $stats = $assignment->getStats($idKaryawan);
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
 </body>
+
 </html>

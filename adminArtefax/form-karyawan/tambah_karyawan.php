@@ -26,8 +26,10 @@ try {
     $user->UserAlamat   = trim($_POST['Alamat'] ?? '');
 
     // Validasi
-    if (empty($user->UserNama) || empty($user->UserEmail) || empty($user->UserPassword) || 
-        empty($user->UserNoHP) || empty($user->UserAlamat)) {
+    if (
+        empty($user->UserNama) || empty($user->UserEmail) || empty($user->UserPassword) ||
+        empty($user->UserNoHP) || empty($user->UserAlamat)
+    ) {
         $_SESSION['error_message'] = 'Semua kolom wajib diisi.';
         header("Location: form-karyawan.php");
         ob_end_clean();
@@ -61,7 +63,6 @@ try {
     } else {
         $_SESSION['error_message'] = 'Email sudah terdaftar atau gagal menyimpan.';
     }
-
 } catch (Exception $e) {
     error_log("Error tambah karyawan: " . $e->getMessage());
     $_SESSION['error_message'] = 'Terjadi kesalahan sistem.';
@@ -70,4 +71,3 @@ try {
     ob_end_clean();
     exit;
 }
-?>

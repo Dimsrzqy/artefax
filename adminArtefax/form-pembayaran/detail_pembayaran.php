@@ -28,17 +28,33 @@ $customer = $user->getById($bookingData['IDUser']);
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="utf-8">
     <title>Detail Pembayaran #<?= $data['IDPembayaran'] ?></title>
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
     <style>
-        .detail-section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
-        .bukti-img { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: zoom-in; }
-        .bukti-img:hover { opacity: 0.9; }
+        .detail-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .bukti-img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            cursor: zoom-in;
+        }
+
+        .bukti-img:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
+
 <body class="az-body">
     <?php include '../includes/header.php'; ?>
     <div class="az-content pd-y-20">
@@ -82,4 +98,5 @@ $customer = $user->getById($bookingData['IDUser']);
         </div>
     </div>
 </body>
+
 </html>
