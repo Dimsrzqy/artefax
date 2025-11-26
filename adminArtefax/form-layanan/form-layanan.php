@@ -250,7 +250,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php $no = 1; foreach ($paketList as $p): ?>
+                                <?php $no = $offset + 1; foreach ($paketList as $p): ?>
                                     <tr>
                                         <td><?= $no++ ?></td>
                                         <td>
@@ -362,7 +362,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
+                <div class="modal-body modal-body-scroll">
                     <input type="hidden" id="idPaket" name="IDPaket">
                     <input type="hidden" id="gambarLama" name="gambarLama">
 
@@ -443,8 +443,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         const form = document.getElementById('formLayanan');
 
         document.addEventListener('DOMContentLoaded', function() {
-            modal.style.display = 'none'; // PAKSA TUTUP
-            document.body.style.overflow = 'auto'; // biar scroll balik normal
+            modal.style.display = 'none'; 
+            document.body.style.overflow = 'auto'; 
         });
         function openTambahPopup() {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
