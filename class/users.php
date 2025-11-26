@@ -1,5 +1,6 @@
 <?php
-class User {
+class User
+{
     private $conn;
     private $table = "users";
 
@@ -14,14 +15,16 @@ class User {
     public $CreatedAt;
     public $UpdatedAt;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->conn = $db;
     }
 
     /* ==========================================================
        REGISTER USER BARU
     ========================================================== */
-    public function register($forceRole = null) {
+    public function register($forceRole = null)
+    {
         // Cek email sudah ada
         $checkQuery = "SELECT UserEmail FROM {$this->table} WHERE UserEmail = ? LIMIT 1";
         $checkStmt = $this->conn->prepare($checkQuery);
@@ -71,7 +74,8 @@ class User {
     /* ==========================================================
        LOGIN USER
     ========================================================== */
-    public function login() {
+    public function login()
+    {
         $query = "SELECT * FROM {$this->table} WHERE UserEmail = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return false;
@@ -92,7 +96,8 @@ class User {
     /* ==========================================================
        AMBIL USER BY EMAIL
     ========================================================== */
-    public function getUserByEmail($email) {
+    public function getUserByEmail($email)
+    {
         $query = "SELECT * FROM {$this->table} WHERE UserEmail = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return false;
@@ -109,7 +114,8 @@ class User {
     /* ==========================================================
        AMBIL USER BY ID
     ========================================================== */
-    public function getUserByID($id) {
+    public function getUserByID($id)
+    {
         $query = "SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole, CreatedAt, UpdatedAt 
                   FROM {$this->table} WHERE IDUser = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -127,7 +133,8 @@ class User {
     /* ==========================================================
        TOTAL JUMLAH KARYAWAN (UNTUK PAGINATION)
     ========================================================== */
-    public function getTotalKaryawan() {
+    public function getTotalKaryawan()
+    {
         $query = "SELECT COUNT(*) AS total FROM {$this->table} WHERE UserRole = 'Karyawan'";
         $result = $this->conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
@@ -139,7 +146,8 @@ class User {
     /* ==========================================================
        AMBIL KARYAWAN + SUPPORT PAGINATION (INI YANG BARU!)
     ========================================================== */
-    public function getKaryawan($limit = null, $offset = null) {
+    public function getKaryawan($limit = null, $offset = null)
+    {
         $query = "SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole 
                   FROM {$this->table} 
                   WHERE UserRole = 'Karyawan'
@@ -166,7 +174,8 @@ class User {
     /* ==========================================================
        AMBIL SEMUA USER (untuk admin)
     ========================================================== */
-    public function getAllUsers() {
+    public function getAllUsers()
+    {
         $query = "SELECT IDUser, UserNama, UserEmail, UserNoHP, UserAlamat, UserRole, CreatedAt 
                   FROM {$this->table} 
                   ORDER BY CreatedAt DESC";
@@ -178,7 +187,8 @@ class User {
     /* ==========================================================
        UPDATE PROFIL
     ========================================================== */
-    public function updateProfile() {
+    public function updateProfile()
+    {
         $query = "UPDATE {$this->table} 
                   SET UserNama=?, UserEmail=?, UserRole=?, UserNoHP=?, UserAlamat=?, UpdatedAt=NOW() 
                   WHERE IDUser=?";
@@ -211,7 +221,8 @@ class User {
     /* ==========================================================
        HAPUS USER
     ========================================================== */
-    public function deleteUser($id) {
+    public function deleteUser($id)
+    {
         $query = "DELETE FROM {$this->table} WHERE IDUser = ?";
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return false;
@@ -226,7 +237,8 @@ class User {
     /* ==========================================================
        UBAH PASSWORD
     ========================================================== */
-    public function changePassword($newPassword) {
+    public function changePassword($newPassword)
+    {
         $query = "UPDATE {$this->table} SET UserPassword = ?, UpdatedAt = NOW() WHERE IDUser = ?";
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return false;
@@ -239,8 +251,13 @@ class User {
     }
 
     // Reset password token (tetap sama, sudah bagus)
-    public function saveResetToken($email, $token, $expires) { /* ... tetap sama ... */ }
-    public function verifyResetToken($token) { /* ... tetap sama ... */ }
-    public function deleteResetToken($email) { /* ... tetap sama ... */ }
+    public function saveResetToken($email, $token, $expires)
+    { /* ... tetap sama ... */
+    }
+    public function verifyResetToken($token)
+    { /* ... tetap sama ... */
+    }
+    public function deleteResetToken($email)
+    { /* ... tetap sama ... */
+    }
 }
-?>
