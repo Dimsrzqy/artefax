@@ -6,6 +6,7 @@ class PaketJasa {
     // Kolom Paket Jasa
     public $IDPaket;
     public $PaketNama;
+    public $PaketDirGbr;
     public $PaketKategori;
     public $PaketDeskripsi;
     public $PaketHarga;
@@ -23,8 +24,8 @@ class PaketJasa {
     // =============================
     public function create() {
         $query = "INSERT INTO " . $this->table . " 
-                  (PaketNama, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus, CreatedAt)
-                  VALUES (?, ?, ?, ?, ?, ?, NOW())";
+                  (PaketNama, PaketDirGbr, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus, CreatedAt)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $this->conn->prepare($query);
 
@@ -33,8 +34,9 @@ class PaketJasa {
         }
 
         $stmt->bind_param(
-            "sssiss", 
+            "ssssiss", 
             $this->PaketNama,
+            $this->PaketDirGbr,
             $this->PaketKategori,
             $this->PaketDeskripsi,
             $this->PaketHarga,
@@ -44,18 +46,38 @@ class PaketJasa {
 
         return $stmt->execute();
     }
-
+    // =============================
+    // Total Layanan 
+    // =============================
+    public function TotalLayanan() {
+        $query = "SELECT COUNT(*) AS total FROM {$this->table}";
+        $result = $this->conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            return (int)$row['total'];
+        }
+        return 0;
+    }
     // =============================
     // READ (TAMPIL SEMUA DATA)
     // =============================
-    public function readAll() {
+    public function readAll($limit = null, $offset = null) {
         $query = "SELECT IDPaket, PaketNama, PaketDirGbr, PaketKategori, PaketDeskripsi, PaketHarga, PaketDurasi, PaketStatus 
                   FROM " . $this->table . " 
-                  ORDER BY CreatedAt DESC";
+                  ORDER BY CreatedAt ASC";
+        if ($limit !== null && $offset !== null) {
+            $query .= " LIMIT ? OFFSET ?";
+        }    
         $stmt = $this->conn->prepare($query);
+        if (!$stmt) return [];
+
+        if ($limit !== null && $offset !== null) {
+            $stmt->bind_param("ii", $limit, $offset);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
     }
 
     // =============================
@@ -89,7 +111,7 @@ class PaketJasa {
     // =============================
     public function update() {
         $query = "UPDATE " . $this->table . " 
-                  SET PaketNama = ?, PaketKategori = ?, PaketDeskripsi = ?, 
+                  SET PaketNama = ?, PaketDirGbr = ?, PaketKategori = ?, PaketDeskripsi = ?, 
                       PaketHarga = ?, PaketDurasi = ?, PaketStatus = ?, UpdatedAt = NOW()
                   WHERE IDPaket = ?";
 
@@ -97,8 +119,9 @@ class PaketJasa {
         if (!$stmt) return false;
 
         $stmt->bind_param(
-            "sssissi",
+            "ssssissi",
             $this->PaketNama,
+            $this->PaketDirGbr,
             $this->PaketKategori,
             $this->PaketDeskripsi,
             $this->PaketHarga,

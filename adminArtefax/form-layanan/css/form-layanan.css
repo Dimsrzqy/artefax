@@ -1,3 +1,4 @@
+/* Tabel */
 .custom-table {
         width: 100%;
         border-collapse: collapse;
@@ -59,13 +60,17 @@
         display: none;
         position: fixed;
         top: 0; left: 0;
-        width: 100%; height: 100%;
+        width: 100vw; height: 100vh;
         background-color: rgba(0, 0, 0, 0.6);
-        z-index: 9999 !important;
+        z-index: 9999;
         justify-content: center;
         align-items: center;
         padding: 20px;
         overflow: auto;
+        backdrop-filter: blur(5px);
+    }
+    .modal.show {
+        display: flex;
     }
 
     .modal-dialog {
@@ -73,15 +78,22 @@
         border-radius: 12px;
         width: 100%;
         max-width: 560px;
+        max-height: 90vh;
+        overflow: hidden !important;
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
         position: relative;
+        display: flex;
+        flex-direction: column;
         animation: fadeIn 0.3s ease;
         pointer-events: auto !important;
     }
-
-    .modal * {
-        pointer-events: auto !important;
+   
+    @keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-50px); }
+    to   { opacity: 1; transform: translateY(0); }
     }
+    
+    
 
     .modal input,
     .modal select,
@@ -90,6 +102,11 @@
         pointer-events: auto !important;
         user-select: auto !important;
         cursor: auto !important;
+    }
+    .modal label {
+        pointer-events: auto !important;
+        position: relative !important;   /* override kalau ada yang fixed */
+        z-index: auto !important;
     }
 
     .modal input:focus,
@@ -114,6 +131,10 @@
 
     .modal-body {
         padding: 20px;
+        overflow-y: auto;           /* BARU: ini yang bikin scroll hanya di body */
+        max-height: 100%;           /* BARU: penting agar tidak meluber */
+        flex: 1;                    /* BARU: biar body ambil sisa ruang */
+        -webkit-overflow-scrolling: touch;
     }
 
     .modal-footer {
@@ -122,8 +143,46 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
+        text-align: right;
     }
+    .input-group .form-control {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    background-color: #f8f9fa;
+    }
+    .input-group .input-group-text {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        cursor: pointer;
+    }
+    #label-gambar {
+        min-height: 24px;
+        font-style: italic;
+    }
+    #gambar_layanan {
+    width: 0.1px !important;
+    height: 0.1px !important;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
 
+.input-group .btn {
+    z-index: 3;
+    height: 38px;
+}
+
+#fileNameDisplay {
+    padding-right: 50px !important;
+    background-color: #f8f9fa !important;
+    position: relative;
+}
+#btnHapusGambar {
+    border-left: none !important;
+    border-radius: 0 !important;
+    
+}
     .close-btn {
         background: none;
         border: none;
@@ -136,7 +195,7 @@
     .close-btn:hover {
         color: #333;
     }
-
+    .form-group { margin-bottom: 1rem; }
     .form-control {
         width: 100%;
         padding: 10px 12px;

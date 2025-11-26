@@ -8,7 +8,18 @@ $conn = $db->getConnection();
 
 // Inisialisasi class
 $pembayaran = new Pembayaran($conn);
-$daftarPembayaran = $pembayaran->readJoin(); 
+/* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
+$limit  = 10;
+$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
+// Pastikan method ini ADA di class User
+$totalBooking = $pembayaran->TotalBooking();           
+$totalPages    = ceil($totalBooking / $limit);
+
+// Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
+$daftarPembayaran = $pembayaran->readJoin($limit, $offset);  
+/* ================================================================== */
 
 // Feedback
 $success_message = $_SESSION['success_message'] ?? '';
@@ -249,11 +260,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="az-header">
       <div class="container">
         <div class="az-header-left">
-<<<<<<< HEAD
-          <a href="index.html" class="az-logo"><span></span> Artefax</a>
-=======
-          <a href="../template/inde" class="az-logo"><span></span> Artefax</a>
->>>>>>> 68edd77ba112d503b4f65f5d84d220470da68129
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
           <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
         <!-- az-header-left -->
@@ -462,6 +469,42 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                               <?php endforeach; ?>
                           </tbody>
                       </table>
+                      <?php if ($totalPages > 1): ?>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
+                                </li>
+
+                                <?php
+                                $start = max(1, $page - 2);
+                                $end   = min($totalPages, $page + 2);
+
+                                if ($start > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+
+                                for ($i = $start; $i <= $end; $i++) {
+                                    $active = ($i == $page) ? 'active' : '';
+                                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                                }
+
+                                if ($end < $totalPages) {
+                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                                }
+                                ?>
+
+                                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> Pembayaran
+                        </div>
+                        <?php endif; ?>
                   <?php else: ?>
                       <div class="text-center py-5 bg-light rounded">
                           <i class="fas fa-money-check-alt fa-3x text-muted mb-3"></i>
