@@ -230,119 +230,121 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           </button>
         </div>
 
-        <!-- Feedback -->
-        <?php if ($success_message): ?>
-          <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
-        <?php endif; ?>
-        <?php if ($error_message): ?>
-          <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
-        <?php endif; ?>
+                <!-- Feedback -->
+                <?php if ($success_message): ?>
+                    <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
+                <?php endif; ?>
+                <?php if ($error_message): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
+                <?php endif; ?>
 
-        <!-- Tabel Layanan -->
-        <div class="table-container">
-          <?php if ($paketList && count($paketList) > 0): ?>
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th width="5%">No</th>
-                  <th>Nama Paket</th>
-                  <th>Gambar</th>
-                  <th>Kategori</th>
-                  <th>Harga</th>
-                  <th>Durasi</th>
-                  <th>Status</th>
-                  <th width="18%">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php $no = 1;
-                foreach ($paketList as $p): ?>
-                  <tr>
-                    <td><?= $no++ ?></td>
-                    <td>
-                      <strong><?= htmlspecialchars($p['PaketNama']) ?></strong><br>
-                      <small class="text-muted"><?= htmlspecialchars(substr($p['PaketDeskripsi'], 0, 60)) ?>...</small>
-                    </td>
-                    <td class="text-center">
-                      <?php if (!empty($p['PaketDirGbr'])): ?>
-                        <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
-                          data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
-                          data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
-                          <i class="fas fa-image"></i> Detail
-                        </button>
-                      <?php else: ?>
-                        <span class="text-muted">—</span>
-                      <?php endif; ?>
-                    </td>
-                    <td><?= htmlspecialchars($p['PaketKategori']) ?></td>
-                    <td>Rp <?= number_format($p['PaketHarga'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($p['PaketDurasi']) ?></td>
-                    <td>
-                      <span class="badge <?= $p['PaketStatus'] === 'Aktif' ? 'badge-active' : 'badge-inactive' ?>">
-                        <?= htmlspecialchars($p['PaketStatus']) ?>
-                      </span>
-                    </td>
-                    <td>
-                      <div class="tombol-aksi">
-                        <button class="btn btn-sm btn-warning" onclick='openEditPopup(<?= json_encode($p) ?>)'>
-                          <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <form action="hapus_layanan.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
-                          <input type="hidden" name="id" value="<?= $p['IDPaket'] ?>">
-                          <button type="submit" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash"></i> Hapus
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-            <?php if ($totalPages > 1): ?>
-              <nav class="mt-4">
-                <ul class="pagination justify-content-center">
-                  <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page - 1 ?>">« Sebelumnya</a>
-                  </li>
+                <!-- Tabel Layanan -->
+                <div class="table-container">
+                    <?php if ($paketList && count($paketList) > 0): ?>
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th width="5%">No</th>
+                                    <th>Nama Paket</th>
+                                    <th>Gambar</th>
+                                    <th>Kategori</th>
+                                    <th>Harga</th>
+                                    <th>Durasi</th>
+                                    <th>Status</th>
+                                    <th width="18%">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $no = $offset + 1; foreach ($paketList as $p): ?>
+                                    <tr>
+                                        <td><?= $no++ ?></td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($p['PaketNama']) ?></strong><br>
+                                            <small class="text-muted"><?= htmlspecialchars(substr($p['PaketDeskripsi'], 0, 60)) ?>...</small>
+                                        </td>
+                                        <td class="text-center">
+                                          <?php if (!empty($p['PaketDirGbr'])): ?>
+                                              <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
+                                                      data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
+                                                      data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
+                                                  <i class="fas fa-image"></i> Detail
+                                              </button>
+                                          <?php else: ?>
+                                              <span class="text-muted">—</span>
+                                          <?php endif; ?>
+                                      </td>
+                                        <td><?= htmlspecialchars($p['PaketKategori']) ?></td>
+                                        <td>Rp <?= number_format($p['PaketHarga'], 0, ',', '.') ?></td>
+                                        <td><?= htmlspecialchars($p['PaketDurasi']) ?></td>
+                                        <td>
+                                            <span class="badge <?= $p['PaketStatus'] === 'Aktif' ? 'badge-active' : 'badge-inactive' ?>">
+                                                <?= htmlspecialchars($p['PaketStatus']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="tombol-aksi">
+                                                <button class="btn btn-sm btn-warning" onclick='openEditPopup(<?= json_encode($p) ?>)'>
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <form action="hapus_layanan.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
+                                                    <input type="hidden" name="id" value="<?= $p['IDPaket'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i> Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php if ($totalPages > 1): ?>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
+                                </li>
 
-                  <?php
-                  $start = max(1, $page - 2);
-                  $end   = min($totalPages, $page + 2);
+                                <?php
+                                $start = max(1, $page - 2);
+                                $end   = min($totalPages, $page + 2);
 
-                  if ($start > 1) {
-                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
-                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                  }
+                                if ($start > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
 
-                  for ($i = $start; $i <= $end; $i++) {
-                    $active = ($i == $page) ? 'active' : '';
-                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
-                  }
+                                for ($i = $start; $i <= $end; $i++) {
+                                    $active = ($i == $page) ? 'active' : '';
+                                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                                }
 
-                  if ($end < $totalPages) {
-                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
-                  }
-                  ?>
+                                if ($end < $totalPages) {
+                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                                }
+                                ?>
 
-                  <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page + 1 ?>">Berikutnya »</a>
-                  </li>
-                </ul>
-              </nav>
-              <div class="text-center text-muted small">
-                Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
-              </div>
-            <?php endif; ?>
+                                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
+                        </div>
+                        <?php endif; ?>
 
-          <?php else: ?>
-            <div class="text-center py-5 bg-light rounded">
-              <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
-              <p class="text-muted mb-3">Belum ada layanan terdaftar.</p>
-              <button class="btn btn-primary" onclick="openTambahPopup()">
-                <i class="fas fa-plus"></i> Tambah Layanan
-              </button>
+                    <?php else: ?>
+                        <div class="text-center py-5 bg-light rounded">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-3">Belum ada layanan terdaftar.</p>
+                            <button class="btn btn-primary" onclick="openTambahPopup()">
+                                <i class="fas fa-plus"></i> Tambah Layanan
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
           <?php endif; ?>
         </div>
@@ -376,6 +378,24 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <label>Nama Paket <span class="text-danger">*</span></label>
               <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
             </div>
+            <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
+                <div class="modal-body modal-body-scroll">
+                    <input type="hidden" id="idPaket" name="IDPaket">
+                    <input type="hidden" id="gambarLama" name="gambarLama">
+
+                    <div class="form-group">
+                        <label>Nama Paket <span class="text-danger">*</span></label>
+                        <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
+                    </div>
+                    
+                    <div class="form-group">
+                      <label>Gambar <span class="text-danger">*</span></label>
+
+                      <!-- Preview Gambar -->
+                      <div id="previewContainer" class="text-center mb-4" style="display:none;">
+                          <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
+                          <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
+                      </div>
 
             <div class="form-group">
               <label>Gambar <span class="text-danger">*</span></label>
@@ -448,10 +468,21 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     const modal = document.getElementById('layananModal');
     const form = document.getElementById('formLayanan');
 
-    document.addEventListener('DOMContentLoaded', function() {
-      modal.style.display = 'none'; // PAKSA TUTUP
-      document.body.style.overflow = 'auto'; // biar scroll balik normal
-    });
+        document.addEventListener('DOMContentLoaded', function() {
+            modal.style.display = 'none'; 
+            document.body.style.overflow = 'auto'; 
+        });
+        function openTambahPopup() {
+        document.getElementById('modalTitle').textContent = 'Tambah Layanan';
+        form.action = 'tambah_layanan.php';
+        form.reset();
+        document.getElementById('idPaket').value = '';
+        document.getElementById('gambarLama').value = '';
+        document.getElementById('fileNameDisplay').value = '';
+        document.getElementById('btnHapusGambar').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'none';
+        modal.style.display = 'flex'; 
+    }
 
     function openTambahPopup() {
       document.getElementById('modalTitle').textContent = 'Tambah Layanan';
