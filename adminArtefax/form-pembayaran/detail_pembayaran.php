@@ -11,8 +11,7 @@ if (!isset($_GET['id'])) {
 }
 
 $db = new Database();
-$pembayaran = new Pembayaran($db->getConnection());
-$bookingCls = new Booking($db->getConnection());
+$pembayaran = new Pembayaran($db->getConnection()); 
 $user = new User($db->getConnection());
 
 $data = $pembayaran->find($_GET['id']);

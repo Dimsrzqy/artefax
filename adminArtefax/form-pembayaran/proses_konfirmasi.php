@@ -10,7 +10,7 @@ if (!isset($_GET['id']) || !isset($_GET['aksi'])) {
 }
 
 $id = (int)$_GET['id'];
-$status = $_GET['aksi'];
+$aksi = $_GET['aksi'];
 
 if (!in_array($aksi, ['setuju', 'tolak'])) {
     $_SESSION['error'] = "Aksi tidak dikenali.";

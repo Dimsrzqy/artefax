@@ -203,54 +203,40 @@ class Pembayaran {
     // =============================
     // UPDATE DATA
     // =============================
-    public function updateStatus() {
-        try {
-        $this->conn->beginTransaction();
+    public function updateStatus($id, $aksi) {
+       try {
+        $pbrStatus = $aksi === 'setuju' ? 'Lunas' : 'Gagal';
+        $pbrConfirmed = $aksi === 'setuju' ? 1 : 0;
+        $bkgStatus = $aksi === 'setuju' ? 'Diterima' : 'Batal';
 
-        if ($aksi === 'setuju') {
-            $pbrStatus     = 'Lunas';
-            $pbrConfirmed  = 1;
-            $bkgStatus     = 'Diterima';
-        } else {
-            $pbrStatus     = 'Gagal';
-            $pbrConfirmed  = 0;
-            $bkgStatus     = 'Batal';
-        }
-        $queryPbr = "
-            UPDATE pembayaran 
-            SET 
-                PbrStatus = ?,
-                PbrConfirmed = ?,
-                UpdatedAt = NOW()
-            WHERE IDPembayaran = ?
-        ";
+        // Update pembayaran
+        $stmt1 = $this->conn->prepare("UPDATE pembayaran SET PbrStatus=?, PbrConfirmed=?, UpdatedAt=NOW() WHERE IDPembayaran=?");
+        $stmt1->bind_param("sii", $pbrStatus, $pbrConfirmed, $id);
+        $stmt1->execute();
 
-        $stmt1 = $this->conn->prepare($queryPbr);
-        $stmt1->execute([$pbrStatus, $pbrConfirmed, $idPembayaran]);
+        // Ambil IDBooking
+        $stmt2 = $this->conn->prepare("SELECT IDBooking FROM pembayaran WHERE IDPembayaran = ?");
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+        $result = $stmt2->get_result();
+        $row = $result->fetch_assoc();
+        $idBooking = $row['IDBooking'] ?? null;
 
-        $queryGetBooking = "SELECT IDBooking FROM pembayaran WHERE IDPembayaran = ?";
-        $stmtGet = $this->conn->prepare($queryGetBooking);
-        $stmtGet->execute([$idPembayaran]);
-        $idBooking = $stmtGet->fetchColumn();
+        if (!$idBooking) throw new Exception("Booking tidak ditemukan");
 
-        if (!$idBooking) {
-            throw new Exception("ID Booking tidak ditemukan.");
-        }
-
-        // 3. Update tabel booking
-        $queryBooking = "UPDATE booking 
-                         SET BkgStatus = ?, 
-                             UpdatedAt = NOW() 
-                         WHERE IDBooking = ?";
-        $stmt2 = $this->conn->prepare($queryBooking);
-        $stmt2->execute([$bkgStatus, $idBooking]);
+        // Update booking
+        $stmt3 = $this->conn->prepare("UPDATE booking SET BkgStatus=?, UpdatedAt=NOW() WHERE IDBooking=?");
+        $stmt3->bind_param("si", $bkgStatus, $idBooking);
+        $stmt3->execute();
 
         $this->conn->commit();
+        $this->conn->autocommit(TRUE);
         return true;
 
     } catch (Exception $e) {
-        $this->conn->rollBack();
-        error_log("Error updateStatusDanBooking: " . $e->getMessage());
+        $this->conn->rollback();
+        $this->conn->autocommit(TRUE);
+        error_log($e->getMessage());
         return false;
     }
 }
