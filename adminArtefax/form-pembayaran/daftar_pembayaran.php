@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/pembayaran.php";
+require_once __DIR__ . "/detail_pembayaran.php";
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -18,7 +19,8 @@ $totalBooking = $pembayaran->TotalBooking();
 $totalPages    = ceil($totalBooking / $limit);
 
 // Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
-$daftarPembayaran = $pembayaran->readJoin($limit, $offset);  
+$daftarPembayaran = $pembayaran->readJoin($limit, $offset);
+$detailPembayaran = $pembayaran->readJoinFull($limit, $offset);
 /* ================================================================== */
 
 // Feedback
@@ -135,74 +137,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
         /* Modal */
-        .modal {
-        display: none;
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.6);
-        z-index: 9999 !important;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        overflow: auto;
-    }
-
-    .modal-dialog {
-        background: white;
-        border-radius: 12px;
-        width: 100%;
-        max-width: 560px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-        position: relative;
-        animation: fadeIn 0.3s ease;
-        pointer-events: auto !important;
-    }
-
-    .modal * {
-        pointer-events: auto !important;
-    }
-
-    .modal input,
-    .modal select,
-    .modal textarea,
-    .modal button {
-        pointer-events: auto !important;
-        user-select: auto !important;
-        cursor: auto !important;
-    }
-
-    .modal input:focus,
-    .modal select:focus,
-    .modal textarea:focus {
-        outline: 2px solid #3366ff;
-    }
-
-    .modal-header {
-        padding: 15px 20px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header h5 {
-        margin: 0;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .modal-body {
-        padding: 20px;
-    }
-
-    .modal-footer {
-        padding: 15px 20px;
-        border-top: 1px solid #eee;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
+        
 
     .close-btn {
         background: none;
@@ -254,6 +189,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         from { opacity: 0; transform: translateY(-20px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    
     </style>
   </head>
   <body>
@@ -426,11 +362,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                               </tr>
                           </thead>
                           <tbody>
-                              <?php $no = 1; foreach ($daftarPembayaran as $p): ?>
+                              <?php $no = 1; foreach ($daftarPembayaran as $index => $p): 
+                                $pf = $detailPembayaran[$index] ?? $p;
+                                ?>
                                   <tr>
                                       <td><?= $no++ ?></td>
                                       <td>
-                                          <?= htmlspecialchars($p['UserNama']) ?><br>
+                                          <?= htmlspecialchars($p['UserNama'] ?? '') ?><br>
                                       </td>
                                       <td>
                                           <?php 
@@ -454,7 +392,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                       <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
                                       <td>
                                           <div class="tombol-aksi">
-                                              <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                              <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($pf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                                   <i class="fas fa-eye"></i> Detail
                                               </button>
                                               <form action="hapus_pembayaran.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
@@ -467,6 +405,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                       </td>
                                   </tr>
                               <?php endforeach; ?>
+                              
                           </tbody>
                       </table>
                       <?php if ($totalPages > 1): ?>
@@ -515,104 +454,9 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
-
-    <!-- Modal Detail Pembayaran -->
-    <div id="detailModal" class="modal">
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h5>Detail Pembayaran</h5>
-                <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="detailContent">
-                <!-- Isi detail akan diisi via JS -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Tutup</button>
-            </div>
-        </div>
-    </div>
-
+ 
     <script>
-        const modal = document.getElementById('detailModal');
-        const detailContent = document.getElementById('detailContent');
-
-        function openDetailPopup(data) {
-            const statusClass = {
-                'Pending': 'badge-pending',
-                'Sukses': 'badge-sukses',
-                'Gagal': 'badge-gagal'
-            };
-
-            detailContent.innerHTML = `
-                <div class="detail-row">
-                    <span class="detail-label">ID Pembayaran</span>
-                    <span class="detail-value">#${String(data.IDPembayaran).padStart(5, '0')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">ID Booking</span>
-                    <span class="detail-value">#${String(data.IDBooking).padStart(5, '0')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">User ID</span>
-                    <span class="detail-value">${data.IDUser}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Jenis Layanan</span>
-                    <span class="detail-value">${data.BkgJenis}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Paket</span>
-                    <span class="detail-value">Paket #${data.IDPaket}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Total Tagihan</span>
-                    <span class="detail-value">Rp ${parseInt(data.BkgTotalHarga).toLocaleString('id-ID')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Jumlah Dibayar</span>
-                    <span class="detail-value">Rp ${parseInt(data.PbrJumlah).toLocaleString('id-ID')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Metode Pembayaran</span>
-                    <span class="detail-value">${data.PbrMetode || '-'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value">
-                        <span class="badge ${statusClass[data.PbrStatus] || 'badge-pending'}">
-                            ${data.PbrStatus}
-                        </span>
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Confirmed</span>
-                    <span class="detail-value">${data.PbrConfirmed == 1 ? 'Ya' : 'Belum'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Bukti Transfer</span>
-                    <span class="detail-value">
-                        ${data.PbrBukti ? `<a href="../../uploads/bukti/${data.PbrBukti}" target="_blank" style="color:#3366ff;">Lihat Bukti</a>` : '-'}
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Dibuat Pada</span>
-                    <span class="detail-value">${new Date(data.CreatedAt).toLocaleString('id-ID')}</span>
-                </div>
-            `;
-
-            modal.style.display = 'flex';
-        }
-
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-
-        // Tutup saat klik luar
-        window.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
+          
     </script>
 
     <!-- Scripts -->

@@ -1,84 +1,225 @@
 <?php
-session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/Pembayaran.php";
-require_once __DIR__ . "/../../class/Booking.php";
-require_once __DIR__ . "/../../class/User.php";
 
-if (!isset($_GET['id'])) {
-    header("Location: konfirmasi_pembayaran.php");
-    exit;
-}
-
-$db = new Database();
-$pembayaran = new Pembayaran($db->getConnection()); 
-$user = new User($db->getConnection());
-
-$data = $pembayaran->find($_GET['id']);
-if (!$data) {
-    $_SESSION['error'] = "Data tidak ditemukan.";
-    header("Location: konfirmasi_pembayaran.php");
-    exit;
-}
-
-$bookingData = $bookingCls->getById($data['IDBooking']);
-$customer = $user->getById($bookingData['IDUser']);
 ?>
-
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <title>Detail Pembayaran #<?= $data['IDPembayaran'] ?></title>
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../css/azia.css" rel="stylesheet">
-    <style>
-        .detail-section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
-        .bukti-img { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: zoom-in; }
-        .bukti-img:hover { opacity: 0.9; }
-    </style>
-</head>
-<body class="az-body">
-    <?php include '../includes/header.php'; ?>
-    <div class="az-content pd-y-20">
-        <div class="container">
-            <div class="az-content-body">
-                <a href="konfirmasi_pembayaran.php" class="btn btn-secondary mb-3">
-                    <i class="fas fa-arrow-left"></i> Kembali
-                </a>
-                <h3>Detail Pembayaran</h3>
-
-                <!-- Bukti Pembayaran -->
-                <div class="detail-section">
-                    <h5><i class="fas fa-image"></i> Bukti Transfer</h5>
-                    <?php if ($data['PbrBukti'] && file_exists("../../uploads/bukti/" . $data['PbrBukti'])): ?>
-                        <img src="../../uploads/bukti/<?= $data['PbrBukti'] ?>" class="bukti-img" onclick="window.open(this.src)">
-                    <?php else: ?>
-                        <p class="text-muted">Tidak ada bukti transfer.</p>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Info Booking -->
-                <div class="detail-section">
-                    <h5><i class="fas fa-book"></i> Informasi Booking</h5>
-                    <p><strong>Nama:</strong> <?= htmlspecialchars($customer['UserNama']) ?></p>
-                    <p><strong>Email:</strong> <?= htmlspecialchars($customer['UserEmail']) ?></p>
-                    <p><strong>Jenis:</strong> <?= htmlspecialchars($bookingData['BkgJenis']) ?></p>
-                    <p><strong>Paket:</strong> #<?= $bookingData['IDPaket'] ?></p>
-                    <p><strong>Tanggal:</strong> <?= date('d M Y', strtotime($bookingData['BkgTglMulai'])) ?> - <?= date('d M Y', strtotime($bookingData['BkgTglSelesai'])) ?></p>
-                    <p><strong>Total:</strong> Rp <?= number_format($bookingData['BkgTotalHarga'], 0, ',', '.') ?></p>
-                </div>
-
-                <!-- Info Pembayaran -->
-                <div class="detail-section">
-                    <h5><i class="fas fa-money-check-alt"></i> Rincian Pembayaran</h5>
-                    <p><strong>Jumlah Transfer:</strong> Rp <?= number_format($data['PbrJumlah'], 0, ',', '.') ?></p>
-                    <p><strong>Metode:</strong> <?= htmlspecialchars($data['PbrMetode']) ?></p>
-                    <p><strong>Waktu Kirim:</strong> <?= date('d M Y H:i', strtotime($data['CreatedAt'])) ?> WIB</p>
-                    <p><strong>Status:</strong> <span class="badge badge-<?= strtolower($data['PbrStatus']) ?>"><?= $data['PbrStatus'] ?></span></p>
+<div class="popup-overlay" id="detailPopupPembayaran">
+    <div class="popup-content" id="draggablePopup">
+        <div class="popup-header" id="dragHandle">
+            <span id="popupTitle">Detail Pembayaran</span>
+            <span class="close-popup" onclick="closeDetailPopup()">&times;</span>
+        </div>
+        <div class="popup-body" id="popupBody">
+            <!-- Data akan di-inject oleh JavaScript -->
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+<style>
+.popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    .popup-content {
+        background: #fff;
+        width: 90%;
+        max-width: 900px;
+        max-height: 92vh;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 70px rgba(0,0,0,0.4);
+        position: relative;
+    }
+    .popup-header {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        color: white;
+        padding: 18px 25px;
+        font-size: 1.5em;
+        font-weight: bold;
+        cursor: grab;
+        user-select: none;
+        position: relative;
+    }
+    .popup-header:active { cursor: grabbing; }
+    .close-popup {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 34px;
+        cursor: pointer;
+        opacity: 0.9;
+    }
+    .close-popup:hover { opacity: 1; }
+    .popup-body {
+        padding: 25px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border-left: 6px solid #4361ee;
+    }
+    .section h3 {
+        margin: 0 0 18px 0;
+        color: #2d3436;
+        font-size: 1.35em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    table.info-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 1.02em;
+    }
+    table.info-table td {
+        padding: 11px 0;
+        border-bottom: 1px dashed #ddd;
+    }
+    table.info-table td:first-child {
+        width: 38%;
+        font-weight: 600;
+        color: #444;
+    }
+    .badge {
+        padding: 6px 16px;
+        border-radius: 50px;
+        font-weight: bold;
+        font-size: 0.9em;
+    }
+    .badge-lunas { background: #d4edda; color: #155724; }
+    .badge-dp { background: #fff3cd; color: #856404; }
+    .badge-pending { background: #fff3cd; color: #b8860b; }
+    .item-list {
+        margin: 15px 0;
+        padding-left: 5px;
+    }
+    .item-list li {
+        padding: 8px 0;
+        color: #2d3436;
+        font-size: 1.05em;
+    }
+    .btn-bukti {
+        background: #4361ee;
+        color: white;
+        border: none;
+        padding: 11px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .btn-bukti:hover {
+        background: #3f37c9;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(67,97,238,0.4);
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+<script>
+let isDragging = false, startX, startY, offsetX = 0, offsetY = 0;
+const popupEl = document.getElementById('draggablePopup');
+const headerEl = document.getElementById('dragHandle');
+
+headerEl.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('close-popup')) return;
+    isDragging = true;
+    startX = e.clientX - offsetX;
+    startY = e.clientY - offsetY;
+    headerEl.style.cursor = 'grabbing';
+});
+document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    e.preventDefault();
+    offsetX = e.clientX - startX;
+    offsetY = e.clientY - startY;
+    popupEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+});
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+    headerEl.style.cursor = 'grab';
+});
+
+// === FUNGSI UTAMA ===
+function openDetailPopup(data) {
+    // Reset posisi
+    popupEl.style.transform = 'translate(0,0)';
+    offsetX = offsetY = 0;
+
+    const status = (data.PbrStatus || 'Pending').trim();
+    const badge = status === 'Lunas' ? 'badge-lunas' : 
+                  status === 'Pending' ? 'badge-pending' : 'badge-dp';
+
+    const items = Array.isArray(data.DaftarPesanan) && data.DaftarPesanan.length > 0
+        ? data.DaftarPesanan.map(i => `<li>${i}</li>`).join('')
+        : '<li style="color:#888"><em>Tidak ada item dipesan</em></li>';
+
+    const bukti = data.PbrBukti
+        ? `<button class="btn-bukti" onclick="window.open('${data.PbrBukti}', '_blank')">
+               Lihat Bukti Pembayaran
+           </button>`
+        : '<em style="color:#888">Tidak ada bukti pembayaran</em>';
+
+    const tglMulai = data.BkgTglMulai ? new Date(data.BkgTglMulai).toLocaleDateString('id-ID') : '-';
+    const tglSelesai = data.BkgTglSelesai ? new Date(data.BkgTglSelesai).toLocaleDateString('id-ID') : '-';
+    const waktu = new Date(data.CreatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+    const html = `
+        <div class="section">
+            <h3>Informasi Pembayaran & Status</h3>
+            <table class="info-table">
+                <tr><td>Total Jumlah</td><td><strong>Rp ${Number(data.PbrJumlah || 0).toLocaleString('id-ID')}</strong></td></tr>
+                <tr><td>Status</td><td><span class="badge ${badge}">${status}</span></td></tr>
+                <tr><td>Metode</td><td>${data.PbrMetode || '-'}</td></tr>
+                <tr><td>Keterangan</td><td>${data.PbrKeterangan || '-'}</td></tr>
+                <tr><td>Waktu Transaksi</td><td>${waktu}</td></tr>
+                <tr><td>Jaminan</td><td>${data.BkgJaminan || '-'}</td></tr>
+                <tr><td>Bukti Pembayaran</td><td>${bukti}</td></tr>
+            </table>
+        </div>
+
+        <div class="section">
+            <h3>Informasi Pelanggan & Lokasi</h3>
+            <table class="info-table">
+                <tr><td>Nama Pelanggan</td><td>${data.UserNama || '-'}</td></tr>
+                <tr><td>Alamat Penggunaan</td><td>${data.BkgAlamat || '-'}</td></tr>
+                <tr><td>Tanggal Mulai</td><td>${tglMulai}</td></tr>
+                <tr><td>Tanggal Selesai</td><td>${tglSelesai}</td></tr>
+            </table>
+        </div>
+
+        <div class="section">
+            <h3>Daftar Pesanan</h3>
+            <p><strong>Jenis Booking:</strong> ${data.JenisBooking || '-'}</p>
+            <ul class="item-list">${items}</ul>
+        </div>
+    `;
+
+    document.getElementById('popupTitle').textContent = `Detail Booking: ${data.IDBooking || '—'}`;
+    document.getElementById('popupBody').innerHTML = html;
+    document.getElementById('detailPopupPembayaran').style.display = 'flex';
+}
+
+function closeDetailPopup() {
+    document.getElementById('detailPopupPembayaran').style.display = 'none';
+}
+
+// Tutup dengan klik luar atau ESC
+document.getElementById('detailPopupPembayaran')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('detailPopupPembayaran')) closeDetailPopup();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDetailPopup();
+});
+</script>

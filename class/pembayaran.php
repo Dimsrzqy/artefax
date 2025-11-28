@@ -9,6 +9,7 @@ class Pembayaran {
     public $PbrMetode;
     public $PbrJumlah;
     public $PbrStatus;
+    public $PbrKeterangan;
     public $PbrConfirmed;
     public $PbrBukti;
     public $CreatedAt;
@@ -20,12 +21,14 @@ class Pembayaran {
     public $IDPaket;
     public $IDAlat;
     public $BkgAlamat;
+    public $BkgJaminan;
     public $BkgTglMulai;
     public $BkgTglSelesai;
     public $BkgTotalHarga;
     public $BkgStatus;
 
     public $UserNama;
+    public $UserAlamat;
   
     public function __construct($db) {
         $this->conn = $db;
@@ -79,7 +82,7 @@ class Pembayaran {
                 LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
             WHERE p.IDPembayaran IS NOT NULL
             GROUP BY p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.CreatedAt, u.UserNama, u.IDUser
-                    ORDER BY p.CreatedAt DESC
+                    ORDER BY p.CreatedAt ASC
             ";
 
         if ($limit !== null && $offset !== null) {
@@ -155,22 +158,71 @@ class Pembayaran {
     // =============================
     // READ DETAIL DATA
     // =============================
-    public function readJoinFull() {
+    public function readJoinFull($limit = null, $offset = null) {
         $query = "
-            SELECT 
-                p.*, 
-                b.IDUser, b.BkgJenis, b.IDPaket, b.IDAlat, b.BkgAlamat,
-                b.BkgTglMulai, b.BkgTglSelesai, b.BkgTotalHarga, b.BkgStatus
-            FROM " . $this->table . " p
-            JOIN booking b ON p.IDBooking = b.IDBooking
-            ORDER BY p.CreatedAt DESC
+ SELECT
+        p.IDPembayaran,
+        p.IDBooking,
+        p.PbrKeterangan,
+        p.PbrJumlah,
+        p.PbrMetode,
+        p.PbrStatus,
+        p.PbrBukti,
+        p.CreatedAt,
+        b.BkgJaminan,
+        b.BkgAlamat,
+        b.BkgTglMulai,
+        b.BkgTglSelesai,
+        u.UserNama,
+        
+        GROUP_CONCAT(
+            DISTINCT
+            CASE
+                WHEN g.BkgDetailJenis = 'Paket Jasa' THEN j.PaketNama
+                WHEN g.BkgDetailJenis = 'Alat' THEN a.AlatNama
+                ELSE CONCAT('Lainnya: ', g.BkgDetailJenis)
+            END
+            SEPARATOR '||'
+        ) AS DaftarPesananRaw,
+        
+        GROUP_CONCAT(DISTINCT g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
+        
+    FROM pembayaran p
+        LEFT JOIN booking b ON p.IDBooking = b.IDBooking
+        LEFT JOIN users u ON b.IDUser = u.IDUser
+        LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
+        LEFT JOIN alat a ON g.IDAlat = a.IDAlat
+        LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
+    GROUP BY p.IDPembayaran
+    ORDER BY p.CreatedAt DESC
         ";
 
-         $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+    if ($limit !== null && $offset !== null) {
+    $query .= " LIMIT ? OFFSET ?";
     }
+    $stmt = $this->conn->prepare($query);
+
+    if ($limit !== null && $offset !== null) {
+        $stmt->bind_param("ii", $limit, $offset);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result(); // ← INI YANG HILANG!
+
+    $detailPembayaran = []; // ← INI JUGA HARUS DI-INIT DULU!
+
+    while ($row = $result->fetch_assoc()) {
+        // Ubah string || jadi array
+        $items = $row['DaftarPesananRaw'] ?? '';
+        $row['DaftarPesanan'] = $items ? array_filter(explode('||', $items)) : [];
+        unset($row['DaftarPesananRaw']);
+        
+        $detailPembayaran[] = $row;
+    }
+
+    $stmt->close();
+    return $detailPembayaran;
+}
 
     // =============================
     // CREATE DATA
