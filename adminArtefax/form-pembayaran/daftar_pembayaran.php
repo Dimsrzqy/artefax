@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/pembayaran.php";
+require_once __DIR__ . "/detail_pembayaran.php";
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -19,6 +20,7 @@ $totalPages    = ceil($totalBooking / $limit);
 
 // Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
 $daftarPembayaran = $pembayaran->readJoin($limit, $offset);
+$detailPembayaran = $pembayaran->readJoinFull($limit, $offset);
 /* ================================================================== */
 
 // Feedback
@@ -161,77 +163,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       border: 1px solid #f5c6cb;
     }
 
-    /* Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.6);
-      z-index: 9999 !important;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      overflow: auto;
-    }
-
-    .modal-dialog {
-      background: white;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 560px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-      position: relative;
-      animation: fadeIn 0.3s ease;
-      pointer-events: auto !important;
-    }
-
-    .modal * {
-      pointer-events: auto !important;
-    }
-
-    .modal input,
-    .modal select,
-    .modal textarea,
-    .modal button {
-      pointer-events: auto !important;
-      user-select: auto !important;
-      cursor: auto !important;
-    }
-
-    .modal input:focus,
-    .modal select:focus,
-    .modal textarea:focus {
-      outline: 2px solid #3366ff;
-    }
-
-    .modal-header {
-      padding: 15px 20px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-header h5 {
-      margin: 0;
-      font-weight: 600;
-      color: #333;
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .modal-footer {
-      padding: 15px 20px;
-      border-top: 1px solid #eee;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
+        /* Modal */
+        
 
     .close-btn {
       background: none;
@@ -290,117 +223,117 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         transform: translateY(0);
       }
     }
-  </style>
-</head>
-
-<body>
-  <div class="az-header">
-    <div class="container">
-      <div class="az-header-left">
-        <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
-        <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
-      </div>
-      <!-- az-header-left -->
-      <div class="az-header-menu">
-        <div class="az-header-menu-header">
-          <a href="index.html" class="az-logo"><span></span> azia</a>
-          <a href="" class="close">&times;</a>
+    
+    </style>
+  </head>
+  <body>
+    <div class="az-header">
+      <div class="container">
+        <div class="az-header-left">
+          <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
         </div>
-        <!-- az-header-menu-header -->
-        <ul class="nav">
-          <li class="nav-item">
-            <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
-          </li>
-          <li class="nav-item active">
-            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-          </li>
-          <li class="nav-item">
-            <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-            <div class="az-menu-sub">
-              <div class="container">
-                <div>
-                  <nav class="nav">
-                    <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                    <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                    <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                    <a href="../template/table-basic.html" class="nav-link">Table</a>
-                  </nav>
+        <!-- az-header-left -->
+        <div class="az-header-menu">
+          <div class="az-header-menu-header">
+            <a href="index.html" class="az-logo"><span></span> azia</a>
+            <a href="" class="close">&times;</a>
+          </div>
+          <!-- az-header-menu-header -->
+          <ul class="nav">
+            <li class="nav-item">
+              <a href="index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+            </li>
+            <li class="nav-item active">
+              <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+            </li>
+            <li class="nav-item">
+              <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+            </li>
+            <li class="nav-item">
+              <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
+              <div class="az-menu-sub">
+                <div class="container">
+                  <div>
+                    <nav class="nav">
+                      <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
+                      <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
+                      <a href="../template/elem-icons.html" class="nav-link">Icons</a>
+                      <a href="../template/table-basic.html" class="nav-link">Table</a>
+                    </nav>
+                  </div>
                 </div>
+                <!-- container -->
               </div>
-              <!-- container -->
-            </div>
-          </li>
-        </ul>
-      </div><!-- az-header-menu -->
-      <div class="az-header-right">
-        <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
-        <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-        <div class="az-header-message">
-          <a href="#"><i class="typcn typcn-messages"></i></a>
-        </div><!-- az-header-message -->
-        <div class="dropdown az-header-notification">
-          <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-          <div class="dropdown-menu">
-            <div class="az-dropdown-header mg-b-20 d-sm-none">
-              <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-            </div>
-            <h6 class="az-notification-title">Notifications</h6>
-            <p class="az-notification-text">You have 2 unread notification</p>
-            <div class="az-notification-list">
-              <div class="media new">
-                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
-                <div class="media-body">
-                  <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
-                  <span>Mar 15 12:32pm</span>
-                </div><!-- media-body -->
-              </div><!-- media -->
-              <div class="media new">
-                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
-                <div class="media-body">
-                  <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                  <span>Mar 13 04:16am</span>
-                </div><!-- media-body -->
-              </div><!-- media -->
-              <div class="media">
-                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                <div class="media-body">
-                  <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                  <span>Mar 13 02:56am</span>
-                </div><!-- media-body -->
-              </div><!-- media -->
-              <div class="media">
-                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                <div class="media-body">
-                  <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                  <span>Mar 12 10:40pm</span>
-                </div><!-- media-body -->
-              </div><!-- media -->
-            </div><!-- az-notification-list -->
-            <div class="dropdown-footer"><a href="">View All Notifications</a></div>
-          </div><!-- dropdown-menu -->
-        </div><!-- az-header-notification -->
-        <div class="dropdown az-profile-menu">
-          <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-          <div class="dropdown-menu">
-            <div class="az-dropdown-header d-sm-none">
-              <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-            </div>
-            <div class="az-header-profile">
-              <div class="az-img-user">
-                <img src="../img/faces/face1.jpg" alt="">
-              </div><!-- az-img-user -->
-              <h6>Aziana Pechon</h6>
-              <span>Premium Member</span>
-            </div><!-- az-header-profile -->
+            </li>
+          </ul>
+        </div><!-- az-header-menu -->
+        <div class="az-header-right">
+          <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
+          <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
+          <div class="az-header-message">
+            <a href="#"><i class="typcn typcn-messages"></i></a>
+          </div><!-- az-header-message -->
+          <div class="dropdown az-header-notification">
+            <a href="" class="new"><i class="typcn typcn-bell"></i></a>
+            <div class="dropdown-menu">
+              <div class="az-dropdown-header mg-b-20 d-sm-none">
+                <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+              </div>
+              <h6 class="az-notification-title">Notifications</h6>
+              <p class="az-notification-text">You have 2 unread notification</p>
+              <div class="az-notification-list">
+                <div class="media new">
+                  <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                  <div class="media-body">
+                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
+                    <span>Mar 15 12:32pm</span>
+                  </div><!-- media-body -->
+                </div><!-- media -->
+                <div class="media new">
+                  <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
+                  <div class="media-body">
+                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
+                    <span>Mar 13 04:16am</span>
+                  </div><!-- media-body -->
+                </div><!-- media -->
+                <div class="media">
+                  <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
+                  <div class="media-body">
+                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
+                    <span>Mar 13 02:56am</span>
+                  </div><!-- media-body -->
+                </div><!-- media -->
+                <div class="media">
+                  <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
+                  <div class="media-body">
+                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
+                    <span>Mar 12 10:40pm</span>
+                  </div><!-- media-body -->
+                </div><!-- media -->
+              </div><!-- az-notification-list -->
+              <div class="dropdown-footer"><a href="">View All Notifications</a></div>
+            </div><!-- dropdown-menu -->
+          </div><!-- az-header-notification -->
+          <div class="dropdown az-profile-menu">
+            <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+            <div class="dropdown-menu">
+              <div class="az-dropdown-header d-sm-none">
+                <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+              </div>
+              <div class="az-header-profile">
+                <div class="az-img-user">
+                  <img src="../img/faces/face1.jpg" alt="">
+                </div><!-- az-img-user -->
+                <h6>Aziana Pechon</h6>
+                <span>Premium Member</span>
+              </div><!-- az-header-profile -->
 
             <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
             <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
@@ -445,74 +378,76 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
         <?php endif; ?>
 
-        <!-- Tabel Pembayaran -->
-        <div class="table-container">
-          <?php if ($daftarPembayaran && count($daftarPembayaran) > 0): ?>
-            <table class="custom-table">
-              <thead>
-                <tr>
-                  <th width="5%">No</th>
-                  <th>Nama Pelanggan</th>
-                  <th>Jenis</th>
-                  <th>Pesanan</th>
-                  <th>Jumlah Pembayaran</th>
-                  <th>Metode</th>
-                  <th>Status</th>
-                  <th>Waktu</th>
-                  <th width="15%">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php $no = 1;
-                foreach ($daftarPembayaran as $p): ?>
-                  <tr>
-                    <td><?= $no++ ?></td>
-                    <td>
-                      <?= htmlspecialchars($p['UserNama']) ?><br>
-                    </td>
-                    <td>
-                      <?php
-                      $jenis = $p['JenisBooking'] ?? '-';
-                      echo $jenis == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($jenis);
-                      ?>
-                    </td>
-                    <td>
-                      <?php
-                      $pesanan = $p['DaftarPesanan'] ?? '-';
-                      echo $pesanan !== '' ? htmlspecialchars($pesanan) : '-';
-                      ?>
-                    </td>
-                    <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
-                    <td>
-                      <span class="badge badge-<?= strtolower($p['PbrStatus']) ?>">
-                        <?= htmlspecialchars($p['PbrStatus']) ?>
-                      </span>
-                    </td>
-                    <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
-                    <td>
-                      <div class="tombol-aksi">
-                        <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
-                          <i class="fas fa-eye"></i> Detail
-                        </button>
-                        <form action="hapus_pembayaran.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
-                          <input type="hidden" name="id" value="<?= $p['IDPembayaran'] ?>">
-                          <button type="submit" class="btn btn-sm btn-danger">
-                            <i class="fas fa-trash"></i> Hapus
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-            <?php if ($totalPages > 1): ?>
-              <nav class="mt-4">
-                <ul class="pagination justify-content-center">
-                  <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page - 1 ?>">« Sebelumnya</a>
-                  </li>
+                <!-- Tabel Pembayaran -->
+                <div class="table-container">
+                  <?php if ($daftarPembayaran && count($daftarPembayaran) > 0): ?>
+                      <table class="custom-table">
+                          <thead>
+                              <tr>
+                                  <th width="5%">No</th>
+                                  <th>Nama Pelanggan</th>
+                                  <th>Jenis</th>
+                                  <th>Pesanan</th> 
+                                  <th>Jumlah Pembayaran</th>
+                                  <th>Metode</th>
+                                  <th>Status</th>
+                                  <th>Waktu</th>
+                                  <th width="15%">Aksi</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <?php $no = 1; foreach ($daftarPembayaran as $index => $p): 
+                                $pf = $detailPembayaran[$index] ?? $p;
+                                ?>
+                                  <tr>
+                                      <td><?= $no++ ?></td>
+                                      <td>
+                                          <?= htmlspecialchars($p['UserNama'] ?? '') ?><br>
+                                      </td>
+                                      <td>
+                                          <?php 
+                                          $jenis = $p['JenisBooking'] ?? '-';
+                                          echo $jenis == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($jenis);
+                                          ?>
+                                      </td>
+                                      <td>
+                                          <?php 
+                                          $pesanan = $p['DaftarPesanan'] ?? '-';
+                                          echo $pesanan !== '' ? htmlspecialchars($pesanan) : '-';
+                                          ?>
+                                      </td>
+                                      <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
+                                      <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
+                                      <td>
+                                          <span class="badge badge-<?= strtolower($p['PbrStatus']) ?>">
+                                              <?= htmlspecialchars($p['PbrStatus']) ?>
+                                          </span>
+                                      </td>
+                                      <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
+                                      <td>
+                                          <div class="tombol-aksi">
+                                              <button class="btn btn-sm btn-info" onclick='openDetailPopup(<?= json_encode($pf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                                  <i class="fas fa-eye"></i> Detail
+                                              </button>
+                                              <form action="hapus_pembayaran.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pembayaran ini?')">
+                                                  <input type="hidden" name="id" value="<?= $p['IDPembayaran'] ?>">
+                                                  <button type="submit" class="btn btn-sm btn-danger">
+                                                      <i class="fas fa-trash"></i> Hapus
+                                                  </button>
+                                              </form>
+                                          </div>
+                                      </td>
+                                  </tr>
+                              <?php endforeach; ?>
+                              
+                          </tbody>
+                      </table>
+                      <?php if ($totalPages > 1): ?>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
+                                </li>
 
                   <?php
                   $start = max(1, $page - 2);
@@ -534,124 +469,29 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                   }
                   ?>
 
-                  <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page + 1 ?>">Berikutnya »</a>
-                  </li>
-                </ul>
-              </nav>
-              <div class="text-center text-muted small">
-                Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> Pembayaran
+                                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> Pembayaran
+                        </div>
+                        <?php endif; ?>
+                  <?php else: ?>
+                      <div class="text-center py-5 bg-light rounded">
+                          <i class="fas fa-money-check-alt fa-3x text-muted mb-3"></i>
+                          <p class="text-muted mb-3">Belum ada data pembayaran.</p>
+                      </div>
+                  <?php endif; ?>
               </div>
-            <?php endif; ?>
-          <?php else: ?>
-            <div class="text-center py-5 bg-light rounded">
-              <i class="fas fa-money-check-alt fa-3x text-muted mb-3"></i>
-              <p class="text-muted mb-3">Belum ada data pembayaran.</p>
             </div>
-          <?php endif; ?>
         </div>
-      </div>
     </div>
-  </div>
-
-  <!-- Modal Detail Pembayaran -->
-  <div id="detailModal" class="modal">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h5>Detail Pembayaran</h5>
-        <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
-      </div>
-      <div class="modal-body" id="detailContent">
-        <!-- Isi detail akan diisi via JS -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeModal()">Tutup</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const modal = document.getElementById('detailModal');
-    const detailContent = document.getElementById('detailContent');
-
-    function openDetailPopup(data) {
-      const statusClass = {
-        'Pending': 'badge-pending',
-        'Sukses': 'badge-sukses',
-        'Gagal': 'badge-gagal'
-      };
-
-      detailContent.innerHTML = `
-                <div class="detail-row">
-                    <span class="detail-label">ID Pembayaran</span>
-                    <span class="detail-value">#${String(data.IDPembayaran).padStart(5, '0')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">ID Booking</span>
-                    <span class="detail-value">#${String(data.IDBooking).padStart(5, '0')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">User ID</span>
-                    <span class="detail-value">${data.IDUser}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Jenis Layanan</span>
-                    <span class="detail-value">${data.BkgJenis}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Paket</span>
-                    <span class="detail-value">Paket #${data.IDPaket}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Total Tagihan</span>
-                    <span class="detail-value">Rp ${parseInt(data.BkgTotalHarga).toLocaleString('id-ID')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Jumlah Dibayar</span>
-                    <span class="detail-value">Rp ${parseInt(data.PbrJumlah).toLocaleString('id-ID')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Metode Pembayaran</span>
-                    <span class="detail-value">${data.PbrMetode || '-'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value">
-                        <span class="badge ${statusClass[data.PbrStatus] || 'badge-pending'}">
-                            ${data.PbrStatus}
-                        </span>
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Confirmed</span>
-                    <span class="detail-value">${data.PbrConfirmed == 1 ? 'Ya' : 'Belum'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Bukti Transfer</span>
-                    <span class="detail-value">
-                        ${data.PbrBukti ? `<a href="../../uploads/bukti/${data.PbrBukti}" target="_blank" style="color:#3366ff;">Lihat Bukti</a>` : '-'}
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Dibuat Pada</span>
-                    <span class="detail-value">${new Date(data.CreatedAt).toLocaleString('id-ID')}</span>
-                </div>
-            `;
-
-      modal.style.display = 'flex';
-    }
-
-    function closeModal() {
-      modal.style.display = 'none';
-    }
-
-    // Tutup saat klik luar
-    window.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        closeModal();
-      }
-    });
-  </script>
+ 
+    <script>
+          
+    </script>
 
   <!-- Scripts -->
   <script src="../lib/jquery/jquery.min.js"></script>
