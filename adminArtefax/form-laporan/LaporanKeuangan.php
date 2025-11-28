@@ -1,0 +1,474 @@
+<?php
+session_start();
+require_once __DIR__ . "/../../config/koneksi.php";
+require_once __DIR__ . "/../../class/pembayaran.php";
+
+$db = new Database();
+$conn = $db->getConnection();
+$pembayaran = new Pembayaran($conn);
+
+/* ============== FILTER TANGGAL & STATUS LUNAS ============== */
+$startDate = $_GET['start_date'] ?? null;
+$endDate = $_GET['end_date'] ?? null;
+$statusFilter = 'Lunas';
+
+try {
+    // Format tanggal untuk query SQL: startDate 00:00:00, endDate 23:59:59 (dengan modify('+1 day') pada endDate)
+    if ($startDate) $startDate = (new DateTime($startDate))->format('Y-m-d');
+    if ($endDate)  $endDate  = (new DateTime($endDate))->modify('+1 day')->format('Y-m-d');
+} catch (Exception $e) {
+    $startDate = $endDate = null;
+    // Pesan error tidak langsung ditampilkan di sini, melainkan di bagian body HTML
+    $_SESSION['error_message'] = "Format tanggal tidak valid.";
+}
+
+/* ============== EXPORT EXCEL ============== */
+if (isset($_GET['export']) && $_GET['export'] == 'excel') {
+    $dataToExport = $pembayaran->readJoin(null, null, $startDate, $endDate, $statusFilter);
+
+    // Fungsi helper untuk menentukan jenis
+    $getJenis = fn($j) => $j == 'Paket Jasa,Alat' ? 'Paket & Alat' : ($j ?? '-');
+
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="Laporan_Keuangan_Lunas_ArtefaxID_' . date('Ymd_His') . '.xls"');
+
+    $out = fopen('php://output', 'w');
+    // Header CSV (menggunakan tabulator "\t" agar kompatibel dengan Excel)
+    fputcsv($out, ['No', 'Nama Pelanggan', 'Jenis', 'Pesanan', 'Jumlah', 'Metode', 'Status', 'Waktu', 'ID Pembayaran', 'ID Booking', 'ID User', 'Total Tagihan', 'Confirmed', 'Bukti'], "\t");
+
+    $no = 1;
+    foreach ($dataToExport as $p) {
+        $dataRow = [
+            $no++,
+            $p['UserNama'],
+            $getJenis($p['JenisBooking']),
+            $p['DaftarPesanan'] ?? '-',
+            $p['PbrJumlah'],
+            $p['PbrMetode'],
+            'Lunas',
+            date('d/m/Y H:i', strtotime($p['CreatedAt'])),
+            $p['IDPembayaran'],
+            $p['IDBooking'],
+            $p['IDUser'],
+            $p['BkgTotalHarga'],
+            $p['PbrConfirmed'] ? 'Ya' : 'Belum',
+            $p['PbrBukti'] ? 'Ada' : 'Tidak Ada'
+        ];
+        fputcsv($out, $dataRow, "\t");
+    }
+    fclose($out);
+    exit();
+}
+
+/* ============== PAGINATION ============== */
+$limit = 10;
+$page  = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $limit;
+
+$totalBooking = $pembayaran->TotalBooking($startDate, $endDate, $statusFilter);
+$totalPages  = ceil($totalBooking / $limit);
+$daftarPembayaran = $pembayaran->readJoin($limit, $offset, $startDate, $endDate, $statusFilter);
+
+$success_message = $_SESSION['success_message'] ?? '';
+$error_message  = $_SESSION['error_message'] ?? '';
+unset($_SESSION['success_message'], $_SESSION['error_message']);
+
+$displayStartDate = $_GET['start_date'] ?? '';
+$displayEndDate  = $_GET['end_date'] ?? '';
+?>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Laporan Keuangan (Lunas) - ArtefaxID</title>
+    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+    <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/azia.css">
+    <style>
+        /* ============================================= */
+        /* CSS INTERNAL YANG DIRAPIKAN */
+        /* ============================================= */
+        /* Tabel & Badge */
+        .custom-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: .93rem;
+            background: #fff;
+            box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+            border-radius: 8px;
+            overflow: hidden
+        }
+
+        .custom-table thead th {
+            background: #3366ff;
+            color: #fff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: .8rem;
+            letter-spacing: .5px;
+            padding: 14px 12px;
+            text-align: center;
+            vertical-align: middle
+        }
+
+        .custom-table tbody td {
+            padding: 14px 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid #eef2f7
+        }
+
+        .custom-table tbody tr:hover {
+            background-color: #f8f9ff;
+            transition: background-color .2s
+        }
+
+        .custom-table tbody tr:last-child td {
+            border-bottom: none
+        }
+
+        .badge-sukses {
+            background: #d4edda;
+            color: #155724;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .8rem
+        }
+
+        /* Button style dasar */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: .9rem;
+            transition: all .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            height: 40px;
+            /* Ditambahkan agar tinggi sama dengan input tanggal */
+        }
+
+        /* Primary/Filter Button */
+        .btn-primary {
+            background: #3366ff;
+            color: #fff
+        }
+
+        .btn-primary:hover {
+            background: #2952cc;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(51, 102, 255, .3)
+        }
+
+        /* Success/Export Button */
+        .btn-success {
+            background: #0f8f4f;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-success:hover {
+            background: #0e6b36;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(15, 143, 79, .4)
+        }
+
+        /* Secondary/Reset Button */
+        .btn-secondary {
+            background: #6c757d;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(108, 117, 125, .4);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: .85rem
+        }
+
+        .btn-info:hover {
+            background: #138496
+        }
+
+        /* Kontrol Layout Filter */
+        .filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 25px;
+        }
+
+        /* Kontrol lebar input tanggal */
+        .filter-actions .form-control {
+            width: 170px;
+            height: 40px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        /* Label input tanggal */
+        .filter-actions label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        /* Responsive kecil */
+        @media (max-width: 576px) {
+            .filter-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-actions>div,
+            .filter-actions .btn {
+                width: 100%;
+            }
+
+            .filter-actions .form-control {
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="az-header">
+        <div class="container">
+            <div class="az-header-left">
+                <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+                <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
+            </div>
+            <div class="az-header-menu">
+                <div class="az-header-menu-header">
+                    <a href="index.html" class="az-logo"><span></span> Artefax</a>
+                    <a href="" class="close">×</a>
+                </div>
+                <ul class="nav">
+                    <li class="nav-item"><a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a></li>
+                    <li class="nav-item"><a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a></li>
+                    <li class="nav-item"><a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a></li>
+                    <li class="nav-item"><a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
+                    <li class="nav-item active"><a href="LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a></li>
+                    <li class="nav-item">
+                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
+                        <div class="az-menu-sub">
+                            <div class="container">
+                                <div>
+                                    <nav class="nav">
+                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
+                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
+                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
+                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="az-header-right">
+                <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
+                <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
+                <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
+                <div class="dropdown az-header-notification">
+                    <a href="" class="new"><i class="typcn typcn-bell"></i></a>
+                    <div class="dropdown-menu"> </div>
+                </div>
+                <div class="dropdown az-profile-menu">
+                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <div class="dropdown-menu"> </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
+        <div class="container">
+            <div class="az-content-left az-content-left-components">
+                <div class="component-item">
+                    <label>Laporan</label>
+                    <nav class="nav flex-column">
+                        <a href="LaporanKeuangan.php" class="nav-link active">Laporan Keuangan</a>
+                        <a href="LaporanBooking.php" class="nav-link">Laporan Booking</a>
+                        <a href="LaporanAbsensiKaryawan.php" class="nav-link">Laporan Absensi</a>
+                        <a href="LaporanPenugasan.php" class="nav-link">Laporan Penugasan</a>
+                    </nav>
+                </div>
+            </div>
+
+            <div class="az-content-body pd-lg-l-40 d-flex flex-column">
+                <div class="az-content-breadcrumb">
+                    <span>Data</span>
+                    <span>Keuangan</span>
+                </div>
+                <h2 class="az-content-title">Laporan Keuangan</h2>
+
+                <div class="mg-t-20">
+                    <form method="GET">
+                        <div class="filter-actions">
+                            <div>
+                                <label class="form-label" for="start_date">Dari Tanggal</label>
+                                <input type="date" id="start_date" name="start_date" class="form-control" value="<?= htmlspecialchars($displayStartDate) ?>">
+                            </div>
+                            <div>
+                                <label class="form-label" for="end_date">Sampai Tanggal</label>
+                                <input type="date" id="end_date" name="end_date" class="form-control" value="<?= htmlspecialchars($displayEndDate) ?>">
+                            </div>
+
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="typcn typcn-filter"></i> Filter
+                                </button>
+                            </div>
+
+                            <div>
+                                <?php
+                                $exportParams = $_GET;
+                                $exportParams['export'] = 'excel';
+                                unset($exportParams['page']);
+                                $link = http_build_query($exportParams);
+                                ?>
+                                <a href="?<?= $link ?>" class="btn btn-success">
+                                    <i class="fas fa-file-excel"></i> Export Excel
+                                </a>
+                            </div>
+
+                            <?php if ($displayStartDate || $displayEndDate): ?>
+                                <div>
+                                    <a href="LaporanKeuangan.php" class="btn btn-secondary">
+                                        <i class="typcn typcn-refresh"></i> Reset
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                </div>
+                <?php if ($success_message): ?><div class="alert alert-success"><?= $success_message ?></div><?php endif; ?>
+                <?php if ($error_message): ?><div class="alert alert-danger"><?= $error_message ?></div><?php endif; ?>
+
+                <div class="table-responsive">
+                    <?php if ($daftarPembayaran): ?>
+                        <table class="table custom-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nama Pelanggan</th>
+                                    <th>Jenis</th>
+                                    <th>Pesanan</th>
+                                    <th>Jumlah</th>
+                                    <th>Metode</th>
+                                    <th>Status</th>
+                                    <th>Waktu</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $no = $offset + 1;
+                                foreach ($daftarPembayaran as $p): ?>
+                                    <tr>
+                                        <td><?= $no++ ?></td>
+                                        <td><?= htmlspecialchars($p['UserNama']) ?></td>
+                                        <td><?= $p['JenisBooking'] == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($p['JenisBooking'] ?? '-') ?></td>
+                                        <td><?= htmlspecialchars($p['DaftarPesanan'] ?? '-') ?></td>
+                                        <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
+                                        <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
+                                        <td><span class="badge-sukses">Lunas</span></td>
+                                        <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick='openDetail(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Detail</button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+
+                        <div class="text-center text-muted small mt-3">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> transaksi Lunas
+                        </div>
+
+                        <?php if ($totalPages > 1): ?>
+                            <nav class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    <?php
+                                    $pagination_query = '';
+                                    if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
+                                    if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
+
+                                    for ($i = 1; $i <= $totalPages; $i++):
+                                        $active = ($i == $page) ? "active" : "";
+                                    ?>
+                                        <li class="page-item <?= $active ?>">
+                                            <a class="page-link" href="?page=<?= $i ?><?= $pagination_query ?>"><?= $i ?></a>
+                                        </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
+
+                    <?php else: ?>
+                        <div class="text-center py-5">
+                            <p class="text-muted">Tidak ada transaksi <strong>Lunas</strong> pada periode ini.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:12px;max-width:500px;width:90%;padding:20px;position:relative;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h5>Detail Pembayaran</h5>
+                <button onclick="document.getElementById('detailModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+            </div>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <script>
+        function openDetail(data) {
+            const jenis = data.JenisBooking === 'Paket Jasa,Alat' ? 'Paket & Alat' : (data.JenisBooking || '-');
+
+            // Helper untuk format rupiah
+            const formatRupiah = (angka) => {
+                if (typeof angka !== 'number' && typeof angka !== 'string') return '-';
+                const number = parseFloat(angka);
+                if (isNaN(number)) return '-';
+                return new Intl.NumberFormat('id-ID').format(number);
+            }
+
+            document.getElementById('detailContent').innerHTML = `
+            <div style="margin-bottom:8px;"><strong>ID Pembayaran:</strong> #${String(data.IDPembayaran).padStart(5,'0')}</div>
+            <div style="margin-bottom:8px;"><strong>Nama Pelanggan:</strong> ${data.UserNama}</div>
+            <div style="margin-bottom:8px;"><strong>Jenis Layanan:</strong> ${jenis}</div>
+            <div style="margin-bottom:8px;"><strong>Total Tagihan:</strong> Rp ${formatRupiah(data.BkgTotalHarga)}</div>
+            <div style="margin-bottom:8px;"><strong>Jumlah Dibayar:</strong> Rp ${formatRupiah(data.PbrJumlah)}</div>
+            <div style="margin-bottom:8px;"><strong>Status:</strong> <span class="badge-sukses">Lunas</span></div>
+            <div style="margin-bottom:8px;"><strong>Waktu:</strong> ${new Date(data.CreatedAt).toLocaleString('id-ID')}</div>
+        `;
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+    </script>
+</body>
+
+</html>

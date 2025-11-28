@@ -15,7 +15,7 @@ $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
 // Pastikan method ini ADA di class User
-$totalBooking = $pembayaran->TotalBooking();           
+$totalBooking = $pembayaran->TotalBooking();
 $totalPages    = ceil($totalBooking / $limit);
 
 // Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
@@ -31,31 +31,35 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-90680653-2"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      gtag('config', 'UA-90680653-2');
-    </script>
+<head>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-90680653-2"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
 
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
 
-    <!-- Twitter -->
-    <!-- <meta name="twitter:site" content="@bootstrapdash">
+    gtag('config', 'UA-90680653-2');
+  </script>
+
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Twitter -->
+  <!-- <meta name="twitter:site" content="@bootstrapdash">
     <meta name="twitter:creator" content="@bootstrapdash">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Azia">
     <meta name="twitter:description" content="Responsive Bootstrap 4 Dashboard Template">
     <meta name="twitter:image" content="https://www.bootstrapdash.com/azia/img/azia-social.png"> -->
 
-    <!-- Facebook -->
-    <!-- <meta property="og:url" content="https://www.bootstrapdash.com/azia">
+  <!-- Facebook -->
+  <!-- <meta property="og:url" content="https://www.bootstrapdash.com/azia">
     <meta property="og:title" content="Azia">
     <meta property="og:description" content="Responsive Bootstrap 4 Dashboard Template">
 
@@ -65,129 +69,159 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="600"> -->
 
-    <!-- Meta -->
-    <meta name="description" content="Responsive Bootstrap 4 Dashboard Template">
-    <meta name="author" content="BootstrapDash">
+  <!-- Meta -->
+  <meta name="description" content="Responsive Bootstrap 4 Dashboard Template">
+  <meta name="author" content="BootstrapDash">
 
-    <title>Admin ArtefaxID</title>
+  <title>Admin ArtefaxID</title>
 
-    <!-- vendor css -->
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
-    <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
+  <!-- vendor css -->
+  <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+  <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
 
-    <!-- azia CSS -->
-    <link rel="stylesheet" href="../css/azia.css" />
-    <!-- Custom Table & Modal Style -->
-    <style>
-        .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        margin-top: 20px;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        font-size: 14px;
+  <!-- azia CSS -->
+  <link rel="stylesheet" href="../css/azia.css" />
+  <!-- Custom Table & Modal Style -->
+  <style>
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      font-size: 14px;
     }
 
-        .tombol-aksi {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
+    .tombol-aksi {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
     }
+
     .custom-table th,
     .custom-table td {
-        border: 1px solid #ddd;
-        padding: 12px 15px;
-        text-align: left;
+      border: 1px solid #ddd;
+      padding: 12px 15px;
+      text-align: left;
     }
 
     .custom-table th {
-        background-color: #3366ff;
-        color: white;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 13px;
+      background-color: #3366ff;
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
     .custom-table tbody tr:nth-child(even) {
-        background-color: #f8f9fa;
+      background-color: #f8f9fa;
     }
 
     .custom-table tbody tr:hover {
-        background-color: #fff3cd;
+      background-color: #fff3cd;
     }
 
-    .badge-active { background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-    .badge-inactive { background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-active {
+      background: #d4edda;
+      color: #155724;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .badge-inactive {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
 
     .table-container {
-        overflow-x: auto;
-        border-radius: 10px;
+      overflow-x: auto;
+      border-radius: 10px;
     }
 
     .alert {
-        padding: 12px 16px;
-        border-radius: 6px;
-        margin-bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
     }
-    
-    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
 
         /* Modal */
         
 
     .close-btn {
-        background: none;
-        border: none;
-        font-size: 28px;
-        cursor: pointer;
-        color: #aaa;
-        font-weight: bold;
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #aaa;
+      font-weight: bold;
     }
 
     .close-btn:hover {
-        color: #333;
+      color: #333;
     }
 
     .form-control {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 14px;
-        transition: border 0.2s;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border 0.2s;
     }
 
     .form-control:focus {
-        border-color: #3366ff;
-        box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.1);
+      border-color: #3366ff;
+      box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.1);
     }
 
     .btn {
-        padding: 8px 16px;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
     }
 
     .btn-primary {
-        background-color: #3366ff;
-        color: white;
-        border: none;
+      background-color: #3366ff;
+      color: white;
+      border: none;
     }
 
     .btn-secondary {
-        background-color: #6c757d;
-        color: white;
-        border: none;
+      background-color: #6c757d;
+      color: white;
+      border: none;
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
     </style>
@@ -301,48 +335,48 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <span>Premium Member</span>
               </div><!-- az-header-profile -->
 
-              <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-              <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-              <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-              <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-              <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-            </div><!-- dropdown-menu -->
-          </div>
-        </div><!-- az-header-right -->
-      </div><!-- container -->
-    </div><!-- az-header -->
+            <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+            <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+            <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+            <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+            <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+          </div><!-- dropdown-menu -->
+        </div>
+      </div><!-- az-header-right -->
+    </div><!-- container -->
+  </div><!-- az-header -->
 
-    <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
-      <div class="container">
-        <div class="az-content-left az-content-left-components">
-          <div class="component-item">
-        
-            <label>Pembayaran</label>
-            <nav class="nav flex-column">
-            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link active">Daftar Pembayaran</a> 
-            <a href="../form-pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a> 
-            </nav>
+  <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
+    <div class="container">
+      <div class="az-content-left az-content-left-components">
+        <div class="component-item">
+
+          <label>Pembayaran</label>
+          <nav class="nav flex-column">
+            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link active">Daftar Pembayaran</a>
+            <a href="../form-pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
+          </nav>
         </div><!-- component-item -->
 
-        </div><!-- az-content-left -->
-        <div class="az-content-body pd-lg-l-40 d-flex flex-column">
-          <div class="az-content-breadcrumb">
-            <span>Pembayaran</span>
-            <span>Daftar Pembayaran</span>
-          </div>
-          <h2 class="az-content-title">Daftar Pembayaran</h2>
+      </div><!-- az-content-left -->
+      <div class="az-content-body pd-lg-l-40 d-flex flex-column">
+        <div class="az-content-breadcrumb">
+          <span>Pembayaran</span>
+          <span>Daftar Pembayaran</span>
+        </div>
+        <h2 class="az-content-title">Daftar Pembayaran</h2>
 
-          <div class="d-flex justify-content-between align-items-center mg-b-20">
-                    <p class="mg-b-0">Kelola semua paket layanan di sini.</p>
-                </div>
+        <div class="d-flex justify-content-between align-items-center mg-b-20">
+          <p class="mg-b-0">Kelola semua paket layanan di sini.</p>
+        </div>
 
-                <!-- Feedback -->
-                <?php if ($success_message): ?>
-                    <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
-                <?php endif; ?>
-                <?php if ($error_message): ?>
-                    <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
-                <?php endif; ?>
+        <!-- Feedback -->
+        <?php if ($success_message): ?>
+          <div class="alert alert-success"><?= htmlspecialchars($success_message) ?></div>
+        <?php endif; ?>
+        <?php if ($error_message): ?>
+          <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
+        <?php endif; ?>
 
                 <!-- Tabel Pembayaran -->
                 <div class="table-container">
@@ -415,25 +449,25 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                     <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
                                 </li>
 
-                                <?php
-                                $start = max(1, $page - 2);
-                                $end   = min($totalPages, $page + 2);
+                  <?php
+                  $start = max(1, $page - 2);
+                  $end   = min($totalPages, $page + 2);
 
-                                if ($start > 1) {
-                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
-                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                }
+                  if ($start > 1) {
+                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                  }
 
-                                for ($i = $start; $i <= $end; $i++) {
-                                    $active = ($i == $page) ? 'active' : '';
-                                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
-                                }
+                  for ($i = $start; $i <= $end; $i++) {
+                    $active = ($i == $page) ? 'active' : '';
+                    echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                  }
 
-                                if ($end < $totalPages) {
-                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
-                                }
-                                ?>
+                  if ($end < $totalPages) {
+                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                  }
+                  ?>
 
                                 <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
                                     <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
@@ -459,9 +493,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           
     </script>
 
-    <!-- Scripts -->
-    <script src="../lib/jquery/jquery.min.js"></script>
-    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/azia.js"></script>
+  <!-- Scripts -->
+  <script src="../lib/jquery/jquery.min.js"></script>
+  <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/azia.js"></script>
 </body>
+
 </html>

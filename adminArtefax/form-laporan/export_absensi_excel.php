@@ -54,4 +54,3 @@ while ($r = $result->fetch_assoc()) {
 
 echo '</tbody></table></body></html>';
 exit;
-?>

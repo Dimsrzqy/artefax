@@ -1,15 +1,18 @@
 <?php
-class EventAssignment {
+class EventAssignment
+{
     private $conn;
 
-    public function __construct($db) {
+    public function __construct($db)
+    {
         $this->conn = $db;
         if ($this->conn instanceof mysqli) {
             $this->conn->set_charset("utf8mb4");
         }
     }
 
-    public function createEvent($idBooking, $eventNama, $eventLokasi, $eventTanggal, $eventMulai, $eventDurasi, $karyawanIds) {
+    public function createEvent($idBooking, $eventNama, $eventLokasi, $eventTanggal, $eventMulai, $eventDurasi, $karyawanIds)
+    {
         $idBooking    = (int)$idBooking;
         $eventNama    = trim($eventNama);
         $eventLokasi  = trim($eventLokasi);
@@ -65,7 +68,6 @@ class EventAssignment {
             $this->conn->commit();
             $this->conn->autocommit(true);
             return $idEvent;
-
         } catch (Exception $e) {
             $this->conn->rollback();
             $this->conn->autocommit(true);
@@ -75,11 +77,12 @@ class EventAssignment {
     }
 
     // UPDATE STATUS OTOMATIS → AMAN DENGAN BUFFER 30 MENIT
-// UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
-// UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
-public function updateStatusOtomatis() {
-    // 1. Ubah ke "Berjalan" → jika waktu sekarang sudah masuk rentang event
-    $this->conn->query("
+    // UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
+    // UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
+    public function updateStatusOtomatis()
+    {
+        // 1. Ubah ke "Berjalan" → jika waktu sekarang sudah masuk rentang event
+        $this->conn->query("
         UPDATE `event` 
         SET EventStatus = 'Berjalan'
         WHERE EventStatus = 'Menunggu'
@@ -88,8 +91,8 @@ public function updateStatusOtomatis() {
           AND EventSelesai > CURTIME()
     ");
 
-    // 2. Ubah ke "Selesai" → jika waktu event sudah benar-benar lewat
-    $this->conn->query("
+        // 2. Ubah ke "Selesai" → jika waktu event sudah benar-benar lewat
+        $this->conn->query("
         UPDATE `event` 
         SET EventStatus = 'Selesai'
         WHERE EventStatus IN ('Menunggu', 'Berjalan')
@@ -98,8 +101,9 @@ public function updateStatusOtomatis() {
             OR (EventTanggal = CURDATE() AND EventSelesai <= CURTIME())
           )
     ");
-}
-    public function getAssignmentsByKaryawan($idKaryawan) {
+    }
+    public function getAssignmentsByKaryawan($idKaryawan)
+    {
         $this->updateStatusOtomatis();
 
         $stmt = $this->conn->prepare("
@@ -121,7 +125,8 @@ public function updateStatusOtomatis() {
         return $data;
     }
 
-    public function getKaryawanByEvent($idEvent) {
+    public function getKaryawanByEvent($idEvent)
+    {
         $stmt = $this->conn->prepare("
             SELECT u.IDUser, u.UserNama
             FROM `event_karyawan` ek
@@ -137,7 +142,8 @@ public function updateStatusOtomatis() {
         return $data;
     }
 
-    public function getStats($idKaryawan) {
+    public function getStats($idKaryawan)
+    {
         $stmt = $this->conn->prepare("
             SELECT 
                 COUNT(*) AS total,
@@ -154,7 +160,6 @@ public function updateStatusOtomatis() {
         $data = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        return $data ?: ['total'=>0,'menunggu'=>0,'berjalan'=>0,'selesai'=>0];
+        return $data ?: ['total' => 0, 'menunggu' => 0, 'berjalan' => 0, 'selesai' => 0];
     }
 }
-?>

@@ -1,5 +1,6 @@
 <?php
-class Pembayaran {
+class Pembayaran
+{
     private $conn;
     private $table = "pembayaran";
 
@@ -33,21 +34,62 @@ class Pembayaran {
     public function __construct($db) {
         $this->conn = $db;
     }
+
     // =============================
-    // Total DATA
+    // Total DATA (DIPERBAIKI: Menerima Filter)
     // =============================
-    public function TotalBooking() {
-        $query = "SELECT COUNT(*) AS total FROM {$this->table}";
-        $result = $this->conn->query($query);
-        if ($result && $row = $result->fetch_assoc()) {
-            return (int)$row['total'];
+    public function TotalBooking($startDate = null, $endDate = null, $statusFilter = null)
+    {
+        $query = "SELECT COUNT(*) AS total FROM {$this->table} p";
+        $conditions = [];
+        $bindTypes = '';
+        $bindParams = [];
+
+        // Filter Status Pembayaran
+        if ($statusFilter) {
+            $conditions[] = "p.PbrStatus = ?";
+            $bindTypes .= 's';
+            $bindParams[] = $statusFilter;
         }
-        return 0;
+
+        // Filter Tanggal
+        if ($startDate) {
+            $conditions[] = "p.CreatedAt >= ?";
+            $bindTypes .= 's';
+            $bindParams[] = $startDate;
+        }
+        if ($endDate) {
+            // Gunakan kurang dari (<) karena endDate dihitung eksklusif
+            $conditions[] = "p.CreatedAt < ?";
+            $bindTypes .= 's';
+            $bindParams[] = $endDate;
+        }
+
+        if (!empty($conditions)) {
+            $query .= " WHERE " . implode(" AND ", $conditions);
+        }
+
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) return 0;
+
+        if (!empty($bindParams)) {
+            // Memanggil bind_param dengan array dinamis
+            $stmt->bind_param($bindTypes, ...$bindParams);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        return $row ? (int)$row['total'] : 0;
     }
+
     // =============================
-    // READ DATA
+    // READ DATA (DIPERBAIKI: Menerima Filter & Pagination)
     // =============================
-    public function readJoin($limit = null, $offset = null) {
+    public function readJoin($limit = null, $offset = null, $startDate = null, $endDate = null, $statusFilter = null)
+    {
         $query = "
             SELECT 
                 p.IDPembayaran,
@@ -55,23 +97,25 @@ class Pembayaran {
                 p.PbrJumlah,
                 p.PbrMetode,
                 p.PbrStatus,
+                p.PbrConfirmed,
+                p.PbrBukti,
                 p.CreatedAt,
-                            
-                u.UserNama,
-                u.IDUser,
-          
-            GROUP_CONCAT(
-            DISTINCT 
-            CASE 
-            WHEN g.BkgDetailJenis = 'Paket Jasa' THEN j.PaketNama
-            WHEN g.BkgDetailJenis = 'Alat' THEN a.AlatNama
-            ELSE g.BkgDetailJenis
-            END
-            SEPARATOR ', '
-                ) AS DaftarPesanan,
-                        
+                b.IDUser,
+                b.BkgTotalHarga,
                 
-            GROUP_CONCAT(DISTINCT g.BkgDetailJenis 
+                u.UserNama,
+                
+                GROUP_CONCAT(
+                DISTINCT 
+                CASE 
+                WHEN g.BkgDetailJenis = 'Paket Jasa' THEN j.PaketNama
+                WHEN g.BkgDetailJenis = 'Alat' THEN a.AlatNama
+                ELSE g.BkgDetailJenis
+                END
+                SEPARATOR ', '
+                ) AS DaftarPesanan,
+                
+                GROUP_CONCAT(DISTINCT g.BkgDetailJenis 
                 SEPARATOR ', ') AS JenisBooking
 
             FROM pembayaran p
@@ -85,35 +129,52 @@ class Pembayaran {
                     ORDER BY p.CreatedAt ASC
             ";
 
+        // Pagination
         if ($limit !== null && $offset !== null) {
             $query .= " LIMIT ? OFFSET ?";
+            $bindTypes .= 'ii';
+            $bindParams[] = $limit;
+            $bindParams[] = $offset;
         }
+
         $stmt = $this->conn->prepare($query);
         if (!$stmt) return [];
 
-        if ($limit !== null && $offset !== null) {
-            $stmt->bind_param("ii", $limit, $offset);
+        if (!empty($bindParams)) {
+            // Memanggil bind_param dengan array dinamis
+            $stmt->bind_param($bindTypes, ...$bindParams);
         }
+
         $stmt->execute();
         $result = $stmt->get_result();
         $data = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         return $data;
     }
+
     // =============================
-    // READ Status Pending
+    // READ Status Pending (DIPERBAIKI: Hapus IDUser & Query Konsisten)
     // =============================
-    public function readPending() {
-    $query = "
+    // =============================
+    // READ Status Pending (DIPERBAIKI)
+    // =============================
+    public function readPending()
+    {
+        $query = "
             SELECT
                 p.IDPembayaran, 
-                p.IDBooking,    
+                p.IDBooking,     
                 p.PbrJumlah,
                 p.PbrMetode,
+                p.PbrStatus,
+                p.PbrConfirmed,
+                p.PbrBukti,
                 p.CreatedAt,
                 
                 COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
-                u.IDUser,
+                b.IDUser,
+                b.BkgTotalHarga,
+                b.BkgTglMulai,
                 
                 GROUP_CONCAT(
                     DISTINCT
@@ -125,8 +186,7 @@ class Pembayaran {
                     ORDER BY g.BkgDetailJenis
                     SEPARATOR ', '
                 ) AS DaftarPesanan,
-                b.BkgTglMulai,
-                b.BkgTotalHarga,
+                
                 GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
 
             FROM pembayaran p
@@ -137,26 +197,35 @@ class Pembayaran {
             LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
 
             WHERE 
-                p.PbrStatus = 'pending' 
+                p.PbrStatus = 'Pending' 
 
             GROUP BY 
-                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.CreatedAt, u.UserNama, u.IDUser
+                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
+                u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
             ORDER BY 
-                p.CreatedAt ASC -- (pertama masuk)
+                p.CreatedAt ASC
         ";
 
-        
-        $result = $this->conn->query($query);
-        
-        if ($result && $result->num_rows > 0) {
-            return $result->fetch_all(MYSQLI_ASSOC);
+        // Menggunakan prepare meskipun tanpa binding, untuk konsistensi.
+        // Asumsi koneksi Anda sudah diperbaiki menjadi mysqli seperti saran saya sebelumnya.
+        $stmt = $this->conn->prepare($query);
+
+        // Cek jika prepare gagal (kemungkinan besar inilah yang memicu error fatal)
+        if (!$stmt) {
+            error_log("SQL Error in readPending: " . $this->conn->error);
+            return [];
         }
-        
-        return []; 
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
     }
 
     // =============================
-    // READ DETAIL DATA
+    // READ DETAIL DATA (DIPERBAIKI: Mengambil data user)
     // =============================
     public function readJoinFull($limit = null, $offset = null) {
         $query = "
@@ -225,35 +294,36 @@ class Pembayaran {
 }
 
     // =============================
-    // CREATE DATA
+    // CREATE DATA (DIPERBAIKI: Konsisten mysqli)
     // =============================
-    public function create() {
+    public function create()
+    {
         $query = "
             INSERT INTO " . $this->table . " 
                 (IDBooking, PbrMetode, PbrJumlah, PbrStatus, PbrConfirmed, PbrBukti, CreatedAt, UpdatedAt)
             VALUES 
-                (:IDBooking, :PbrMetode, :PbrJumlah, 'Pending', 0, :PbrBukti, NOW(), NOW())
+                (?, ?, ?, 'Pending', 0, ?, NOW(), NOW())
         ";
 
         $stmt = $this->conn->prepare($query);
+        if (!$stmt) return false;
 
-        // Sanitasi
-        $this->IDBooking = htmlspecialchars(strip_tags($this->IDBooking));
-        $this->PbrMetode = htmlspecialchars(strip_tags($this->PbrMetode));
-        $this->PbrJumlah = htmlspecialchars(strip_tags($this->PbrJumlah));
-        $this->PbrBukti  = htmlspecialchars(strip_tags($this->PbrBukti));
+        // Sanitasi (dipertahankan, meskipun mysqli lebih aman)
+        $IDBooking = htmlspecialchars(strip_tags($this->IDBooking));
+        $PbrMetode = htmlspecialchars(strip_tags($this->PbrMetode));
+        $PbrJumlah = htmlspecialchars(strip_tags($this->PbrJumlah));
+        $PbrBukti  = htmlspecialchars(strip_tags($this->PbrBukti));
 
-        // Bind
-        $stmt->bindParam(':IDBooking', $this->IDBooking);
-        $stmt->bindParam(':PbrMetode', $this->PbrMetode);
-        $stmt->bindParam(':PbrJumlah', $this->PbrJumlah);
-        $stmt->bindParam(':PbrBukti', $this->PbrBukti);
+        // Bind dengan mysqli
+        $stmt->bind_param("ssds", $IDBooking, $PbrMetode, $PbrJumlah, $PbrBukti); // s: string, d: double/decimal
 
-        return $stmt->execute();
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
     }
 
     // =============================
-    // UPDATE DATA
+    // UPDATE DATA (DIPERBAIKI: Parameter Input & Consistency)
     // =============================
     public function updateStatus($id, $aksi) {
        try {
@@ -293,30 +363,38 @@ class Pembayaran {
     }
 }
     // =============================
-    // DELETE DATA
+    // DELETE DATA (DIPERBAIKI: Konsisten mysqli)
     // =============================
-    public function delete() {
-        $query = "DELETE FROM " . $this->table . " WHERE IDPembayaran = :IDPembayaran";
+    public function delete()
+    {
+        $query = "DELETE FROM " . $this->table . " WHERE IDPembayaran = ?";
         $stmt = $this->conn->prepare($query);
+        if (!$stmt) return false;
 
-        $this->IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
-        $stmt->bindParam(':IDPembayaran', $this->IDPembayaran);
+        $IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
+        $stmt->bind_param('i', $IDPembayaran); // i: integer, asumsi IDPembayaran adalah integer
 
-        return $stmt->execute();
+        $success = $stmt->execute();
+        $stmt->close();
+        return $success;
     }
 
     // =============================
-    // SEARCH ID DATA
+    // SEARCH ID DATA (DIPERBAIKI: Konsisten mysqli)
     // =============================
-    public function getSingle() {
-        $query = "SELECT * FROM " . $this->table . " WHERE IDPembayaran = :IDPembayaran LIMIT 1";
+    public function getSingle()
+    {
+        $query = "SELECT * FROM " . $this->table . " WHERE IDPembayaran = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
+        if (!$stmt) return false;
 
-        $this->IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
-        $stmt->bindParam(':IDPembayaran', $this->IDPembayaran);
+        $IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
+        $stmt->bind_param('i', $IDPembayaran);
         $stmt->execute();
+        $result = $stmt->get_result();
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $result->fetch_assoc();
+        $stmt->close();
 
         if ($row) {
             $this->IDBooking = $row['IDBooking'];
@@ -332,4 +410,3 @@ class Pembayaran {
         return false;
     }
 }
-?>
