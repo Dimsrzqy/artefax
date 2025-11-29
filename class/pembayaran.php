@@ -132,7 +132,7 @@ class Pembayaran
         // Pagination
         if ($limit !== null && $offset !== null) {
             $query .= " LIMIT ? OFFSET ?";
-            $bindTypes .= 'ii';
+            $bindTypes = 'ii';
             $bindParams[] = $limit;
             $bindParams[] = $offset;
         }
