@@ -225,9 +225,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
         <div class="d-flex justify-content-between align-items-center mg-b-20">
           <p class="mg-b-0">Kelola semua paket jasa di sini.</p>
-          <button class="btn btn-primary" onclick="openTambahPopup()">
-            <i class="fas fa-plus"></i> Tambah Layanan
-          </button>
+          <button onclick="openTambahPopup()" 
+          style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+        Tambah Layanan
+    </button>
         </div>
 
                 <!-- Feedback -->
@@ -339,14 +340,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <div class="text-center py-5 bg-light rounded">
                             <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                             <p class="text-muted mb-3">Belum ada layanan terdaftar.</p>
-                            <button class="btn btn-primary" onclick="openTambahPopup()">
-                                <i class="fas fa-plus"></i> Tambah Layanan
+                            <button onclick="openTambahPopup()" style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Tambah Layanan
                             </button>
                         </div>
                     <?php endif; ?>
                 </div>
-            </div>
-          <?php endif; ?>
+            </div> 
         </div>
       </div>
     </div>
@@ -370,33 +370,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
         </div>
         <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
-          <div class="modal-body">
+          <div class="modal-body modal-body-scroll">
             <input type="hidden" id="idPaket" name="IDPaket">
             <input type="hidden" id="gambarLama" name="gambarLama">
 
             <div class="form-group">
               <label>Nama Paket <span class="text-danger">*</span></label>
               <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
-            </div>
-            <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
-                <div class="modal-body modal-body-scroll">
-                    <input type="hidden" id="idPaket" name="IDPaket">
-                    <input type="hidden" id="gambarLama" name="gambarLama">
-
-                    <div class="form-group">
-                        <label>Nama Paket <span class="text-danger">*</span></label>
-                        <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
-                    </div>
-                    
-                    <div class="form-group">
-                      <label>Gambar <span class="text-danger">*</span></label>
-
-                      <!-- Preview Gambar -->
-                      <div id="previewContainer" class="text-center mb-4" style="display:none;">
-                          <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
-                          <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
-                      </div>
-
+            </div> 
             <div class="form-group">
               <label>Gambar <span class="text-danger">*</span></label>
 
@@ -409,7 +390,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <!-- Field + Tombol Hapus + Browse -->
               <div class="input-group">
                 <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
-                <button type="button" class="btn btn-sm btn-danger position-absolute end-0 me-1" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
+                <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
                   <i class="fas fa-times" style="font-size:12px;"></i>
                 </button>
                 <label for="gambar_layanan" class="btn btn-primary">
@@ -484,18 +465,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         modal.style.display = 'flex'; 
     }
 
-    function openTambahPopup() {
-      document.getElementById('modalTitle').textContent = 'Tambah Layanan';
-      form.action = 'tambah_layanan.php';
-      form.reset();
-      document.getElementById('idPaket').value = '';
-      document.getElementById('gambarLama').value = '';
-      document.getElementById('fileNameDisplay').value = '';
-      document.getElementById('btnHapusGambar').style.display = 'none';
-      document.getElementById('previewContainer').style.display = 'none';
-      modal.style.display = 'flex';
-    }
-
     function openEditPopup(data) {
       document.getElementById('modalTitle').textContent = 'Edit Layanan';
       form.action = 'edit_layanan.php';
@@ -510,7 +479,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       const imgPath = data.PaketDirGbr;
       if (imgPath && imgPath.trim() !== '') {
         document.getElementById('gambarLama').value = imgPath;
-        previewImg.src = '../../../Paket/img/produk/' + imgPath;
+        previewImg.src = 'artefax/Paket/img/produk/' + imgPath;
         previewContainer.style.display = 'block';
         document.getElementById('previewText').textContent = 'Gambar saat ini';
         document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();

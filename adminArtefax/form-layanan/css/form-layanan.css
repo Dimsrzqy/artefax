@@ -78,15 +78,14 @@
             border-radius: 12px;
             width: 100%;
             max-width: 560px;
-            max-height: 95vh;
+            max-height: 98vh;
             overflow: hidden !important;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
             position: relative;
             display: flex;
             flex-direction: column;
             animation: fadeIn 0.3s ease;
-            pointer-events: auto !important;
-            margin: 20px; 
+            pointer-events: auto !important; 
         }
        
         @keyframes modalFadeIn {
@@ -120,6 +119,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0; /* Pastikan header tidak mengecil */
         }
 
         .modal-header h5 {
@@ -131,21 +131,18 @@
         .modal-body {
             padding: 20px;
             overflow-y: auto;           
-            max-height: 100%;           
-            flex: 1;                    
+            max-height: 100%;            
             -webkit-overflow-scrolling: touch;
         }
 
         .modal-footer {
-            padding: 20px 20px;
+            padding: 15px 20px;
             border-top: 1px solid #eee;
             display: flex;
             justify-content: flex-end;
             gap: 10px;
             text-align: right;
-            margin-top: 10px;
-            position: relative;
-            z-index: 1;
+            flex-shrink: 0;
         }
         
         .input-group {
@@ -196,11 +193,11 @@
             white-space: nowrap;
         }
         
-        /* PERBAIKAN: Posisi tombol hapus gambar */
+        /* PERBAIKAN: Posisi tombol hapus gambar yang lebih tepat */
         #btnHapusGambar {
             position: absolute;
-            right: 100px; /* Posisikan di sebelah kiri tombol Browse */
-            top: 50%;
+            right: 98px; 
+            top: 41%;
             transform: translateY(-50%);
             z-index: 4;
             background: transparent;
@@ -210,13 +207,18 @@
             padding: 5px 8px;
             cursor: pointer;
             display: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         #btnHapusGambar:hover {
             color: #bd2130;
             background-color: rgba(220, 53, 69, 0.1);
-            border-radius: 4px;
-        }
+        } 
 
         .close-btn {
             background: none;
@@ -254,18 +256,22 @@
             border-radius: 6px;
             font-weight: 500;
             cursor: pointer;
+            border: none;
         }
 
         .btn-primary {
             background-color: #3366ff;
-            color: white;
-            border: none;
+            color: white; 
         }
 
         .btn-secondary {
             background-color: #6c757d;
             color: white;
-            border: none;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
         }
 
         @keyframes fadeIn {
@@ -313,11 +319,18 @@
             font-size: 0.85rem;
         }
         
-        /* PERBAIKAN: Scroll untuk modal body */
+        /* PERBAIKAN: Scroll untuk seluruh konten modal */
+        .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+        }
+        
         .modal-body-scroll {
-            max-height: calc(100vh - 200px);
+            flex: 1;
             overflow-y: auto;
-            padding-right: 10px;
+            max-height: calc(100vh - 200px);
+            padding-right: 10px; 
         }
         
         .modal-body-scroll::-webkit-scrollbar {
@@ -337,6 +350,8 @@
         .modal-body-scroll::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+        
+        /* PERBAIKAN: Container untuk input file yang lebih baik */
         .file-input-container {
             position: relative;
             width: 100%;
@@ -345,4 +360,4 @@
         .browse-btn {
             position: relative;
             z-index: 2;
-        }
+        } 
