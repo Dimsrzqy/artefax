@@ -4,7 +4,10 @@
 // Menggunakan koneksi mysqli (class Database di ../config/koneksi.php)
 
 session_start();
-include __DIR__ . '/../config/koneksi.php'; // sesuaikan jika lokasi koneksi berbeda
+require_once __DIR__ . '/../config/koneksi.php'; // sesuaikan jika lokasi koneksi berbeda
+include __DIR__ . "/components/cart_navbar.php";
+include __DIR__ . "/components/cart_modal.php";
+include __DIR__ . "/components/cart_script.php";
 
 // ---------------------------
 // KONEKSI
@@ -158,7 +161,7 @@ function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
 }
 // cart
-$cart = $_SESSION['cart'] ?? [];
+$cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
 ?>
 <!DOCTYPE html>
@@ -242,11 +245,12 @@ $cart = $_SESSION['cart'] ?? [];
                         <i class="fas fa-search text-primary"></i>
                     </button>
                   <!-- Keranjang -->
-                  <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
-                  <i class="fa fa-shopping-bag fa-2x"></i>
-                  <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1" style="top: -5px; left: 15px; height: 20px; min-width: 20px;" id="cart-count">
-                        3
-                  </span>
+                 <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
+                      <i class="fa fa-shopping-bag fa-2x"></i>
+                      <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1"
+                            style="top: -5px; left: 15px; height: 20px; min-width: 20px;">
+                          <?= $cart_count ?>
+                      </span>
                   </a>
 
                     <!-- Akun -->
@@ -278,40 +282,6 @@ $cart = $_SESSION['cart'] ?? [];
   </div>
 </div>
 <!-- ========== Modal Search End ========== -->
-
-<!-- Modal keranjang -->
-<?php include 'cart_modal.php'; ?>
-
-<!-- Script AJAX untuk update qty & hapus item -->
-<script>
-document.querySelectorAll('.qtyUpdate').forEach(el => {
-    el.addEventListener('change', () => {
-        let index = el.dataset.index;
-        let qty = el.value;
-
-        fetch('cart_update.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'index=' + index + '&qty=' + qty
-        }).then(() => location.reload());
-    });
-});
-
-document.querySelectorAll('.deleteItem').forEach(btn => {
-    btn.addEventListener('click', () => {
-        let index = btn.dataset.index;
-        fetch('cart_delete.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'index=' + index
-        }).then(() => location.reload());
-    });
-});
-</script>
-
-</body>
-</html>
-
 
 <!-- ========== Header / Breadcrumb ========== -->
 <div class="container-fluid page-header py-5" style="margin-top:90px;">
@@ -555,77 +525,6 @@ document.querySelectorAll('.deleteItem').forEach(btn => {
     </div>
   </div>
 </div>
- <!--Keranjang -->
-<div class="modal fade" id="cartModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Keranjang Belanja</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-
-        <?php if (empty($cart)): ?>
-            <p class="text-center text-muted">Keranjang masih kosong.</p>
-        <?php else: ?>
-
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Produk</th>
-              <th>Harga</th>
-              <th>Qty</th>
-              <th>Total</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-          <?php 
-            $grand = 0; 
-            foreach ($cart as $idx => $c):
-              $subtotal = $c['qty'] * $c['price'];
-              $grand += $subtotal;
-          ?>
-            <tr>
-              <td><?= htmlspecialchars($c['name']) ?></td>
-              <td>Rp <?= number_format($c['price'],0,',','.') ?></td>
-
-              <td width="100">
-                <input type="number" min="1" class="form-control qtyUpdate" 
-                       data-index="<?= $idx ?>" value="<?= $c['qty'] ?>">
-              </td>
-
-              <td>Rp <?= number_format($subtotal,0,',','.') ?></td>
-
-              <td>
-                <button class="btn btn-danger btn-sm deleteItem" data-index="<?= $idx ?>">
-                    <i class="fa fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-          </tbody>
-        </table>
-
-        <h5 class="text-end">Total: <strong>Rp <?= number_format($grand,0,',','.') ?></strong></h5>
-
-        <?php endif; ?>
-
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-        <?php if (!empty($cart)): ?>
-            <a href="checkout.php" class="btn btn-success">Checkout</a>
-        <?php endif; ?>
-      </div>
-
-    </div>
-  </div>
-</div>
-
         <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
             <div class="container py-5">
@@ -730,6 +629,32 @@ document.querySelectorAll('.deleteItem').forEach(btn => {
     <script src="lib/waypoints/waypoints.min.js"></script>
     <script src="lib/lightbox/js/lightbox.min.js"></script>
     <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+    <!-- cart add -->
+    <script>
+function addToCart(id, tipe, qty = 1) {
+
+    fetch('root/cart_add.php', {  // ⬅ Path yang benar
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `id=${id}&tipe=${tipe}&qty=${qty}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+
+            // Update angka keranjang di navbar
+            document.getElementById('cart-count').innerText = data.cart_count;
+
+            // Buka modal keranjang (opsional)
+            let modal = new bootstrap.Modal(document.getElementById('cartModal'));
+            modal.show();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+</script>
+
  <script>
 // buka modal product dan isi data
 $(document).on('click', '.openDetailBtn', function(){

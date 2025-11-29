@@ -369,8 +369,8 @@ document.addEventListener('DOMContentLoaded', ()=> {
 
         <!-- Tombol submit -->
         <div class="mt-3">
-          <button type="submit" class="btn btn-primary w-100">
-            Konfirmasi Checkout
+          <button type="button" id="btnKonfirmasi" class="btn btn-primary w-100">
+              Konfirmasi Checkout
           </button>
           <a href="shop.php" class="btn btn-outline-secondary w-100 mt-2">
             Kembali ke Shop
@@ -568,6 +568,76 @@ if (isset($_SESSION['error_checkout'])) {
     unset($_SESSION['error_checkout']);
 }
 ?>
+<!-- Syarat dan ketentuan -->
+<script>
+document.getElementById("btnKonfirmasi").addEventListener("click", function () {
+
+    Swal.fire({
+        title: 'Syarat & Ketentuan',
+        html: `
+        <div style="text-align:left; max-height:350px; overflow-y:auto; padding-right:10px;">
+
+            <h4><b>1. Ketentuan Penyewaan Alat</b></h4>
+            <ul>
+                <li>Penyewa wajib memberikan data yang benar.</li>
+                <li>Pembayaran dilakukan di awal sesuai ketentuan.</li>
+                <li>Penyewa bertanggung jawab penuh atas alat selama masa sewa.</li>
+                <li>Kerusakan ringan ditanggung penyewa, sedangkan kerusakan berat atau kehilangan harus diganti sesuai harga alat.</li>
+                <li>Alat harus dikembalikan tepat waktu. Keterlambatan akan dikenakan denda.</li>
+                <li>Dilarang meminjamkan alat kepada pihak lain tanpa izin dari penyedia.</li>
+            </ul>
+
+            <h4><b>2. Ketentuan Penyewaan Jasa</b></h4>
+            <ul>
+                <li>Penyewa wajib menjelaskan detail kebutuhan jasa dengan jelas.</li>
+                <li>Pembayaran jasa dilakukan di awal (DP/lunas).</li>
+                <li>Jasa yang sudah dikerjakan tidak dapat dibatalkan atau dikembalikan dananya.</li>
+                <li>Permintaan revisi besar di luar perjanjian awal akan dikenakan biaya tambahan.</li>
+            </ul>
+
+            <h4><b>3. Ketentuan Pembatalan Booking</b></h4>
+            <ul>
+                <li>Pembatalan maksimal H-2 sebelum acara untuk refund 100%.</li>
+                <li>Pembatalan H-1 atau hari H → uang tidak dikembalikan (non-refund).</li>
+                <li>Tidak hadir atau tidak mengambil barang dianggap batal tanpa refund.</li>
+                <li>Proses refund membutuhkan 1–3 hari kerja.</li>
+            </ul>
+
+            <h4><b>4. Ketentuan Tambahan</b></h4>
+            <ul>
+                <li>Dengan melanjutkan checkout, penyewa dianggap setuju dengan seluruh ketentuan di atas.</li>
+                <li>Penyedia berhak menolak pesanan tertentu apabila dianggap tidak sesuai atau berisiko.</li>
+                <li>Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
+            </ul>
+
+            <hr>
+            <div style="margin-top:10px;">
+                <input type="checkbox" id="agreeCheckbox">
+                <label for="agreeCheckbox">Saya telah membaca dan menyetujui Syarat & Ketentuan.</label>
+            </div>
+
+        </div>
+        `,
+        width: 700,
+        showCancelButton: true,
+        confirmButtonText: 'Lanjutkan Pembayaran',
+        cancelButtonText: 'Batal',
+        allowOutsideClick: false,
+        preConfirm: () => {
+            if (!document.getElementById('agreeCheckbox').checked) {
+                Swal.showValidationMessage('Anda harus menyetujui syarat & ketentuan.');
+                return false;
+            }
+            return true;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById("checkoutForm").submit();
+        }
+    });
+
+});
+</script>
 
 </body>
 </html>
