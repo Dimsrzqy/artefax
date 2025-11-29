@@ -118,7 +118,6 @@ ob_end_flush();
           <li><a href="#about">About</a></li>
           <li><a href="#services">Layanan</a></li>
           <li><a href="#portfolio">Portfolio</a></li>
-          <li><a href="#team">Team</a></li>
           <li><a href="#contact">Contact</a></li>
           <li><a href="view/profil.php">Profile</a></li> <!-- Tambahkan menu Profile -->
         </ul>
@@ -148,7 +147,7 @@ ob_end_flush();
           </div>
           <div class="col-lg-6">
             <div class="hero-image">
-              <img src="assets/img/illustration/illustration-28.webp" class="img-fluid floating" alt="Hero Image" />
+              <img src="assets/img/animasi.png" class="img-fluid floating" alt="Hero Image" />
             </div>
           </div>
         </div>
@@ -282,7 +281,7 @@ ob_end_flush();
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/illustration/illustration-14.webp" alt="Creative Team" class="img-fluid" />
+              <img src="assets/img/At the office-amico.png" alt="Creative Team" class="img-fluid" />
             </div>
           </div>
 
@@ -308,7 +307,7 @@ ob_end_flush();
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/illustration/illustration-6.webp" alt="Multimedia Services" class="img-fluid" />
+              <img src="assets/img/Studio photographer-amico.png" alt="Multimedia Services" class="img-fluid" />
             </div>
           </div>
 
@@ -334,7 +333,7 @@ ob_end_flush();
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/illustration/illustration-7.webp" alt="Professional Workflow" class="img-fluid" />
+              <img src="assets/img/Events-amico.png" alt="Professional Workflow" class="img-fluid" />
             </div>
           </div>
 
@@ -360,7 +359,7 @@ ob_end_flush();
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/illustration/illustration-8.webp" alt="Client Focus" class="img-fluid" />
+              <img src="assets/img/Partnership-amico.png" alt="Client Focus" class="img-fluid" />
             </div>
           </div>
 
