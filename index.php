@@ -120,6 +120,7 @@ ob_end_flush();
           <li><a href="#portfolio">Portfolio</a></li>
           <li><a href="#contact">Contact</a></li>
           <li><a href="view/profil.php">Profile</a></li> <!-- Tambahkan menu Profile -->
+          <li><a href="RiwayatBooking.php">Riwayat</a></li>
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
