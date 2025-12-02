@@ -425,7 +425,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         </div>
       </div>
 <!-- PRODUCT GRID -->
-    <!-- PRODUCT GRID -->
+  <!-- PRODUCT GRID -->
 <div class="col-lg-9">
   <div class="row g-4 justify-content-center">
     <?php if (empty($products)): ?>
@@ -442,8 +442,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
       <?php foreach ($products as $p): ?>
 
         <?php
-          // Nama kolom gambar HARUS bernama 'gambar'
-          $imgFile = $p['gambar'] ?? ''; 
+          // Nama kolom gambar dari query UNION
+          $imgFile = $p['image'] ?? ''; 
           $imgPath = $imgBasePath . $imgFile;
           $imgUrl  = (!empty($imgFile) && file_exists($imgPath)) 
                       ? $imgBaseUrl . $imgFile 
@@ -465,10 +465,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
             <?php endif; ?>
 
             <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-              <h4><?= htmlspecialchars($p['name']) ?></h4>
-              <p class="small text-muted mb-2">
-                <?= htmlspecialchars(mb_strimwidth($p['description'], 0, 80, '...')) ?>
-              </p>
+              <!-- ✅ HANYA NAMA PRODUK (tanpa deskripsi) -->
+              <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
 
               <div class="d-flex justify-content-between flex-lg-wrap align-items-center">
                 <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
@@ -498,10 +496,13 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
   </div>
 </div>
 
-<!-- MODAL DETAIL PRODUK (popup) -->
+<!-- ✅ MODAL DETAIL PRODUK DENGAN TOMBOL CLOSE (X) -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content p-3">
+      <!-- ✅ TOMBOL CLOSE (X) DI POJOK KANAN ATAS -->
+      <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+      
       <div class="row g-3">
         <div class="col-md-5">
           <img id="modalImg" src="" class="img-fluid rounded" alt="">
@@ -516,9 +517,12 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
           <div id="modalExtra" class="mb-2"></div>
 
           <!-- Jumlah & Tombol Tambah ke Keranjang -->
-          <div class="d-flex gap-2">
-            <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:120px;">
-            <button id="btnAddToCart" class="btn btn-primary">Tambah ke Keranjang</button>
+          <div class="d-flex gap-2 align-items-center">
+            <label for="modalQty" class="mb-0">Jumlah:</label>
+            <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:100px;">
+            <button id="btnAddToCart" class="btn btn-primary flex-grow-1">
+              <i class="fa fa-shopping-cart me-2"></i>Tambah ke Keranjang
+            </button>
           </div>
         </div>
       </div>
@@ -656,42 +660,82 @@ function addToCart(id, tipe, qty = 1) {
 </script>
 
  <script>
-// buka modal product dan isi data
+  // ========================================
+// SCRIPT UNTUK POPUP DETAIL PRODUK (FIXED)
+// Disesuaikan dengan cart_add.php yang sudah ada
+// ========================================
+
+// 1. Buka modal product dan isi data
 $(document).on('click', '.openDetailBtn', function(){
     const btn = $(this);
+    
+    // Isi data ke modal
     $('#modalImg').attr('src', btn.data('img'));
     $('#modalName').text(btn.data('name'));
     $('#modalCat').text(btn.data('kat'));
     $('#modalDesc').text(btn.data('desc'));
-    $('#modalPrice').text(new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(btn.data('price')));
+    
+    // Format harga ke Rupiah
+    const price = btn.data('price');
+    $('#modalPrice').text(new Intl.NumberFormat('id-ID', { 
+        style: 'currency', 
+        currency: 'IDR', 
+        maximumFractionDigits: 0 
+    }).format(price));
+    
+    // Reset quantity
     $('#modalQty').val(1);
-    // simpan data pada tombol add
+    
+    // Simpan SEMUA data yang dibutuhkan (sesuai cart_add.php)
     $('#btnAddToCart').data('id', btn.data('id'));
-    $('#btnAddToCart').data('tipe', btn.data('tipe'));
+    $('#btnAddToCart').data('type', btn.data('tipe'));  // ⬅️ ubah 'tipe' jadi 'type'
+    $('#btnAddToCart').data('name', btn.data('name'));   // ⬅️ tambah name
+    $('#btnAddToCart').data('price', btn.data('price')); // ⬅️ tambah price
+    
+    // Buka modal
     $('#productModal').modal('show');
 });
 
-// Tambah ke keranjang (AJAX ke cart_add.php)
+// 2. Tambah ke keranjang - SESUAI FORMAT cart_add.php
 $('#btnAddToCart').click(function(){
     const id = $(this).data('id');
-    const tipe = $(this).data('tipe');
+    const type = $(this).data('type');      // ⬅️ gunakan 'type' bukan 'tipe'
+    const name = $(this).data('name');      // ⬅️ tambah name
+    const price = $(this).data('price');    // ⬅️ tambah price
     const qty = parseInt($('#modalQty').val()) || 1;
 
-    $.post('cart_add.php', { id: id, tipe: tipe, qty: qty }, function(resp){
-        try {
-            const j = JSON.parse(resp);
-            if (j.success) {
-                // update counter keranjang di navbar
-                $('#cartCount').text(j.cart_count);
-                // tampil notifikasi sederhana
-                alert('Produk berhasil ditambahkan ke keranjang.');
-                $('#productModal').modal('hide');
-            } else {
-                alert('Gagal menambahkan ke keranjang: ' + (j.message || 'unknown'));
+    console.log('📦 Mengirim data:', { id, type, name, price, qty }); // DEBUG
+
+    // Gunakan fetch seperti di cart_script.php
+    fetch('root/cart_add.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log('✅ Response:', data); // DEBUG
+        
+        if (data.status === 'success') {
+            // Update counter keranjang di navbar
+            if (data.cart_count) {
+                $('.position-absolute.bg-secondary').text(data.cart_count);
             }
-        } catch(e) {
-            alert('Response error: ' + resp);
+            
+            alert('✅ Produk berhasil ditambahkan ke keranjang!');
+            
+            // Tutup modal
+            $('#productModal').modal('hide');
+            
+            // Reload halaman untuk update cart (opsional)
+            // location.reload();
+        } else {
+            alert('❌ Gagal: ' + (data.message || 'Terjadi kesalahan'));
         }
+    })
+    .catch(error => {
+        console.error('❌ AJAX Error:', error);
+        alert('❌ Gagal menghubungi server!\n\nError: ' + error);
     });
 });
 </script>

@@ -1,6 +1,11 @@
 <?php
 session_start();
-include "../config/koneksi.php";
+include_once "../config/koneksi.php";
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    die("Akses ditolak.");
+}
+
 
 // Cek submit
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
