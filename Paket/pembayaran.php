@@ -1,7 +1,6 @@
 <?php
 session_start();
 include "../config/koneksi.php";
-include "proses_pembayaran.php";
 
 // =============================
 // Ambil data booking dari session

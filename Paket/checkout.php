@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 
   
   <!-- FORM UTAMA -->
-  <form id="checkoutForm" action="process_checkout.php" method="POST">
+  <form id="checkoutForm" action="proses_pembayaran.php" method="POST">
 
     <!-- Kirim user ID ke backend -->
     <input type="hidden" name="user_id" value="<?= htmlspecialchars($userId) ?>">
