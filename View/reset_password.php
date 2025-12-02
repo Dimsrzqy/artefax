@@ -1,6 +1,5 @@
 <?php
 session_start();
-
 date_default_timezone_set('Asia/Jakarta');
 
 require_once "../config/koneksi.php";
@@ -20,7 +19,6 @@ if (empty($_SESSION['reset_csrf'])) {
 $csrf_token = $_SESSION['reset_csrf'];
 
 $token_input = $_GET['token'] ?? '';
-error_log("RESET START | token: $token_input | time: " . date('Y-m-d H:i:s'));
 
 if (!$conn) {
     $message = "Gagal terhubung ke database.";
@@ -31,10 +29,8 @@ if (!$conn) {
 
     $query = "SELECT Reset_Email, ResetExpires FROM password_resets WHERE ResetToken = ? AND ResetExpires > NOW()";
     $stmt = $conn->prepare($query);
-
     if (!$stmt) {
         $message = "Sistem error.";
-        error_log("Prepare failed: " . $conn->error);
     } else {
         $stmt->bind_param("s", $token);
         $stmt->execute();
@@ -59,7 +55,6 @@ if (!$conn) {
                     } else {
                         $hashed = password_hash($password, PASSWORD_DEFAULT);
 
-                        // PERBAIKAN: UserPassword + UserEmail
                         $updateQuery = "UPDATE users SET UserPassword = ?, UpdatedAt = NOW() WHERE UserEmail = ?";
                         $updateStmt = $conn->prepare($updateQuery);
                         if ($updateStmt) {
@@ -72,17 +67,12 @@ if (!$conn) {
                                     $deleteStmt->execute();
                                     $deleteStmt->close();
                                 }
-
                                 $success = true;
                                 $message = "Password berhasil diubah!";
-                                header("Location: http://localhost/Artefax/view/login.php");
-                                exit();
                             } else {
                                 $message = "Gagal mengubah password.";
                             }
                             $updateStmt->close();
-                        } else {
-                            $message = "Sistem error.";
                         }
                     }
                 }
@@ -100,57 +90,237 @@ if (!$conn) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password</title>
+    <title>Reset Password - Artefax</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; }
-        .card { max-width: 420px; margin: auto; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        .card-header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-align: center; padding: 2rem; }
-        .form-control { border-radius: 50px; padding: 12px 20px; }
-        .btn-primary { background: #667eea; border: none; border-radius: 50px; padding: 12px; font-weight: 600; }
-        .btn-primary:hover { background: #5a6fd8; }
-        .btn-success { background: #28a745; border-radius: 50px; padding: 12px; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: linear-gradient(135deg, #5c99ee 0%, #4c89de 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .auth-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            max-width: 420px;
+            width: 100%;
+            animation: fadeIn 0.7s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #5c99ee, #4c89de);
+            color: white;
+            text-align: center;
+            padding: 3rem 1.5rem 2.5rem;
+            border: none;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        .card-header p {
+            margin: 0.7rem 0 0;
+            opacity: 0.95;
+            font-size: 1rem;
+        }
+
+        .card-body {
+            padding: 2.5rem;
+        }
+
+        .form-control {
+            border-radius: 50px;
+            padding: 15px 22px;
+            border: 1.5px solid #e0e0e0;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+            margin-bottom: 1.2rem;
+        }
+
+        .form-control:focus {
+            border-color: #5c99ee;
+            box-shadow: 0 0 0 4px rgba(92, 153, 238, 0.25);
+            outline: none;
+        }
+
+        /* IKON MATA */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper .form-control {
+            padding-right: 65px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #777;
+            font-size: 1.3rem;
+            cursor: pointer;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .toggle-password:hover {
+            background: rgba(92,153,238,0.15);
+            color: #5c99ee;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #5c99ee, #4c89de);
+            border: none;
+            border-radius: 50px;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.4s;
+            box-shadow: 0 6px 20px rgba(92, 153, 238, 0.4);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4c89de, #3a78cd);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(92, 153, 238, 0.5);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            border-radius: 50px;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 6px 20px rgba(40,167,69,0.4);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(40,167,69,0.5);
+        }
+
+        .alert {
+            border-radius: 15px;
+            font-size: 0.95rem;
+            margin: 1rem 0;
+            padding: 1.2rem 1.5rem;
+        }
+
+        .text-center a {
+            color: #8a9ab0;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .text-center a:hover {
+            color: #5c99ee;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .card-header {
+                padding: 2.5rem 1rem;
+            }
+            .card-body {
+                padding: 2rem 1.5rem;
+            }
+            .form-control {
+                padding: 14px 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="card-header">
-                <h3>Reset Password</h3>
-                <p class="mb-0 opacity-75">Masukkan kata sandi baru</p>
-            </div>
-            <div class="card-body p-4">
-                <?php if ($message): ?>
-                    <div class="alert alert-<?= $success ? 'success' : 'danger' ?> alert-dismissible fade show">
-                        <?= htmlspecialchars($message) ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
+    <div class="auth-card">
+        <div class="card-header">
+            <h3>Reset Password</h3>
+            <p class="mb-0">Masukkan kata sandi baru Anda</p>
+        </div>
 
-                <?php if ($token_valid && !$success): ?>
-                    <form method="POST">
-                        <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                        <div class="mb-3">
-                            <label class="form-label">Password Baru</label>
-                            <input type="password" name="password" class="form-control" required minlength="6">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Konfirmasi</label>
-                            <input type="password" name="confirm" class="form-control" required minlength="6">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Ubah Password</button>
-                    </form>
-                <?php elseif ($success): ?>
-                    <a href="login.php" class="btn btn-success w-100">Login Sekarang</a>
-                <?php else: ?>
-                    <a href="forgot_password.php" class="btn btn-outline-secondary w-100">Minta Ulang Token</a>
-                <?php endif; ?>
-
-                <div class="text-center mt-3">
-                    <a href="login.php" class="text-muted small">Kembali ke Login</a>
+        <div class="card-body">
+            <?php if ($message): ?>
+                <div class="alert alert-<?= $success ? 'success' : 'danger' ?> alert-dismissible fade show">
+                    <?= htmlspecialchars($message) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
+            <?php endif; ?>
+
+            <?php if ($token_valid && !$success): ?>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="password" class="form-control" placeholder="Password Baru (min. 6 karakter)" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePass('password')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="password-wrapper">
+                        <input type="password" name="confirm" id="confirm" class="form-control" placeholder="Konfirmasi Password" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePass('confirm')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        Ubah Password
+                    </button>
+                </form>
+            <?php elseif ($success): ?>
+                <a href="login.php" class="btn btn-success w-100">Login Sekarang</a>
+            <?php else: ?>
+                <a href="forgot_password.php" class="btn btn-outline-primary w-100">Minta Ulang Link Reset</a>
+            <?php endif; ?>
+
+            <div class="text-center mt-4">
+                <a href="login.php">Kembali ke Login</a>
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePass(id) {
+            const field = document.getElementById(id);
+            const icon = field.parentElement.querySelector('.toggle-password i');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        }
+    </script>
 </body>
 </html>
