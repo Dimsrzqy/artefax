@@ -392,10 +392,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-graduation">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (1)_2_11zon.webp" class="img-fluid" alt="Brand Identity" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (1)_2_11zon.webp" class="img-fluid" alt="Brand Identity" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (1)_2_11zon.webpp" class="glightbox zoom-link" title="Brand Identity Project">
+                      <a href="assets/img/portfolio/foto (1)_2_11zon.webpp" class="glightbox zoom-link" title="Brand Identity Project">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -415,10 +415,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-graduation">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (2)_3_11zon.webp" class="img-fluid" alt="E-commerce Platform" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (2)_3_11zon.webp" class="img-fluid" alt="E-commerce Platform" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (2)_3_11zon.webp" class="glightbox zoom-link" title="E-commerce Platform">
+                      <a href="assets/img/portfolio/foto (2)_3_11zon.webp" class="glightbox zoom-link" title="E-commerce Platform">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -438,10 +438,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (3)_4_11zon.webp" class="img-fluid" alt="Magazine Design" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (3)_4_11zon.webp" class="img-fluid" alt="Magazine Design" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (3)_4_11zon.webp" class="glightbox zoom-link" title="Magazine Design">
+                      <a href="assets/img/portfolio/foto (3)_4_11zon.webp" class="glightbox zoom-link" title="Magazine Design">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -461,10 +461,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (4)_5_11zon.webp" class="img-fluid" alt="Motion Graphics" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (4)_5_11zon.webp" class="img-fluid" alt="Motion Graphics" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (4)_5_11zon.webp" class="glightbox zoom-link" title="Motion Graphics">
+                      <a href="assets/img/portfolio/foto (4)_5_11zon.webp" class="glightbox zoom-link" title="Motion Graphics">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -484,10 +484,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (5)_6_11zon.webp" class="img-fluid" alt="Logo Collection" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (5)_6_11zon.webp" class="img-fluid" alt="Logo Collection" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (5)_6_11zon.webp" class="glightbox zoom-link" title="Logo Collection">
+                      <a href="assets/img/portfolio/foto (5)_6_11zon.webp" class="glightbox zoom-link" title="Logo Collection">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -507,10 +507,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (7)_8_11zon.webp" class="img-fluid" alt="Mobile App Design" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (7)_8_11zon.webp" class="img-fluid" alt="Mobile App Design" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (7)_8_11zon.webp" class="glightbox zoom-link" title="Mobile App Design">
+                      <a href="assets/img/portfolio/foto (7)_8_11zon.webp" class="glightbox zoom-link" title="Mobile App Design">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
@@ -530,10 +530,10 @@ ob_end_flush();
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
               <div class="portfolio-card">
                 <div class="image-container">
-                  <img src="assets/img/portfolio/baru/foto (6)_7_11zon.webp" class="img-fluid" alt="Packaging Design" loading="lazy" />
+                  <img src="assets/img/portfolio/foto (6)_7_11zon.webp" class="img-fluid" alt="Packaging Design" loading="lazy" />
                   <div class="overlay">
                     <div class="overlay-content">
-                      <a href="assets/img/portfolio/baru/foto (6)_7_11zon.webp" class="glightbox zoom-link" title="Packaging Design">
+                      <a href="assets/img/portfolio/foto (6)_7_11zon.webp" class="glightbox zoom-link" title="Packaging Design">
                         <i class="bi bi-zoom-in"></i>
                       </a>
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
