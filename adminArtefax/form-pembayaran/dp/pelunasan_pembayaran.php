@@ -1,16 +1,16 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/pembayaran.php";
-require_once __DIR__ . "/../../class/users.php";
-
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/pembayaran.php";
+require_once __DIR__ . "/../../../class/users.php"; 
 $db = new Database();
 $conn = $db->getConnection();
 
 $pembayaran = new Pembayaran($conn);
 $user = new User($conn);
 
-$pendingPayments = $pembayaran->readPending();
+$ClearPayments = $pembayaran->readLunasDP();
+$detailPembayaran = $pembayaran->readJoinFull();
 
 // Feedback
 $success = $_SESSION['success'] ?? '';
@@ -27,11 +27,11 @@ unset($_SESSION['success'], $_SESSION['error']);
     <title>Konfirmasi Pembayaran - Admin ArtefaxID</title>
 
     <!-- CSS -->
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
-    <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../css/azia.css" rel="stylesheet">
+    <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+    <link href="../../lib/typicons.font/typicons.css" rel="stylesheet">
+    <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../../css/azia.css" rel="stylesheet">
     <style>
         .card-payment {
             background: white;
@@ -151,8 +151,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             margin-bottom: 16px;
         }
 
-        /* Modal Konfirmasi - Fixed & Lebih Jelas */
-        #modalKonfirmasi {
+        #modalPelunasan {
             pointer-events: none;
             display: none;
             position: fixed;
@@ -252,19 +251,19 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <!-- az-header-menu-header -->
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                        <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                        <a href="../../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+                        <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                     <li class="nav-item">
                         <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -363,8 +362,12 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                     <label>Pembayaran</label>
                     <nav class="nav flex-column">
-                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link">Daftar Pembayaran</a>
-                        <a href="../form-pembayaran/konfirmasi_pembayaran.php" class="nav-link active">Konfirmasi Pembayaran</a>
+                        <a href="../daftar_pembayaran.php" class="nav-link">Daftar Pembayaran</a>
+                        <a href="../pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
+                    </nav>
+                    <label>Pelunasan DP</label>
+                    <nav class="nav flex-column">
+                        <a href="../dp/pelunasan_pembayaran.php" class="nav-link active">Pelunasan Pembayaran</a>
                     </nav>
                 </div><!-- component-item -->
 
@@ -372,10 +375,10 @@ unset($_SESSION['success'], $_SESSION['error']);
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Pembayaran</span>
-                    <span>Konfrmasi Pembayaran</span>
+                    <span>Pelunasan Pembayaran</span>
                 </div>
-                <h2 class="az-content-title">Konfirmasi Pembayaran</h2>
-                <p class="mg-b-20">Verifikasi bukti pembayaran dari pelanggan.</p>
+                <h2 class="az-content-title">Pelunasan Pembayaran</h2>
+                <p class="mg-b-20">Verifikasi pelunasan pembayaran DP dari pelanggan.</p>
 
                 <!-- Feedback -->
                 <?php if ($success): ?>
@@ -387,8 +390,10 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                 <!-- Daftar Kartu -->
                 <div class="row">
-                    <?php if ($pendingPayments && count($pendingPayments) > 0): ?>
-                        <?php foreach ($pendingPayments as $p): ?>
+                    <?php if ($ClearPayments && count($ClearPayments) > 0): ?>
+                        <?php foreach ($ClearPayments as $index => $p): 
+                            $pf = $detailPembayaran[$index] ?? $p;
+                            ?>
                             <?php
                             $customer = $user->getUserByID($p['IDUser']);
                             $namaCustomer = $customer['UserNama'] ?? 'Unknown';
@@ -431,9 +436,10 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         </div>
                                     </div>
                                     <div class="card-footer">
-                                        <a href="detail_pembayaran.php?id=<?= $p['IDPembayaran'] ?>" class="btn-action btn-detail">
+                                        <button class="btn-action btn-detail" 
+                                                onclick='openDetailPopup(<?= json_encode($pf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                             <i class="fas fa-eye"></i> Detail
-                                        </a>
+                                        </button>
                                         <div>
                                             <button class="btn-action btn-setuju" onclick="konfirmasiAksi(<?= $p['IDPembayaran'] ?>, 'setuju')">
                                                 <i class="fas fa-check"></i> Setuju
@@ -461,7 +467,7 @@ unset($_SESSION['success'], $_SESSION['error']);
     </div>
 
     <!-- Modal Konfirmasi -->
-    <div id="modalKonfirmasi" class="modal-overlay">
+    <div id="modalPelunasan" class="modal-overlay">
         <div class="modal-dialog">
             <div class="modal-header" id="modalHeader">
                 <h5 id="modalTitle">Konfirmasi</h5>
@@ -476,9 +482,9 @@ unset($_SESSION['success'], $_SESSION['error']);
             </div>
         </div>
     </div>
-
+    <?php require_once __DIR__ . "/../detail_pembayaran.php"; ?>
     <script>
-        const modalOverlay = document.getElementById('modalKonfirmasi');
+        const modalOverlay = document.getElementById('modalPelunasan');
         let currentId = null;
 
         function konfirmasiAksi(id, aksi) {
@@ -502,14 +508,14 @@ unset($_SESSION['success'], $_SESSION['error']);
             }
 
 
-            btnKonfirmasi.onclick = () => prosesKonfirmasi(aksi);
+            btnKonfirmasi.onclick = () => prosesPelunasan(aksi);
 
             modalOverlay.style.display = 'flex';
         }
 
-        function prosesKonfirmasi(aksi) {
+        function prosesPelunasan(aksi) {
             if (!currentId) return;
-            window.location.href = `proses_konfirmasi.php?id=${currentId}&aksi=${aksi}`;
+            window.location.href = `proses_pelunasan.php?id=${currentId}&aksi=${aksi}`;
         }
 
         function closeModal() {
@@ -525,9 +531,8 @@ unset($_SESSION['success'], $_SESSION['error']);
 
     <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>
-    < script src="../lib/bootstrap/js/bootstrap.bundle.min.js">
-        </script>
-        <script src="../js/azia.js"></script>
+    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/azia.js"></script>
 </body>
 
 </html>

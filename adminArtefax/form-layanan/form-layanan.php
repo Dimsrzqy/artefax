@@ -479,7 +479,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       const imgPath = data.PaketDirGbr;
       if (imgPath && imgPath.trim() !== '') {
         document.getElementById('gambarLama').value = imgPath;
-        previewImg.src = 'artefax/Paket/img/produk/' + imgPath;
+        previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
         previewContainer.style.display = 'block';
         document.getElementById('previewText').textContent = 'Gambar saat ini';
         document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();
