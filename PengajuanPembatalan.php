@@ -1,5 +1,5 @@
 <?php
-// File: PengajuanPembatalan.php - Final Code (Mengubah PbrJumlah saat Refund > 0)
+// File: PengajuanPembatalan.php - Final Code (Koreksi Penamaan File Upload)
 
 session_start();
 date_default_timezone_set('Asia/Jakarta');
@@ -9,8 +9,7 @@ if (!isset($_SESSION['user']) || strtolower($_SESSION['user']['UserRole'] ?? '')
     exit;
 }
 
-// PERBAIKAN PATH DI BARIS INI: Menggunakan path relatif yang lebih aman dan konsisten.
-// Diasumsikan file config berada di root proyek (Artefax/config/koneksi.php)
+// PERBAIKAN PATH di sini agar sesuai dengan struktur file Anda
 require_once __DIR__ . '/config/koneksi.php'; 
 
 $db = new Database();
@@ -30,7 +29,7 @@ $stmt = $conn->prepare("
         b.BkgTglMulai, 
         b.BkgTotalHarga, 
         p.IDPembayaran,
-        p.PbrJumlah /* Ambil PbrJumlah asli */
+        p.PbrJumlah
     FROM booking b
     LEFT JOIN pembayaran p ON b.IDBooking = p.IDBooking 
     WHERE b.IDBooking = ? AND b.IDUser = ? 
@@ -47,7 +46,6 @@ if (!$bookingData) {
 }
 
 $tanggalMulai = new DateTime($bookingData['BkgTglMulai']);
-// Gunakan PbrJumlah dari tabel pembayaran sebagai total harga yang akan dihitung refund-nya
 $totalHargaAwal = $bookingData['PbrJumlah']; 
 $idPembayaran = $bookingData['IDPembayaran'];
 $today = new DateTime();
@@ -95,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_cancellation']
         $refundJumlah = $refundAmount;
 
         // TENTUKAN PATH UPLOAD YANG BENAR & CHECK DIREKTORI
-        $targetDir = __DIR__ . "/../../uploads/refund_bukti/";
+        $targetDir = __DIR__ . "/uploads/refund_bukti/";
         
         if (!is_dir($targetDir)) {
              if (!mkdir($targetDir, 0777, true)) {
@@ -105,10 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_cancellation']
         }
 
         if (empty($error)) {
-            $fileName = $idBooking . '_' . time() . '_' . basename($_FILES["bukti"]["name"]);
+            $imageFileType = strtolower(pathinfo($_FILES["bukti"]["name"], PATHINFO_EXTENSION));
+            
+            // --- PERBAIKAN PENAMAAN FILE UNIK (Menggantikan penamaan berurutan) ---
+            $uniqueId = uniqid(date('YmdHis')); // Timestamp + UniqID untuk keunikan maksimal
+            $fileName = "refund_BKG{$idBooking}_{$uniqueId}.{$imageFileType}"; 
+            // Contoh: refund_BKG101_20251203230200656b823e20e8.jpg
+            // -------------------------------------------------------------------
+            
             $targetFile = $targetDir . $fileName;
             $uploadOk = 1;
-            $imageFileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
 
             if ($_FILES["bukti"]["size"] > 5000000) { 
                 $error = "Ukuran file terlalu besar.";
@@ -125,16 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_cancellation']
                                 VALUES (?, NOW(), ?, 'Pending', ?, ?, ?, ?)";
                 
                 $stmtInsert = $conn->prepare($queryInsert);
-                $stmtInsert->bind_param("dsiiii", $refundJumlah, $alasan, $idUser, $idBooking, $idPembayaran, $fileName);
+                $stmtInsert->bind_param("dsiiis", $refundJumlah, $alasan, $idUser, $idBooking, $idPembayaran, $fileName);
                 
                 if ($stmtInsert->execute()) {
                     
-                    // 3b. UPDATE PENDAPATAN BERSIH di tabel 'pembayaran' (Sesuai permintaan Anda)
+                    // 3b. UPDATE PENDAPATAN BERSIH di tabel 'pembayaran'
                     if ($refundAmount > 0) {
-                        // **PERHATIAN: INI MENGUBAH DATA TRANSAKSI ASLI.**
                         $conn->query("UPDATE pembayaran SET PbrJumlah = $pendapatanBersihBaru WHERE IDPembayaran = $idPembayaran");
-                        
-                        // Opsional: Update BkgTotalHarga di tabel booking juga (agar laporan booking konsisten)
                         $conn->query("UPDATE booking SET BkgTotalHarga = $pendapatanBersihBaru WHERE IDBooking = $idBooking");
                     }
 
