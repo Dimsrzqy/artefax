@@ -31,7 +31,7 @@ class EventAssignment
             $this->conn->autocommit(false);
             $this->conn->begin_transaction();
 
-            // Gabung tanggal + jam (sudah sesuai waktu lokal device karena input dari browser)
+            // Gabung tanggal + jam
             $start = new DateTime("$eventTanggal $eventMulai");
             $end   = clone $start;
             $end->modify("+$eventDurasi hours");
@@ -51,7 +51,7 @@ class EventAssignment
             $idEvent = $this->conn->insert_id;
             $stmt->close();
 
-            // Insert karyawan
+            // Insert karyawan ke event_karyawan
             $stmtKary = $this->conn->prepare("INSERT INTO event_karyawan (IDEvent, IDKaryawan) VALUES (?, ?)");
             foreach ($karyawanClean as $idKary) {
                 $stmtKary->bind_param("ii", $idEvent, $idKary);
@@ -59,15 +59,13 @@ class EventAssignment
             }
             $stmtKary->close();
 
-            // UPDATE BOOKING LANGSUNG JADI SELESAI → SESUAI KEINGINAN KAMU
-            $stmtBooking = $this->conn->prepare("UPDATE booking SET BkgStatus = 'Selesai' WHERE IDBooking = ?");
-            $stmtBooking->bind_param("i", $idBooking);
-            $stmtBooking->execute();
-            $stmtBooking->close();
+            // DIBATALKAN: TIDAK LAGI UBAH STATUS BOOKING JADI "Selesai"
+            // Status tetap "Diterima" sesuai permintaan Anda
 
             $this->conn->commit();
             $this->conn->autocommit(true);
             return $idEvent;
+
         } catch (Exception $e) {
             $this->conn->rollback();
             $this->conn->autocommit(true);
@@ -76,32 +74,31 @@ class EventAssignment
         }
     }
 
-    // UPDATE STATUS OTOMATIS → AMAN DENGAN BUFFER 30 MENIT
-    // UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
-    // UPDATE STATUS OTOMATIS → REAL-TIME & AKURAT 100%
+    // UPDATE STATUS OTOMATIS EVENT (Menunggu → Berjalan → Selesai)
     public function updateStatusOtomatis()
     {
-        // 1. Ubah ke "Berjalan" → jika waktu sekarang sudah masuk rentang event
+        // 1. Ubah ke "Berjalan" jika waktu sekarang sudah masuk rentang event
         $this->conn->query("
-        UPDATE `event` 
-        SET EventStatus = 'Berjalan'
-        WHERE EventStatus = 'Menunggu'
-          AND EventTanggal = CURDATE()
-          AND EventMulai <= CURTIME()
-          AND EventSelesai > CURTIME()
-    ");
+            UPDATE `event` 
+            SET EventStatus = 'Berjalan'
+            WHERE EventStatus = 'Menunggu'
+              AND EventTanggal = CURDATE()
+              AND EventMulai <= CURTIME()
+              AND EventSelesai > CURTIME()
+        ");
 
-        // 2. Ubah ke "Selesai" → jika waktu event sudah benar-benar lewat
+        // 2. Ubah ke "Selesai" jika waktu event sudah lewat
         $this->conn->query("
-        UPDATE `event` 
-        SET EventStatus = 'Selesai'
-        WHERE EventStatus IN ('Menunggu', 'Berjalan')
-          AND (
-            EventTanggal < CURDATE()
-            OR (EventTanggal = CURDATE() AND EventSelesai <= CURTIME())
-          )
-    ");
+            UPDATE `event` 
+            SET EventStatus = 'Selesai'
+            WHERE EventStatus IN ('Menunggu', 'Berjalan')
+              AND (
+                EventTanggal < CURDATE()
+                OR (EventTanggal = CURDATE() AND EventSelesai <= CURTIME())
+              )
+        ");
     }
+
     public function getAssignmentsByKaryawan($idKaryawan)
     {
         $this->updateStatusOtomatis();

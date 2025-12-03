@@ -7,56 +7,59 @@ $db      = new Database();
 $conn    = $db->getConnection();
 $booking = new Booking($conn);
 
+// OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL SUDAH LEWAT
+$booking->updateStatusSelesaiOtomatis();
+
 /* ============== PAGINATION ============== */
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-// NOTE: Kita tetap menggunakan getTotalBooking yang mengambil total booking status 'Diterima' 
-// karena filter jenis layanan akan dilakukan setelah data diambil.
-$totalBooking = $booking->getTotalBooking('Diterima');
-$totalPages   = ceil($totalBooking / $limit);
-$rawList      = $booking->getBookingList($limit, $offset, 'Diterima');
+/* ============ QUERY MANUAL YANG AMAN & SESUAI DENGAN CLASS BOOKING LAMA ============ */
+// Hanya ambil booking Diterima + punya Paket Jasa + BELUM punya event
+$sql = "
+    SELECT 
+        b.IDBooking,
+        b.BkgAlamat,
+        b.BkgTglMulai,
+        b.BkgTglSelesai,
+        b.BkgTotalHarga,
+        b.CreatedAt,
+        u.UserNama,
+        GROUP_CONCAT(DISTINCT pj.PaketNama SEPARATOR ' + ') AS NamaPaket
+    FROM booking b
+    LEFT JOIN users u ON b.IDUser = u.IDUser
+    INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
+    LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
+    WHERE b.BkgStatus = 'Diterima'
+      AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
+    GROUP BY b.IDBooking
+    ORDER BY b.CreatedAt DESC
+    LIMIT ? OFFSET ?
+";
 
-/* Group biar 1 booking = 1 baris DAN HANYA MENGAMBIL ITEM PAKET JASA */
-$grouped = [];
-$bookingIdsToKeep = [];
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("ii", $limit, $offset);
+$stmt->execute();
+$result = $stmt->get_result();
+$bookings = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-foreach ($rawList as $row) {
-  $id = $row['IDBooking'];
-
-  // Inisialisasi booking
-  if (!isset($grouped[$id])) {
-    $grouped[$id] = $row;
-    $grouped[$id]['items'] = [];
-  }
-
-  if (!empty($row['BkgDetailJenis'])) {
-    $nama = '-';
-
-    // >>> FILTER HANYA UNTUK PAKET JASA <<<
-    if ($row['BkgDetailJenis'] === 'Paket Jasa' && !empty($row['PaketNama'])) {
-      $nama = $row['PaketNama'];
-
-      // Tandai booking ini untuk disimpan (jika minimal ada 1 Paket Jasa)
-      $bookingIdsToKeep[$id] = true;
-
-      // Tambahkan item ke list item booking ini
-      $grouped[$id]['items'][] = [
-        'jenis' => $row['BkgDetailJenis'],
-        'nama'  => $nama
-      ];
-    }
-    // Abaikan jika BkgDetailJenis === 'Alat'
-  }
-}
-
-// Hapus booking dari $grouped yang hanya berisi item Alat atau tidak punya item sama sekali
-$filteredGrouped = array_intersect_key($grouped, $bookingIdsToKeep);
-
-// Hitung ulang total baris yang ditampilkan (opsional, untuk display yang akurat)
-$displayedTotalRows = count($filteredGrouped);
-
+/* Hitung total untuk pagination */
+$totalSql = "
+    SELECT COUNT(*) AS total
+    FROM (
+        SELECT b.IDBooking
+        FROM booking b
+        INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
+        WHERE b.BkgStatus = 'Diterima'
+          AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
+        GROUP BY b.IDBooking
+    ) AS aktif
+";
+$totalResult = $conn->query($totalSql);
+$totalBooking = $totalResult->fetch_assoc()['total'];
+$totalPages = ceil($totalBooking / $limit);
 
 /* Feedback */
 $success = $_SESSION['success_message'] ?? '';
@@ -66,7 +69,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,94 +77,19 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
   <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
   <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
   <link rel="stylesheet" href="../css/azia.css">
-
   <style>
-    .badge-paket {
-      background: #28a745;
-      color: #fff;
-      padding: 6px 12px;
-      margin: 3px 3px 3px 0;
-      font-size: 12px;
-      border-radius: 50px;
-      display: inline-block;
-      font-weight: 500;
-    }
-
-    .badge-alat {
-      /* Warna badge Alat dihapus karena Alat tidak ditampilkan, tapi CSS tetap disimpan agar konsisten */
-      background: #ffc107;
-      color: #212529;
-      padding: 6px 12px;
-      margin: 3px 3px 3px 0;
-      font-size: 12px;
-      border-radius: 50px;
-      display: inline-block;
-      font-weight: 500;
-    }
-
-    .table {
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-      margin-bottom: 0;
-    }
-
-    /* HEADER TABEL WARNA BIRU #3366ff */
-    .table thead th {
-      background: #3366ff !important;
-      color: #ffffff !important;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 13px;
-      letter-spacing: 0.8px;
-      border: none;
-      padding: 16px 20px;
-    }
-
-    .table tbody td {
-      padding: 18px 20px;
-      vertical-align: middle;
-      border-top: 1px solid #eef2f7;
-      font-size: 14px;
-      color: #2d3748;
-    }
-
-    .table tbody tr:hover {
-      background: #f8faff;
-      transition: all 0.2s ease;
-    }
-
-    .table tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .table-responsive {
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .az-content-title {
-      font-weight: 700;
-      color: #1a202c;
-      margin-bottom: 25px;
-    }
-
-    .alert {
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .text-durasi {
-      font-size: 13px;
-      color: #4a5568;
-      font-weight: 500;
-    }
+    .badge-paket{background:#28a745;color:#fff;padding:6px 12px;margin:3px 3px 3px 0;font-size:12px;border-radius:50px;display:inline-block;font-weight:500;}
+    .table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin-bottom:0;}
+    .table thead th{background:#3366ff !important;color:#fff !important;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:0.8px;border:none;padding:16px 20px;}
+    .table tbody td{padding:18px 20px;vertical-align:middle;border-top:1px solid #eef2f7;font-size:14px;color:#2d3748;}
+    .table tbody tr:hover{background:#f8faff;transition:all .2s;}
+    .az-content-title{font-weight:700;color:#1a202c;margin-bottom:25px;}
+    .alert{border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+    .text-durasi{font-size:13px;color:#4a5568;font-weight:500;}
   </style>
 </head>
-
 <body class="az-body">
-
+  <!-- HEADER & SIDEBAR TETAP 100% SAMA -->
   <div class="az-header">
     <div class="container">
       <div class="az-header-left">
@@ -300,64 +227,48 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
         <?php if ($success): ?>
           <div class="alert alert-success alert-dismissible fade show">
-            <?= htmlspecialchars($success) ?>
-            <button type="button" class="close" data-dismiss="alert">x</button>
+            <?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">x</button>
           </div>
         <?php endif; ?>
         <?php if ($error): ?>
           <div class="alert alert-danger alert-dismissible fade show">
-            <?= htmlspecialchars($error) ?>
-            <button type="button" class="close" data-dismiss="alert">x</button>
+            <?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">x</button>
           </div>
         <?php endif; ?>
 
-        <?php if (count($filteredGrouped) > 0): ?>
-          <small class="text-muted mb-3">Menampilkan **<?= count($filteredGrouped) ?>** dari **<?= $totalBooking ?>** total booking yang memiliki **Paket Jasa**.</small>
+        <?php if ($bookings): ?>
+          <small class="text-muted mb-3">Menampilkan <strong><?= count($bookings) ?></strong> booking aktif yang memiliki Paket Jasa dan belum ditugaskan.</small>
         <?php endif; ?>
 
         <div class="table-responsive">
-          <?php if (!empty($filteredGrouped)): ?>
+          <?php if ($bookings): ?>
             <table class="table table-hover mg-b-0">
               <thead class="thead-light">
                 <tr>
-                  <th>No</th>
-                  <th>Pelanggan</th>
-                  <th>Paket Jasa</th>
-                  <th>Mulai</th>
-                  <th>Selesai</th>
-                  <th>Durasi</th>
-                  <th>Total</th>
+                  <th>No</th><th>Pelanggan</th><th>Paket Jasa</th><th>Mulai</th><th>Selesai</th><th>Durasi</th><th>Total</th>
                 </tr>
               </thead>
               <tbody>
-                <?php $no = $offset + 1;
-                foreach ($filteredGrouped as $b): ?>
+                <?php $no = $offset + 1; foreach ($bookings as $b): ?>
                   <?php
-                  // Hitung durasi dari Mulai → Selesai
-                  $mulai   = new DateTime($b['BkgTglMulai']);
-                  $selesai = new DateTime($b['BkgTglSelesai']);
+                  $mulai    = new DateTime($b['BkgTglMulai']);
+                  $selesai  = new DateTime($b['BkgTglSelesai']);
                   $interval = $mulai->diff($selesai);
-
-                  $hari = $interval->d;
-                  $jam  = $interval->h + ($interval->days * 24); // Total jam akurat
-
-                  if ($hari > 0) {
-                    $durasi = "$hari hari" . ($interval->h > 0 ? ", " . $interval->h . " jam" : "");
-                  } else {
-                    $durasi = "$jam jam";
-                  }
-                  if ($jam == 0 && $hari == 0) $durasi = "< 1 jam";
+                  $hari     = $interval->d;
+                  $jam      = $interval->h + ($interval->days * 24);
+                  $durasi   = $hari > 0 ? "$hari hari" . ($interval->h > 0 ? ", {$interval->h} jam" : "") : ($jam > 0 ? "$jam jam" : "< 1 jam");
                   ?>
                   <tr>
                     <td><?= $no++ ?></td>
                     <td><?= htmlspecialchars($b['UserNama'] ?? 'Guest') ?></td>
                     <td>
-                      <?php if (empty($b['items'])): ?>
-                        <span class="text-muted">Tidak ada Paket Jasa</span>
-                        <?php else: foreach ($b['items'] as $item): ?>
-                          <span class="badge-paket"><?= htmlspecialchars($item['nama']) ?></span>
-                      <?php endforeach;
-                      endif; ?>
+                      <?php 
+                      $pakets = explode(' + ', $b['NamaPaket'] ?? '');
+                      foreach ($pakets as $p):
+                        if (trim($p)): ?>
+                          <span class="badge-paket"><?= htmlspecialchars(trim($p)) ?></span>
+                        <?php endif;
+                      endforeach; ?>
                     </td>
                     <td><?= date('d/m/Y H:i', strtotime($b['BkgTglMulai'])) ?></td>
                     <td><?= date('d/m/Y H:i', strtotime($b['BkgTglSelesai'])) ?></td>
@@ -371,44 +282,18 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <?php if ($totalPages > 1): ?>
               <nav class="mt-4">
                 <ul class="pagination justify-content-center">
-                  <?php
-                  // Link Previous
-                  $prev_page = $page - 1;
-                  $prev_class = ($page <= 1) ? 'disabled' : '';
-                  ?>
-                  <li class="page-item <?= $prev_class ?>">
-                    <a class="page-link" href="?page=<?= $prev_page ?>" aria-label="Previous">
-                      <span aria-hidden="true">&laquo;</span>
-                    </a>
-                  </li>
-
-                  <?php for ($i = 1; $i <= $totalPages; $i++):
-                    $active = ($i == $page) ? "active" : "";
-                  ?>
-                    <li class="page-item <?= $active ?>">
-                      <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
-                    </li>
+                  <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page-1 ?>">Previous</a></li>
+                  <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                    <li class="page-item <?= $i == $page ? 'active' : '' ?>"><a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a></li>
                   <?php endfor; ?>
-
-                  <?php
-                  // Link Next
-                  $next_page = $page + 1;
-                  $next_class = ($page >= $totalPages) ? 'disabled' : '';
-                  ?>
-                  <li class="page-item <?= $next_class ?>">
-                    <a class="page-link" href="?page=<?= $next_page ?>" aria-label="Next">
-                      <span aria-hidden="true">&raquo;</span>
-                    </a>
-                  </li>
+                  <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page+1 ?>">Next</a></li>
                 </ul>
               </nav>
-              <div class="text-center text-muted small mt-2">
-                Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalBooking ?>** booking (semua jenis)
-              </div>
             <?php endif; ?>
+
           <?php else: ?>
             <div class="text-center py-5">
-              <h5 class="text-muted">Belum ada booking Paket Jasa dengan status **Diterima**.</h5>
+              <h5 class="text-muted">Tidak ada booking Paket Jasa yang aktif dan belum ditugaskan.</h5>
             </div>
           <?php endif; ?>
         </div>
@@ -418,9 +303,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
   <script src="../lib/jquery/jquery.min.js"></script>
   <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script>
-    setTimeout(() => $('.alert').fadeOut('slow'), 5000);
-  </script>
+  <script>setTimeout(() => $('.alert').fadeOut('slow'), 5000);</script>
 </body>
-
 </html>

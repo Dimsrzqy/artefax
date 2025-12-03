@@ -1,6 +1,7 @@
 <?php
 // File: class/Booking.php
 // Versi FINAL – sudah sesuai nama tabel paketjasa & alat
+// + DITAMBAHKAN: updateStatusSelesaiOtomatis() → otomatis jadi "Selesai" jika tanggal lewat
 
 class Booking
 {
@@ -11,9 +12,24 @@ class Booking
     public function __construct($db)
     {
         $this->conn = $db; // objek mysqli
+        if ($this->conn instanceof mysqli) {
+            $this->conn->set_charset("utf8mb4");
+        }
     }
 
-    // Total booking berdasarkan status
+    // OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL & JAM SUDAH LEWAT
+    public function updateStatusSelesaiOtomatis()
+    {
+        $query = "
+            UPDATE {$this->table_booking} 
+            SET BkgStatus = 'Selesai'
+            WHERE BkgStatus = 'Diterima'
+              AND BkgTglSelesai < NOW()
+        ";
+        $this->conn->query($query);
+    }
+
+    // Total booking berdasarkan status (KODE ASLI ANDA — TIDAK DIUBAH)
     public function getTotalBooking($status = 'Diterima')
     {
         $status = $this->conn->real_escape_string($status);
@@ -22,7 +38,7 @@ class Booking
         return $result ? (int)$result->fetch_assoc()['total'] : 0;
     }
 
-    // Daftar booking + nama paket & alat yang benar
+    // Daftar booking + nama paket & alat yang benar (KODE ASLI ANDA — TIDAK DIUBAH)
     public function getBookingList($limit, $offset, $status = 'Diterima')
     {
         $status = $this->conn->real_escape_string($status);
