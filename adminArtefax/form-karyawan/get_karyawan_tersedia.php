@@ -1,5 +1,4 @@
 <?php
-// get_karyawan_tersedia.php → FINAL & PASTI JALAN
 header('Content-Type: application/json');
 require_once __DIR__ . "/../../config/koneksi.php";
 
@@ -15,33 +14,39 @@ if (!$tanggal || !$jam_mulai) {
     exit;
 }
 
-$start = new DateTime("$tanggal $jam_mulai");
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal) ||
+    !preg_match('/^\d{2}:\d{2}$/', $jam_mulai)) {
+    echo json_encode([]);
+    exit;
+}
+
+// Hitung interval event baru
+$start = new DateTime("$tanggal $jam_mulai:00");
 $end   = clone $start;
 $end->modify("+{$durasi} hours");
 
-$jam_mulai_new = $start->format('H:i:s');
-$jam_selesai_new = $end->format('H:i:s');
+$newStart = $start->format("Y-m-d H:i:s");
+$newEnd   = $end->format("Y-m-d H:i:s");
 
+// Query bentrok waktu
 $sql = "
     SELECT DISTINCT ek.IDKaryawan AS IDUser
     FROM event_karyawan ek
     JOIN event e ON ek.IDEvent = e.IDEvent
-    WHERE e.EventTanggal = ?
-      AND e.EventMulai < ?
-      AND ADDTIME(e.EventMulai, SEC_TO_TIME(e.EventDurasi * 3600)) > ?
+    WHERE e.EventStatus != 'Selesai'
+      AND CONCAT(e.EventTanggal, ' ', e.EventMulai) < ?
+      AND ADDTIME(CONCAT(e.EventTanggal, ' ', e.EventMulai), SEC_TO_TIME(e.EventDurasi*3600)) > ?
 ";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("sss", $tanggal, $jam_selesai_new, $jam_mulai_new);
+$stmt->bind_param("ss", $newEnd, $newStart);
 $stmt->execute();
-$result = $stmt->get_result();
+$res = $stmt->get_result();
 
 $busy = [];
-while ($row = $result->fetch_assoc()) {
-    $busy[] = (int)$row['IDUser'];
+while ($r = $res->fetch_assoc()) {
+    $busy[] = (int)$r["IDUser"];
 }
 
 echo json_encode($busy);
-$stmt->close();
-$conn->close();
 ?>

@@ -75,29 +75,33 @@ class EventAssignment
     }
 
     // UPDATE STATUS OTOMATIS EVENT (Menunggu → Berjalan → Selesai)
-    public function updateStatusOtomatis()
-    {
-        // 1. Ubah ke "Berjalan" jika waktu sekarang sudah masuk rentang event
-        $this->conn->query("
-            UPDATE `event` 
-            SET EventStatus = 'Berjalan'
-            WHERE EventStatus = 'Menunggu'
-              AND EventTanggal = CURDATE()
-              AND EventMulai <= CURTIME()
-              AND EventSelesai > CURTIME()
-        ");
+// UPDATE STATUS OTOMATIS EVENT (Menunggu → Berjalan → Selesai) — FINAL FIX
+public function updateStatusOtomatis()
+{
+    // 1. MENUNGGU → BERJALAN (jika NOW masuk ke interval event)
+    $this->conn->query("
+        UPDATE event
+        SET EventStatus = 'Berjalan'
+        WHERE EventStatus = 'Menunggu'
+          AND NOW() >= CONCAT(EventTanggal, ' ', EventMulai)
+          AND NOW() < ADDTIME(
+                CONCAT(EventTanggal, ' ', EventMulai),
+                SEC_TO_TIME(EventDurasi * 3600)
+          )
+    ");
 
-        // 2. Ubah ke "Selesai" jika waktu event sudah lewat
-        $this->conn->query("
-            UPDATE `event` 
-            SET EventStatus = 'Selesai'
-            WHERE EventStatus IN ('Menunggu', 'Berjalan')
-              AND (
-                EventTanggal < CURDATE()
-                OR (EventTanggal = CURDATE() AND EventSelesai <= CURTIME())
-              )
-        ");
-    }
+    // 2. MENUNGGU/BERJALAN → SELESAI (jika NOW lewat waktu selesai)
+    $this->conn->query("
+        UPDATE event
+        SET EventStatus = 'Selesai'
+        WHERE EventStatus IN ('Menunggu', 'Berjalan')
+          AND NOW() >= ADDTIME(
+                CONCAT(EventTanggal, ' ', EventMulai),
+                SEC_TO_TIME(EventDurasi * 3600)
+          )
+    ");
+}
+
 
     public function getAssignmentsByKaryawan($idKaryawan)
     {
