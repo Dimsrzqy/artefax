@@ -242,7 +242,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <!-- az-header-menu-header -->
           <ul class="nav">
             <li class="nav-item">
-              <a href="index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+              <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
             </li>
             <li class="nav-item">
               <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
@@ -360,9 +360,9 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <nav class="nav flex-column">
                         <a href="../form-pembayaran/dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
                     </nav>
-          <label>Pengajuan Refund</label>
+          <label>Refund</label>
                     <nav class="nav flex-column">
-                        <a href="../form-pembayaran/pengajuan_refund.php" class="nav-link">Pelunasan Pembayaran</a>
+                        <a href="../form-pembayaran/refund/pengajuan_refund.php" class="nav-link">Pengajuan Refund</a>
                     </nav>
         </div><!-- component-item -->
 

@@ -387,9 +387,9 @@ class Pembayaran
             b.BkgTotalHarga,
             b.BkgTglMulai,
             b.BkgStatus,
+            
 
-            u.UserNama,
-            u.UserEmail,
+            u.UserNama, 
             u.IDUser,
 
             -- Ambil jumlah pembayaran yang sudah lunas/DP dari booking ini
