@@ -28,15 +28,23 @@ class Pembayaran
     public $BkgTotalHarga;
     public $BkgStatus;
 
+    // tabel user (customer)
     public $UserNama;
     public $UserAlamat;
-  
+    
+    // tabel refund
+    public $IDRefund;
+    public $RefundJumlah;
+    public $RefundWaktu;
+    public $RefundStatus;
+    public $RefundAlasan;
+
     public function __construct($db) {
         $this->conn = $db;
     }
 
     // =============================
-    // Total DATA (DIPERBAIKI: Menerima Filter)
+    // Total DATA (Halaman)
     // =============================
     public function TotalBooking($startDate = null, $endDate = null, $statusFilter = null)
     {
@@ -86,7 +94,7 @@ class Pembayaran
     }
 
     // =============================
-    // READ DATA (DIPERBAIKI: Menerima Filter & Pagination)
+    // READ DATA (Daftar Booking)
     // =============================
     public function readJoin($limit = null, $offset = null, $startDate = null, $endDate = null, $statusFilter = null)
     {
@@ -152,11 +160,8 @@ class Pembayaran
         return $data;
     }
 
-    // =============================
-    // READ Status Pending (DIPERBAIKI: Hapus IDUser & Query Konsisten)
-    // =============================
-    // =============================
-    // READ Status Pending (DIPERBAIKI)
+     // =============================
+    // READ Status Pending (Konfirmasi Pembayaran)
     // =============================
     public function readPending()
     {
@@ -166,6 +171,7 @@ class Pembayaran
                 p.IDBooking,     
                 p.PbrJumlah,
                 p.PbrMetode,
+                p.PbrKeterangan,
                 p.PbrStatus,
                 p.PbrConfirmed,
                 p.PbrBukti,
@@ -223,9 +229,229 @@ class Pembayaran
 
         return $data;
     }
-
+     // =============================
+    // READ Status (Lunas DP)
     // =============================
-    // READ DETAIL DATA (DIPERBAIKI: Mengambil data user)
+    public function readLunasDP()
+    {
+        $query = "
+            SELECT
+                p.IDPembayaran, 
+                p.IDBooking,     
+                p.PbrJumlah,
+                p.PbrMetode,
+                p.PbrKeterangan,
+                p.PbrStatus,
+                p.PbrConfirmed,
+                p.PbrBukti,
+                p.CreatedAt,
+                
+                COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
+                b.IDUser,
+                b.BkgTotalHarga,
+                b.BkgTglMulai,
+                
+                GROUP_CONCAT(
+                    DISTINCT
+                    CASE 
+                        WHEN g.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(j.PaketNama, 'Paket Dihapus')
+                        WHEN g.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
+                        ELSE g.BkgDetailJenis 
+                    END
+                    ORDER BY g.BkgDetailJenis
+                    SEPARATOR ', '
+                ) AS DaftarPesanan,
+                
+                GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
+
+            FROM pembayaran p
+            LEFT JOIN booking b ON p.IDBooking = b.IDBooking
+            LEFT JOIN users u ON b.IDUser = u.IDUser
+            LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
+            LEFT JOIN alat a ON g.IDAlat = a.IDAlat
+            LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
+
+            WHERE 
+                p.PbrStatus = 'Lunas DP' 
+
+            GROUP BY 
+                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
+                u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
+            ORDER BY 
+                p.CreatedAt ASC
+        ";
+
+        $stmt = $this->conn->prepare($query);
+
+        if (!$stmt) {
+            error_log("SQL Error in readPending: " . $this->conn->error);
+            return [];
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
+    }
+    // =============================
+    // READ Status Pending (Pengajuan Refund 1.0)
+    // =============================
+    public function readRefund()
+    {
+        $query = "
+            SELECT
+                p.IDPembayaran, 
+                p.IDBooking,     
+                p.PbrJumlah,
+                p.PbrMetode,
+                p.PbrKeterangan,
+                p.PbrStatus,
+                p.PbrConfirmed,
+                p.PbrBukti,
+                p.CreatedAt,
+                r.IDRefund,
+                r.RefundJumlah,
+                r.RefundWaktu,
+                r.RefundAlasan,
+                r.RefundStatus,
+                
+                COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
+                b.IDUser,
+                b.BkgTotalHarga,
+                b.BkgTglMulai,
+                
+                GROUP_CONCAT(
+                    DISTINCT
+                    CASE 
+                        WHEN g.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(j.PaketNama, 'Paket Dihapus')
+                        WHEN g.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
+                        ELSE g.BkgDetailJenis 
+                    END
+                    ORDER BY g.BkgDetailJenis
+                    SEPARATOR ', '
+                ) AS DaftarPesanan,
+                
+                GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
+
+            FROM pembayaran p
+            LEFT JOIN booking           b ON p.IDBooking    = b.IDBooking
+            LEFT JOIN users             u ON b.IDUser       = u.IDUser
+            LEFT JOIN booking_detail    g ON b.IDBooking    = g.IDBooking
+            LEFT JOIN alat              a ON g.IDAlat       = a.IDAlat
+            LEFT JOIN paketjasa         j ON g.IDPaket      = j.IDPaket
+            LEFT JOIN refund            r ON g.IDPaket      = j.IDPaket
+
+            WHERE 
+                p.PbrStatus = 'Pending' 
+
+            GROUP BY 
+                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
+                u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
+            ORDER BY 
+                p.CreatedAt ASC
+        ";
+
+        // Menggunakan prepare meskipun tanpa binding, untuk konsistensi.
+        // Asumsi koneksi Anda sudah diperbaiki menjadi mysqli seperti saran saya sebelumnya.
+        $stmt = $this->conn->prepare($query);
+
+        // Cek jika prepare gagal (kemungkinan besar inilah yang memicu error fatal)
+        if (!$stmt) {
+            error_log("SQL Error in readPending: " . $this->conn->error);
+            return [];
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
+    }
+    // =============================
+    // READ Status Pending (Pengajuan Refund 2.0)
+    // =============================
+    public function readPendingRefund()
+{
+    $query = "
+        SELECT 
+            r.IDRefund,
+            r.IDBooking,
+            r.RefundJumlah,
+            r.RefundWaktu,
+            r.RefundAlasan,
+            r.RefundStatus,
+
+            b.BkgTotalHarga,
+            b.BkgTglMulai,
+            b.BkgStatus,
+
+            u.UserNama,
+            u.UserEmail,
+            u.IDUser,
+
+            -- Ambil jumlah pembayaran yang sudah lunas/DP dari booking ini
+            (SELECT COALESCE(SUM(p2.PbrJumlah), 0)
+             FROM pembayaran p2 
+             WHERE p2.IDBooking = r.IDBooking 
+               AND p2.PbrStatus IN ('Lunas', 'Lunas DP')) AS JumlahBayar,
+
+            -- Ambil metode pembayaran terakhir (atau yang terbesar)
+            (SELECT p3.PbrMetode 
+             FROM pembayaran p3 
+             WHERE p3.IDBooking = r.IDBooking 
+               AND p3.PbrStatus IN ('Lunas', 'Lunas DP')
+             ORDER BY p3.PbrJumlah DESC LIMIT 1) AS PbrMetode,
+
+            -- Daftar pesanan
+            GROUP_CONCAT(
+                DISTINCT
+                CASE 
+                    WHEN bd.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(pj.PaketNama, 'Paket Dihapus')
+                    WHEN bd.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
+                    ELSE bd.BkgDetailJenis 
+                END
+                SEPARATOR ', '
+            ) AS DaftarPesanan
+
+        FROM refund r
+        LEFT JOIN booking b ON r.IDBooking = b.IDBooking
+        LEFT JOIN users u ON b.IDUser = u.IDUser
+        LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
+        LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
+        LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
+
+        WHERE r.RefundStatus = 'Pending'
+
+        GROUP BY 
+            r.IDRefund,
+            r.IDBooking,
+            r.RefundJumlah,
+            r.RefundWaktu,
+            r.RefundAlasan,
+            r.RefundStatus,
+            b.BkgTotalHarga,
+            b.BkgTglMulai,
+            b.BkgStatus,
+            u.UserNama,
+            u.UserEmail,
+            u.IDUser
+
+        ORDER BY r.RefundWaktu DESC
+    ";
+
+    $stmt = $this->conn->prepare($query);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $data;
+}
+    // =============================
+    // READ DETAIL DATA (Informasi Detail)
     // =============================
     public function readJoinFull($limit = null, $offset = null) {
         $query = "
@@ -263,7 +489,7 @@ class Pembayaran
         LEFT JOIN alat a ON g.IDAlat = a.IDAlat
         LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
     GROUP BY p.IDPembayaran
-    ORDER BY p.CreatedAt DESC
+    ORDER BY p.CreatedAt ASC
         ";
 
     if ($limit !== null && $offset !== null) {
@@ -276,12 +502,11 @@ class Pembayaran
     }
 
     $stmt->execute();
-    $result = $stmt->get_result(); // ← INI YANG HILANG!
+    $result = $stmt->get_result(); 
 
-    $detailPembayaran = []; // ← INI JUGA HARUS DI-INIT DULU!
-
-    while ($row = $result->fetch_assoc()) {
-        // Ubah string || jadi array
+    $detailPembayaran = [];
+ 
+    while ($row = $result->fetch_assoc()) { 
         $items = $row['DaftarPesananRaw'] ?? '';
         $row['DaftarPesanan'] = $items ? array_filter(explode('||', $items)) : [];
         unset($row['DaftarPesananRaw']);
@@ -306,16 +531,15 @@ class Pembayaran
         ";
 
         $stmt = $this->conn->prepare($query);
-        if (!$stmt) return false;
-
-        // Sanitasi (dipertahankan, meskipun mysqli lebih aman)
+        if (!$stmt) return false; 
+ 
         $IDBooking = htmlspecialchars(strip_tags($this->IDBooking));
         $PbrMetode = htmlspecialchars(strip_tags($this->PbrMetode));
         $PbrJumlah = htmlspecialchars(strip_tags($this->PbrJumlah));
         $PbrBukti  = htmlspecialchars(strip_tags($this->PbrBukti));
 
         // Bind dengan mysqli
-        $stmt->bind_param("ssds", $IDBooking, $PbrMetode, $PbrJumlah, $PbrBukti); // s: string, d: double/decimal
+        $stmt->bind_param("ssds", $IDBooking, $PbrMetode, $PbrJumlah, $PbrBukti);
 
         $success = $stmt->execute();
         $stmt->close();
@@ -323,43 +547,163 @@ class Pembayaran
     }
 
     // =============================
-    // UPDATE DATA (DIPERBAIKI: Parameter Input & Consistency)
+    // UPDATE DATA (Konfirmasi Pembayaran)
     // =============================
     public function updateStatus($id, $aksi) {
-       try {
-        $pbrStatus = $aksi === 'setuju' ? 'Lunas' : 'Gagal';
-        $pbrConfirmed = $aksi === 'setuju' ? 1 : 0;
+    try {
+        
         $bkgStatus = $aksi === 'setuju' ? 'Diterima' : 'Batal';
 
-        // Update pembayaran
-        $stmt1 = $this->conn->prepare("UPDATE pembayaran SET PbrStatus=?, PbrConfirmed=?, UpdatedAt=NOW() WHERE IDPembayaran=?");
+        $stmtCheck = $this->conn->prepare("SELECT PbrKeterangan FROM pembayaran WHERE IDPembayaran = ?");
+        $stmtCheck->bind_param("i", $id);
+        $stmtCheck->execute();
+        $result = $stmtCheck->get_result();
+        $row = $result->fetch_assoc();
+        $stmtCheck->close();
+
+        if (!$row) {
+            throw new Exception("Pembayaran tidak ditemukan");
+        }
+
+        $keterangan = $row['PbrKeterangan'] ?? '';
+
+        if ($aksi === 'setuju') {
+            $pbrStatus = ($keterangan === 'DP') ? 'Lunas DP' : 'Lunas';
+        } else {
+            $pbrStatus = 'Gagal';
+        }
+
+        $pbrConfirmed = $aksi === 'setuju' ? 1 : 0;
+
+        $this->conn->autocommit(FALSE);
+
+        // Update tabel pembayaran
+        $stmt1 = $this->conn->prepare("UPDATE pembayaran SET PbrStatus = ?, PbrConfirmed = ?, UpdatedAt = NOW() WHERE IDPembayaran = ?");
         $stmt1->bind_param("sii", $pbrStatus, $pbrConfirmed, $id);
         $stmt1->execute();
+        $stmt1->close();
 
-        // Ambil IDBooking
+
         $stmt2 = $this->conn->prepare("SELECT IDBooking FROM pembayaran WHERE IDPembayaran = ?");
         $stmt2->bind_param("i", $id);
         $stmt2->execute();
-        $result = $stmt2->get_result();
-        $row = $result->fetch_assoc();
-        $idBooking = $row['IDBooking'] ?? null;
+        $result2 = $stmt2->get_result();
+        $row2 = $result2->fetch_assoc();
+        $stmt2->close();
 
-        if (!$idBooking) throw new Exception("Booking tidak ditemukan");
+        $idBooking = $row2['IDBooking'] ?? null;
 
-        // Update booking
-        $stmt3 = $this->conn->prepare("UPDATE booking SET BkgStatus=?, UpdatedAt=NOW() WHERE IDBooking=?");
+        if (!$idBooking) {
+            throw new Exception("Booking tidak ditemukan");
+        }
+
+        // Update tabel booking
+        $stmt3 = $this->conn->prepare("UPDATE booking SET BkgStatus = ?, UpdatedAt = NOW() WHERE IDBooking = ?");
         $stmt3->bind_param("si", $bkgStatus, $idBooking);
         $stmt3->execute();
+        $stmt3->close();
 
         $this->conn->commit();
         $this->conn->autocommit(TRUE);
+
         return true;
 
     } catch (Exception $e) {
         $this->conn->rollback();
         $this->conn->autocommit(TRUE);
-        error_log($e->getMessage());
+        error_log("Error updateStatus: " . $e->getMessage());
         return false;
+    }
+}
+    // =============================
+    // UPDATE DATA (Pelunasan Pembayaran)
+    // =============================
+    public function updatePelunasan($id, $aksi) {
+        try {
+            $pbrStatus = $aksi === 'setuju' ? 'Lunas' : 'Gagal';
+            $pbrConfirmed = $aksi === 'setuju' ? 1 : 0;
+            $bkgStatus = $aksi === 'setuju' ? 'Diterima' : 'Batal';
+
+            // Update pembayaran   
+            $stmt1 = $this->conn->prepare("UPDATE pembayaran SET PbrStatus=?, PbrConfirmed=?, UpdatedAt=NOW() WHERE IDPembayaran=?");
+            $stmt1->bind_param("sii", $pbrStatus, $pbrConfirmed, $id);
+            $stmt1->execute();
+
+            $stmt2 = $this->conn->prepare("SELECT IDBooking FROM pembayaran WHERE IDPembayaran = ?");
+            $stmt2->bind_param("i", $id);
+            $stmt2->execute();
+            $result = $stmt2->get_result();
+            $row = $result->fetch_assoc();
+            $idBooking = $row['IDBooking'] ?? null;
+
+            if (!$idBooking) throw new Exception("Booking tidak ditemukan");
+
+            // Update booking
+            $stmt3 = $this->conn->prepare("UPDATE booking SET BkgStatus=?, UpdatedAt=NOW() WHERE IDBooking=?");
+            $stmt3->bind_param("si", $bkgStatus, $idBooking);
+            $stmt3->execute();
+
+            $this->conn->commit();
+            $this->conn->autocommit(TRUE);
+            return true;
+
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            $this->conn->autocommit(TRUE);
+            error_log($e->getMessage());
+            return false;
+        }
+    }
+    // =============================
+    // UPDATE DATA (Pengajuan Refund)
+    // =============================
+    public function terimaRefund($idRefund)
+{
+    try {
+        $this->conn->autocommit(FALSE);
+
+        // 1. Update refund jadi Diterima
+        $stmt = $this->conn->prepare("UPDATE refund SET RefundStatus = 'Disetujui' WHERE IDRefund = ? AND RefundStatus = 'Pending'");
+        $stmt->bind_param("i", $idRefund);
+        $stmt->execute();
+
+        if ($stmt->affected_rows == 0) {
+            throw new Exception("Refund sudah diproses sebelumnya atau tidak ditemukan.");
+        }
+
+        // 2. Ambil IDBooking
+        $stmt = $this->conn->prepare("SELECT IDBooking FROM refund WHERE IDRefund = ?");
+        $stmt->bind_param("i", $idRefund);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $idBooking = $row['IDBooking'] ?? null;
+
+        if (!$idBooking) {
+            throw new Exception("ID Booking tidak ditemukan di tabel refund.");
+        }
+
+        // 3. Update booking jadi Batal
+        $stmt = $this->conn->prepare("UPDATE booking SET BkgStatus = 'Batal', UpdatedAt = NOW() WHERE IDBooking = ?");
+        $stmt->bind_param("i", $idBooking);
+        $stmt->execute();
+
+        // 4. Update semua pembayaran jadi Batal
+        $stmt = $this->conn->prepare("UPDATE pembayaran SET PbrStatus = 'Gagal', PbrConfirmed = 0, UpdatedAt = NOW() WHERE IDBooking = ?");
+        $stmt->bind_param("i", $idBooking);
+        $stmt->execute();
+
+        $this->conn->commit();
+        return true;
+
+    } catch (Exception $e) {
+        $this->conn->rollback();
+        // INI YANG PENTING: kita simpan pesan error ke session supaya kamu tahu penyebabnya!
+        $_SESSION['debug_error'] = $e->getMessage();
+        error_log("Error terimaRefund ID $idRefund: " . $e->getMessage());
+        return false;
+    } finally {
+        $this->conn->autocommit(TRUE);
     }
 }
     // =============================
@@ -372,13 +716,14 @@ class Pembayaran
         if (!$stmt) return false;
 
         $IDPembayaran = htmlspecialchars(strip_tags($this->IDPembayaran));
-        $stmt->bind_param('i', $IDPembayaran); // i: integer, asumsi IDPembayaran adalah integer
+        $stmt->bind_param('i', $IDPembayaran); 
 
         $success = $stmt->execute();
         $stmt->close();
         return $success;
     }
-
+    
+    
     // =============================
     // SEARCH ID DATA (DIPERBAIKI: Konsisten mysqli)
     // =============================

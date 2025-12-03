@@ -352,10 +352,18 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <div class="component-item">
 
           <label>Pembayaran</label>
-          <nav class="nav flex-column">
-            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link active">Daftar Pembayaran</a>
-            <a href="../form-pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
-          </nav>
+                    <nav class="nav flex-column">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link active">Daftar Pembayaran</a>
+                        <a href="../form-pembayaran/pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
+                    </nav>
+          <label>Pelunasan DP</label>
+                    <nav class="nav flex-column">
+                        <a href="../form-pembayaran/dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
+                    </nav>
+          <label>Pengajuan Refund</label>
+                    <nav class="nav flex-column">
+                        <a href="../form-pembayaran/pengajuan_refund.php" class="nav-link">Pelunasan Pembayaran</a>
+                    </nav>
         </div><!-- component-item -->
 
       </div><!-- az-content-left -->
@@ -367,7 +375,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <h2 class="az-content-title">Daftar Pembayaran</h2>
 
         <div class="d-flex justify-content-between align-items-center mg-b-20">
-          <p class="mg-b-0">Kelola semua paket layanan di sini.</p>
+          <p class="mg-b-0">Daftar keseluruahan transaksi pemesanan.</p>
         </div>
 
         <!-- Feedback -->
