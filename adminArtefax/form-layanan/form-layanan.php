@@ -379,15 +379,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
             </div> 
             <div class="form-group">
-              <label>Gambar <span class="text-danger">*</span></label>
-
-              <!-- Preview Gambar -->
+              <label>Gambar <span class="text-danger">*</span></label> 
+ 
               <div id="previewContainer" class="text-center mb-4" style="display:none;">
                 <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
                 <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
               </div>
-
-              <!-- Field + Tombol Hapus + Browse -->
+ 
               <div class="input-group">
                 <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
                 <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
@@ -481,7 +479,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         document.getElementById('gambarLama').value = imgPath;
         previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
         previewContainer.style.display = 'block';
-        document.getElementById('previewText').textContent = 'Gambar saat ini';
+        document.getElementById('previewText').textContent = 'Preview Gambar';
         document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();
         document.getElementById('btnHapusGambar').style.display = 'block';
       } else {
@@ -497,9 +495,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
     function resetGambarPreview() {
       document.getElementById('gambar_layanan').value = '';
-      document.getElementById('fileNameDisplay').value = '';
+      document.getElementById('fileNameDisplay').value = 'Belum ada file dipilih';
       document.getElementById('btnHapusGambar').style.display = 'none';
       document.getElementById('previewContainer').style.display = 'none';
+      document.getElementById('gambarLama').value = '';
     }
 
     // Preview Gambar Baru

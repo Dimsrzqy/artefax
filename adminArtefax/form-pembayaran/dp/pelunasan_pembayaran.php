@@ -369,6 +369,10 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <nav class="nav flex-column">
                         <a href="../dp/pelunasan_pembayaran.php" class="nav-link active">Pelunasan Pembayaran</a>
                     </nav>
+                    <label>Refund</label>
+                    <nav class="nav flex-column">
+                        <a href="../refund/pengajuan_refund.php" class="nav-link">Pengajuan Refund</a>
+                    </nav>
                 </div><!-- component-item -->
 
             </div><!-- az-content-left -->

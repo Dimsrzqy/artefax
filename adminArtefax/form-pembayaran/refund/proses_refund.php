@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/pembayaran.php";
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/pembayaran.php";
 
 if (!isset($_GET['id']) || !isset($_GET['aksi']) || $_GET['aksi'] !== 'setuju') {
     $_SESSION['error'] = "Aksi tidak valid.";

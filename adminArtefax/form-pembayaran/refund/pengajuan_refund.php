@@ -1,8 +1,8 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/pembayaran.php";
-require_once __DIR__ . "/../../class/users.php"; 
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/pembayaran.php";
+require_once __DIR__ . "/../../../class/users.php"; 
 $db = new Database();
 $conn = $db->getConnection();
 
@@ -27,11 +27,11 @@ unset($_SESSION['success'], $_SESSION['error']);
     <title>Konfirmasi Pembayaran - Admin ArtefaxID</title>
 
     <!-- CSS -->
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
-    <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
-    <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-    <link href="../css/azia.css" rel="stylesheet">
+    <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+    <link href="../../lib/typicons.font/typicons.css" rel="stylesheet">
+    <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="../../css/azia.css" rel="stylesheet">
     <style>
         .card-payment {
             background: white;
@@ -57,7 +57,14 @@ unset($_SESSION['success'], $_SESSION['error']);
         .card-body {
             padding: 16px;
         }
-
+        .status-refund-badge {
+            white-space: nowrap !important;
+            display: inline-block !important;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.85rem;
+        }
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -81,7 +88,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             background: #fff3cd;
             color: #856404;
             padding: 3px 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             font-size: 11px;
         }
 
@@ -257,7 +264,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                        <a href="../daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
@@ -362,17 +369,17 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                     <label>Pembayaran</label>
                     <nav class="nav flex-column">
-                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link active">Daftar Pembayaran</a>
-                        <a href="../form-pembayaran/pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
+                        <a href="../daftar_pembayaran.php" class="nav-link">Daftar Pembayaran</a>
+                        <a href="../pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
                     </nav>
-          <label>Pelunasan DP</label>
-                    <nav class="nav flex-column">
-                        <a href="../form-pembayaran/dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
-                    </nav>
-          <label>Pengajuan Refund</label>
-                    <nav class="nav flex-column">
-                        <a href="../form-pembayaran/pengajuan_refund.php" class="nav-link">Pelunasan Pembayaran</a>
-                    </nav>
+                    <label>Pelunasan DP</label>
+                        <nav class="nav flex-column">
+                                <a href="../dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
+                                </nav>
+                    <label>Refund</label>
+                                <nav class="nav flex-column">
+                                    <a href="../refund/pengajuan_refund.php" class="nav-link active">Pengajuan Refund</a>
+                                </nav>
                 </div><!-- component-item -->
 
             </div><!-- az-content-left -->
@@ -394,88 +401,80 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                 <!-- Daftar Kartu -->
                 <div class="row">
-    <?php if ($pendingRefunds && count($pendingRefunds) > 0): ?>
-        <?php foreach ($pendingRefunds as $index => $r): 
-            $rf = $detailRefunds[$index] ?? $r; // untuk detail popup
+                    <?php if ($pendingRefunds && count($pendingRefunds) > 0): ?>
+                        <?php foreach ($pendingRefunds as $index => $r): 
+                            $rf = $detailRefunds[$index] ?? $r; // untuk detail popup
 
-            $customer = $user->getUserByID($r['IDUser']);
-            $namaCustomer = $customer['UserNama'] ?? 'Unknown';
+                            $customer = $user->getUserByID($r['IDUser']);
+                            $namaCustomer = $customer['UserNama'] ?? 'Unknown';
 
-            $tglBooking = date('d M Y', strtotime($r['BkgTglMulai']));
-            $tglPengajuan = date('d M Y, H:i', strtotime($r['RefundWaktu'])) . ' WIB';
-        ?>
-            <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $r['IDRefund'] ?>">
-                <div class="card-refund shadow-sm h-100 border-warning">
-                    <div class="card-header bg-warning text-dark fw-bold">
-                        REFUND#<?= str_pad($r['IDRefund'], 6, '0', STR_PAD_LEFT) ?>
-                    </div>
-                    <div class="card-body">
-                        <div class="info-row">
-                            <span class="info-label">Nama Pelanggan</span>
-                            <span class="info-value"><?= htmlspecialchars($namaCustomer) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Booking ID</span>
-                            <span class="info-value">BOOK#<?= str_pad($r['IDBooking'], 6, '0', STR_PAD_LEFT) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Tanggal Booking</span>
-                            <span class="info-value"><?= $tglBooking ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Total Tagihan</span>
-                            <span class="info-value">Rp <?= number_format($r['BkgTotalHarga'], 0, ',', '.') ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Jumlah Dibayar</span>
-                            <span class="info-value">Rp <?= number_format($r['JumlahBayar'] ?? 0, 0, ',', '.') ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Jumlah Refund</span>
-                            <span class="info-value text-danger fw-bold">Rp <?= number_format($r['RefundJumlah'], 0, ',', '.') ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Metode Bayar</span>
-                            <span class="info-value"><?= htmlspecialchars($r['PbrMetode'] ?? '-') ?></span> <!-- Ini sudah benar -->
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Alasan Refund</span>
-                            <span class="info-value small text-muted"><?= htmlspecialchars($r['RefundAlasan']) ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Diajukan pada</span>
-                            <span class="info-value"><?= $tglPengajuan ?></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Status</span>
-                            <span class="info-value">
-                                <span class="badge bg-warning text-dark">Menunggu Konfirmasi Refund</span>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="card-footer d-flex justify-content-between align-items-center">
-                        <button class="btn-action btn-detail" 
-                                onclick='openDetailPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
-                            <i class="fas fa-eye"></i> Detail
-                        </button>
+                            $tglBooking = date('d M Y', strtotime($r['BkgTglMulai']));
+                            $tglPengajuan = date('d M Y, H:i', strtotime($r['RefundWaktu'])) . ' WIB';
+                        ?>
+                            <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $r['IDRefund'] ?>">
+                                <div class="card-refund shadow-sm h-100 border-warning">
+                                    <div class="card-header bg-warning text-dark fw-bold">
+                                        REFUND#<?= str_pad($r['IDRefund'], 6, '0', STR_PAD_LEFT) ?>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="info-row">
+                                            <span class="info-label">Nama Pelanggan</span>
+                                            <span class="info-value"><?= htmlspecialchars($namaCustomer) ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Booking ID</span>
+                                            <span class="info-value">BOOK#<?= str_pad($r['IDBooking'], 6, '0', STR_PAD_LEFT) ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Tanggal Booking</span>
+                                            <span class="info-value"><?= $tglBooking ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Jumlah Dibayar</span>
+                                            <span class="info-value">Rp <?= number_format($r['JumlahBayar'] ?? 0, 0, ',', '.') ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Jumlah Refund</span>
+                                            <span class="info-value text-danger fw-bold">Rp <?= number_format($r['RefundJumlah'], 0, ',', '.') ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Alasan Refund</span>
+                                            <span class="info-value small text-muted"><?= htmlspecialchars($r['RefundAlasan']) ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Diajukan pada</span>
+                                            <span class="info-value"><?= $tglPengajuan ?></span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value">
+                                                <span class="badge bg-warning text-dark status-refund-badge">Pending</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer d-flex justify-content-between align-items-center">
+                                        <button class="btn-action btn-detail" 
+                                                onclick='openRefundPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                            <i class="fas fa-eye"></i> Detail
+                                        </button>
 
-                        <button type="button" class="btn btn-success btn-sm" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
-                            Setujui Refund
-                        </button>
-                    </div>
+                                        <button type="button" class="btn btn-success btn-sm" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
+                                            Setujui Refund
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="col-12">
+                            <div class="empty-state text-center py-5">
+                                <i class="fas fa-check-double fa-3x text-success mb-3"></i>
+                                <h5>Tidak Ada Pengajuan Refund</h5>
+                                <p>Semua pengajuan refund telah diproses atau belum ada yang mengajukan.</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            </div>
-        <?php endforeach; ?>
-    <?php else: ?>
-        <div class="col-12">
-            <div class="empty-state text-center py-5">
-                <i class="fas fa-check-double fa-3x text-success mb-3"></i>
-                <h5>Tidak Ada Pengajuan Refund</h5>
-                <p>Semua pengajuan refund telah diproses atau belum ada yang mengajukan.</p>
-            </div>
-        </div>
-    <?php endif; ?>
-</div>
 
 <!-- Modal Konfirmasi Refund (mirip yang lama, tapi khusus refund) -->
 <div id="modalRefund" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
@@ -498,9 +497,7 @@ unset($_SESSION['success'], $_SESSION['error']);
         </div>
     </div>
 </div>
-
-<!-- Include detail popup (bisa pakai yang sama atau buat baru) -->
-
+<?php require_once __DIR__ . "/detail_refund.php"; ?>
 <script>
 let idYangDipilih = 0;
 
