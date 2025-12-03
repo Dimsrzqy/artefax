@@ -1,74 +1,44 @@
 <?php
-// shop.php (letakkan di folder Paket/)
-// Menampilkan produk gabungan dari tabel `alat` dan `paketjasa`
-// Menggunakan koneksi mysqli (class Database di ../config/koneksi.php)
-
+// shop.php - FINAL VERSION
 session_start();
-require_once __DIR__ . '/../config/koneksi.php'; // sesuaikan jika lokasi koneksi berbeda
-include __DIR__ . "/components/cart_navbar.php";
+require_once __DIR__ . '/../config/koneksi.php';
 include __DIR__ . "/components/cart_modal.php";
 include __DIR__ . "/components/cart_script.php";
 
-// ---------------------------
-// KONEKSI
-// ---------------------------
 $db = new Database();
 $conn = $db->getConnection();
-if (!$conn) {
-    die("Koneksi database gagal.");
-}
+if (!$conn) die("Koneksi database gagal.");
 
-// ---------------------------
-// AMBIL PARAMETER FILTER / SORT / SEARCH
-// ---------------------------
-$q         = trim($_GET['q'] ?? '');           // kata kunci pencarian
-$type      = $_GET['type'] ?? '';              // 'alat'|'paket'|'' (semua)
-$kategori  = $_GET['kategori'] ?? '';          // subkategori
-$sort      = $_GET['sort'] ?? 'newest';        // newest | price_asc | price_desc | name
-$featured  = $_GET['featured'] ?? '';          // '1' jika hanya featured (bestseller)
+// AMBIL PARAMETER FILTER
+$q = trim($_GET['q'] ?? '');
+$type = $_GET['type'] ?? '';
+$kategori = $_GET['kategori'] ?? '';
+$sort = $_GET['sort'] ?? 'newest';
+$featured = $_GET['featured'] ?? '';
 $min_price = is_numeric($_GET['min_price'] ?? '') ? (float)$_GET['min_price'] : null;
 $max_price = is_numeric($_GET['max_price'] ?? '') ? (float)$_GET['max_price'] : null;
 
-// helper escape
-function esc($conn, $v) {
-    return $conn->real_escape_string($v);
-}
+function esc($conn, $v) { return $conn->real_escape_string($v); }
 
-// ---------------------------
-// Siapkan bagian WHERE untuk UNION query
-// Kita buat kondisi untuk masing-masing tabel, lalu gabungkan
-// ---------------------------
-$whereAlat = [];
-$wherePaket = [];
+// BUILD WHERE CONDITIONS
+$whereAlat = ["LOWER(AlatStatus) IN ('aktif','bestseller','tersedia')"];
+$wherePaket = ["PaketStatus IN ('aktif','Bestseller','bestseller')"];
 
-// Hanya tampilkan yang status aktif/tersedia (jika kamu punya aturan)
-// jika ingin tampil semua, comment baris berikut:
-$whereAlat[] = "LOWER(AlatStatus) IN ('aktif','bestseller','tersedia')"; // fleksibel
-$wherePaket[] = "PaketStatus IN ('aktif','aktif','Bestseller','bestseller','Bestseller')";
-
-// pencarian
 if ($q !== '') {
     $s = esc($conn, $q);
     $whereAlat[] = "(AlatNama LIKE '%$s%' OR AlatDeskripsi LIKE '%$s%')";
     $wherePaket[] = "(PaketNama LIKE '%$s%' OR PaketDeskripsi LIKE '%$s%')";
 }
 
-// filter tipe (alat / paket)
-if ($type === 'alat') {
-    // kosongkan kondisi paket supaya tidak diambil (hanya alat)
-    $wherePaket[] = "0"; // always false
-} elseif ($type === 'paket') {
-    $whereAlat[] = "0"; // always false
-}
+if ($type === 'alat') $wherePaket[] = "0";
+elseif ($type === 'paket') $whereAlat[] = "0";
 
-// filter kategori (subkategori)
 if ($kategori !== '') {
     $k = esc($conn, $kategori);
     $whereAlat[] = "AlatKategori = '$k'";
     $wherePaket[] = "PaketKategori = '$k'";
 }
 
-// filter harga
 if ($min_price !== null) {
     $whereAlat[] = "AlatHarga >= " . (float)$min_price;
     $wherePaket[] = "PaketHarga >= " . (float)$min_price;
@@ -78,466 +48,348 @@ if ($max_price !== null) {
     $wherePaket[] = "PaketHarga <= " . (float)$max_price;
 }
 
-// featured (bestseller)
 if ($featured === '1') {
     $whereAlat[] = "LOWER(AlatStatus) = 'bestseller'";
     $wherePaket[] = "LOWER(PaketStatus) = 'bestseller'";
 }
 
-// gabungkan where menjadi string
 $whereAlatStr = count($whereAlat) ? "WHERE " . implode(' AND ', $whereAlat) : "";
 $wherePaketStr = count($wherePaket) ? "WHERE " . implode(' AND ', $wherePaket) : "";
 
-// ---------------------------
-// QUERY UNION (gabungkan hasil dari dua tabel)
-// Field diseragamkan: id, tipe, name, kategori, description, price, image, status, created_at
-// ---------------------------
+// QUERY UNION
 $sql = "
     SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kategori,
            AlatDeskripsi AS description, AlatHarga AS price, AlatDirGbr AS image, AlatStatus AS status, CreatedAt as created_at
-    FROM alat
-    $whereAlatStr
+    FROM alat $whereAlatStr
     UNION ALL
     SELECT IDPaket AS id, 'paket' AS tipe, PaketNama AS name, PaketKategori AS kategori,
            PaketDeskripsi AS description, PaketHarga AS price, PaketDirGbr AS image, PaketStatus AS status, CreatedAt as created_at
-    FROM paketjasa
-    $wherePaketStr
+    FROM paketjasa $wherePaketStr
 ";
 
-// Sorting: karena UNION ALL gabungan, tambahkan ORDER BY di akhir SQL
-if ($sort === 'price_asc') {
-    $sql .= " ORDER BY price ASC";
-} elseif ($sort === 'price_desc') {
-    $sql .= " ORDER BY price DESC";
-} elseif ($sort === 'name') {
-    $sql .= " ORDER BY name ASC";
-} else {
-    // newest: urutkan berdasarkan created_at (jika ada), fallback id desc
-    $sql .= " ORDER BY created_at DESC, id DESC";
-}
+if ($sort === 'price_asc') $sql .= " ORDER BY price ASC";
+elseif ($sort === 'price_desc') $sql .= " ORDER BY price DESC";
+elseif ($sort === 'name') $sql .= " ORDER BY name ASC";
+else $sql .= " ORDER BY created_at DESC, id DESC";
 
-// eksekusi query
 $res = $conn->query($sql);
 $products = [];
 if ($res) {
-    while ($row = $res->fetch_assoc()) {
-        // pastikan tipe dan field ada
-        $products[] = $row;
-    }
+    while ($row = $res->fetch_assoc()) $products[] = $row;
     $res->free();
 }
 
-// ---------------------------
-// Ambil daftar subkategori dinamis untuk sidebar (Alat + Paket)
-// ---------------------------
+// AMBIL KATEGORI
 $alatSub = [];
 $paketSub = [];
-
-// Alat kategori
 $res = $conn->query("SELECT AlatKategori, COUNT(*) AS cnt FROM alat WHERE AlatKategori IS NOT NULL AND AlatKategori <> '' GROUP BY AlatKategori");
 if ($res) {
     while ($r = $res->fetch_assoc()) $alatSub[$r['AlatKategori']] = (int)$r['cnt'];
     $res->free();
 }
-// Paket kategori
 $res = $conn->query("SELECT PaketKategori, COUNT(*) AS cnt FROM paketjasa WHERE PaketKategori IS NOT NULL AND PaketKategori <> '' GROUP BY PaketKategori");
 if ($res) {
     while ($r = $res->fetch_assoc()) $paketSub[$r['PaketKategori']] = (int)$r['cnt'];
     $res->free();
 }
 
-// ---------------------------
-// Path gambar (relatif dari file ini)
-// kita gunakan ../img/produk/ karena shop.php berada di folder Paket/
-// ---------------------------
-$imgBaseUrl = '../img/produk/';     // digunakan di tag <img src="...">
-$imgBasePath = __DIR__ . '/../img/produk/'; // untuk cek file_exists
-$placeholder = '../img/noimage.png'; // siapkan placeholder
-
-// ---------------------------
-// Fungsi format Rupiah (Indonesia)
-// ---------------------------
-function rupiah($n) {
-    return 'Rp ' . number_format((float)$n, 0, ',', '.');
-}
-// cart
+function rupiah($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); }
 $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Layanan - Artefax</title>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-
-    <!-- Google Fonts & Icons -->
+    <title>Shop - Artefax</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-
-    <!-- Library CSS -->
     <link href="lib/lightbox/css/lightbox.min.css" rel="stylesheet">
     <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
-
-    <!-- Bootstrap & Custom -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
 </head>
+<body>
 
+<!-- Spinner -->
+<div id="spinner" class="show w-100 vh-100 bg-white position-fixed translate-middle top-50 start-50 d-flex align-items-center justify-content-center">
+    <div class="spinner-grow text-primary" role="status"></div>
+</div>
 
-    <body>
-
-        <!-- Spinner Start -->
-        <div id="spinner" class="show w-100 vh-100 bg-white position-fixed translate-middle top-50 start-50  d-flex align-items-center justify-content-center">
-            <div class="spinner-grow text-primary" role="status"></div>
-        </div>
-        <!-- Spinner End -->
-
- <!-- =============================== -->
-    <!-- 🔹 5. NAVBAR DARI TEMPLATE     -->
-    <!-- =============================== -->
-   <!-- 🔸 Navbar Start -->
+<!-- Navbar -->
 <div class="container-fluid fixed-top">
-    <!-- 🔹 Navbar Utama -->
     <div class="container px-0">
         <nav class="navbar navbar-light bg-white navbar-expand-xl">
-            
-            <!-- 🔸 Logo Brand -->
-            <a href="../index.php" class="navbar-brand">
-                <h1 class="text-primary display-6">Artefax</h1>
-            </a>
-
-            <!-- 🔸 Tombol Toggle (untuk tampilan mobile) -->
+            <a href="../index.php" class="navbar-brand"><h1 class="text-primary display-6">Artefax</h1></a>
             <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                 <span class="fa fa-bars text-primary"></span>
             </button>
-
-          
-            <!-- 🔸 Daftar Menu -->
             <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
                 <div class="navbar-nav mx-auto">
-
-                    <!-- ✅ Home diarahkan ke index utama folder Artefax -->
                     <a href="../index.php" class="nav-item nav-link">Home</a>
-
-                    <!-- ✅ Services diarahkan ke halaman dalam folder Paket -->
-                    <a href="Services.php" class="nav-item nav-link ">Services</a>
-
-                    <!-- ✅ Shop -->
+                    <a href="Services.php" class="nav-item nav-link">Services</a>
                     <a href="shop.php" class="nav-item nav-link active">Shop</a>
-
-                    <!-- ✅ checkout  -->
-                          <a href="checkout.php" class="nav-item nav-link">Checkout</a>
-                    </div>
-
-                    <!-- 🔸 Contact -->
+                    <a href="checkout.php" class="nav-item nav-link">Checkout</a>
                     <a href="contact.php" class="nav-item nav-link">Contact</a>
                 </div>
-
-                <!-- 🔸 Bagian Kanan Navbar (Search, Cart, Account) -->
                 <div class="d-flex m-3 me-0">
-
-                    <!-- Tombol Pencarian -->
-                    <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" 
-                            data-bs-toggle="modal" data-bs-target="#searchModal">
+                    <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" data-bs-toggle="modal" data-bs-target="#searchModal">
                         <i class="fas fa-search text-primary"></i>
                     </button>
-                  <!-- Keranjang -->
-                 <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
-                      <i class="fa fa-shopping-bag fa-2x"></i>
-                      <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1"
-                            style="top: -5px; left: 15px; height: 20px; min-width: 20px;">
-                          <?= $cart_count ?>
-                      </span>
-                  </a>
-
-                    <!-- Akun -->
-                    <a href="#" class="my-auto">
-                        <i class="fas fa-user fa-2x"></i>
+                    <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
+                        <i class="fa fa-shopping-bag fa-2x"></i>
+                        <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1" style="top: -5px; left: 15px; height: 20px; min-width: 20px;"><?= $cart_count ?></span>
                     </a>
+                    <a href="#" class="my-auto"><i class="fas fa-user fa-2x"></i></a>
                 </div>
             </div>
         </nav>
     </div>
 </div>
-<!-- Navbar End -->
 
-<!-- ========== Modal Search Start ========== -->
+<!-- Modal Search -->
 <div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-fullscreen">
-    <div class="modal-content rounded-0">
-      <div class="modal-header">
-        <h5 class="modal-title">Search by keyword</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body d-flex align-items-center">
-        <form method="GET" action="shop.php" class="input-group w-75 mx-auto d-flex">
-          <input type="text" name="q" class="form-control p-3" placeholder="Cari produk..." value="<?= htmlspecialchars($q) ?>">
-          <button class="input-group-text p-3" type="submit"><i class="fa fa-search"></i></button>
-        </form>
-      </div>
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content rounded-0">
+            <div class="modal-header">
+                <h5 class="modal-title">Search by keyword</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <form method="GET" action="shop.php" class="input-group w-75 mx-auto d-flex">
+                    <input type="text" name="q" class="form-control p-3" placeholder="Cari produk..." value="<?= htmlspecialchars($q) ?>">
+                    <button class="input-group-text p-3" type="submit"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
-<!-- ========== Modal Search End ========== -->
 
-<!-- ========== Header / Breadcrumb ========== -->
+<!-- Header -->
 <div class="container-fluid page-header py-5" style="margin-top:90px;">
-  <h1 class="text-center text-white display-6">Shop</h1>
-  <ol class="breadcrumb justify-content-center mb-0">
-    <li class="breadcrumb-item"><a href="../index.php">Home</a></li>
-    <li class="breadcrumb-item active text-white">Shop</li>
-  </ol>
+    <h1 class="text-center text-white display-6">Shop</h1>
+    <ol class="breadcrumb justify-content-center mb-0">
+        <li class="breadcrumb-item"><a href="../index.php">Home</a></li>
+        <li class="breadcrumb-item active text-white">Shop</li>
+    </ol>
 </div>
 
-<!-- ========== Shop Content ========== -->
+<!-- Shop Content -->
 <div class="container-fluid fruite py-5">
-  <div class="container py-5">
-    <div class="mb-4">
-      <h1 class="mb-0">All Products</h1>
-      <p class="text-muted">Menampilkan alat & paket jasa. Klik produk untuk lihat detail dan tambah ke keranjang.</p>
-    </div>
-
-    <!-- Kontrol atas: search inline + sort -->
-    <div class="row g-4 mb-3">
-      <div class="col-xl-3">
-        <form method="GET" action="shop.php" class="input-group">
-          <input type="text" name="q" class="form-control p-3" placeholder="Search keywords..." value="<?= htmlspecialchars($q) ?>">
-          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-          <button class="input-group-text p-3"><i class="fa fa-search"></i></button>
-        </form>
-      </div>
-      <div class="col-6"></div>
-      <div class="col-xl-3">
-        <div class="bg-light ps-3 py-3 rounded d-flex justify-content-between align-items-center">
-          <label for="sortSelect" class="mb-0 me-2">Sort:</label>
-          <form id="sortForm" method="GET" action="shop.php" class="m-0 d-flex align-items-center">
-            <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
-            <select id="sortSelect" name="sort" class="form-select form-select-sm border-0 bg-light" onchange="this.form.submit();">
-              <option value="newest" <?= $sort==='newest' ? 'selected' : '' ?>>Newest</option>
-              <option value="price_asc" <?= $sort==='price_asc' ? 'selected' : '' ?>>Price: Low to High</option>
-              <option value="price_desc" <?= $sort==='price_desc' ? 'selected' : '' ?>>Price: High to Low</option>
-              <option value="name" <?= $sort==='name' ? 'selected' : '' ?>>Name</option>
-            </select>
-          </form>
+    <div class="container py-5">
+        <div class="mb-4">
+            <h1 class="mb-0">All Products</h1>
+            <p class="text-muted">Menampilkan alat & paket jasa. Klik produk untuk lihat detail dan tambah ke keranjang.</p>
         </div>
-      </div>
-    </div>
 
-    <div class="row g-4">
-      <!-- SIDEBAR -->
-      <div class="col-lg-3">
+        <!-- Search & Sort -->
+        <div class="row g-4 mb-3">
+            <div class="col-xl-3">
+                <form method="GET" action="shop.php" class="input-group">
+                    <input type="text" name="q" class="form-control p-3" placeholder="Search keywords..." value="<?= htmlspecialchars($q) ?>">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <button class="input-group-text p-3"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
+            <div class="col-6"></div>
+            <div class="col-xl-3">
+                <div class="bg-light ps-3 py-3 rounded d-flex justify-content-between align-items-center">
+                    <label for="sortSelect" class="mb-0 me-2">Sort:</label>
+                    <form method="GET" action="shop.php" class="m-0 d-flex align-items-center">
+                        <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
+                        <select id="sortSelect" name="sort" class="form-select form-select-sm border-0 bg-light" onchange="this.form.submit();">
+                            <option value="newest" <?= $sort==='newest' ? 'selected' : '' ?>>Newest</option>
+                            <option value="price_asc" <?= $sort==='price_asc' ? 'selected' : '' ?>>Price: Low to High</option>
+                            <option value="price_desc" <?= $sort==='price_desc' ? 'selected' : '' ?>>Price: High to Low</option>
+                            <option value="name" <?= $sort==='name' ? 'selected' : '' ?>>Name</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4">
-          <div class="col-lg-12">
-            <h4>Categories</h4>
-            <div class="mb-2">
-              <a href="shop.php" class="btn btn-sm <?= $type==='' ? 'btn-primary' : 'btn-outline-primary' ?>">All</a>
-              <a href="shop.php?type=alat" class="btn btn-sm <?= $type==='alat' ? 'btn-primary' : 'btn-outline-primary' ?>">Alat</a>
-              <a href="shop.php?type=paket" class="btn btn-sm <?= $type==='paket' ? 'btn-primary' : 'btn-outline-primary' ?>">Paket Jasa</a>
+            <!-- SIDEBAR -->
+            <div class="col-lg-3">
+                <div class="row g-4">
+                    <div class="col-lg-12">
+                        <h4>Categories</h4>
+                        <div class="mb-2">
+                            <a href="shop.php" class="btn btn-sm <?= $type==='' ? 'btn-primary' : 'btn-outline-primary' ?>">All</a>
+                            <a href="shop.php?type=alat" class="btn btn-sm <?= $type==='alat' ? 'btn-primary' : 'btn-outline-primary' ?>">Alat</a>
+                            <a href="shop.php?type=paket" class="btn btn-sm <?= $type==='paket' ? 'btn-primary' : 'btn-outline-primary' ?>">Paket Jasa</a>
+                        </div>
+
+                        <?php if ($type === '' || $type === 'alat'): ?>
+                            <h6 class="mt-3">Alat</h6>
+                            <ul class="list-unstyled fruite-categorie">
+                                <?php if (!empty($alatSub)): foreach ($alatSub as $sub => $cnt): ?>
+                                    <li class="mb-1 d-flex justify-content-between">
+                                        <a href="shop.php?type=alat&kategori=<?= urlencode($sub) ?>"><i class="fas fa-camera me-2"></i><?= htmlspecialchars($sub) ?></a>
+                                        <span>(<?= $cnt ?>)</span>
+                                    </li>
+                                <?php endforeach; else: ?>
+                                    <li class="text-muted">Tidak ada subkategori.</li>
+                                <?php endif; ?>
+                            </ul>
+                        <?php endif; ?>
+
+                        <?php if ($type === '' || $type === 'paket'): ?>
+                            <h6 class="mt-3">Paket Jasa</h6>
+                            <ul class="list-unstyled fruite-categorie">
+                                <?php if (!empty($paketSub)): foreach ($paketSub as $sub => $cnt): ?>
+                                    <li class="mb-1 d-flex justify-content-between">
+                                        <a href="shop.php?type=paket&kategori=<?= urlencode($sub) ?>"><i class="fas fa-briefcase me-2"></i><?= htmlspecialchars($sub) ?></a>
+                                        <span>(<?= $cnt ?>)</span>
+                                    </li>
+                                <?php endforeach; else: ?>
+                                    <li class="text-muted">Tidak ada subkategori.</li>
+                                <?php endif; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Price Filter -->
+                    <div class="col-lg-12">
+                        <div class="mb-3">
+                            <h4 class="mb-2">Price</h4>
+                            <form method="GET" action="shop.php">
+                                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                                <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
+                                <div class="d-flex gap-2 mb-2">
+                                    <input type="number" name="min_price" class="form-control" placeholder="Min" value="<?= htmlspecialchars($min_price ?? '') ?>">
+                                    <input type="number" name="max_price" class="form-control" placeholder="Max" value="<?= htmlspecialchars($max_price ?? '') ?>">
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary w-100" type="submit">Filter Price</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="col-lg-12">
+                        <div class="mb-3">
+                            <h4>Status</h4>
+                            <form method="GET" action="shop.php">
+                                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                                <div class="mb-2">
+                                    <input type="radio" id="f_all" name="featured" value="" <?= $featured !== '1' ? 'checked' : '' ?>>
+                                    <label for="f_all"> Semua</label>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="radio" id="f_bs" name="featured" value="1" <?= $featured === '1' ? 'checked' : '' ?>>
+                                    <label for="f_bs"> Bestsellers</label>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary mt-2" type="submit">Apply</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <?php if ($type === '' || $type === 'alat'): ?>
-              <h6 class="mt-3">Alat</h6>
-              <ul class="list-unstyled fruite-categorie">
-                <?php if (!empty($alatSub)): foreach ($alatSub as $sub => $cnt): ?>
-                  <li class="mb-1 d-flex justify-content-between">
-                    <a href="shop.php?type=alat&kategori=<?= urlencode($sub) ?>"><i class="fas fa-camera me-2"></i><?= htmlspecialchars($sub) ?></a>
-                    <span>(<?= $cnt ?>)</span>
-                  </li>
-                <?php endforeach; else: ?>
-                  <li class="text-muted">Tidak ada subkategori.</li>
-                <?php endif; ?>
-              </ul>
-            <?php endif; ?>
-
-            <?php if ($type === '' || $type === 'paket'): ?>
-              <h6 class="mt-3">Paket Jasa</h6>
-              <ul class="list-unstyled fruite-categorie">
-                <?php if (!empty($paketSub)): foreach ($paketSub as $sub => $cnt): ?>
-                  <li class="mb-1 d-flex justify-content-between">
-                    <a href="shop.php?type=paket&kategori=<?= urlencode($sub) ?>"><i class="fas fa-briefcase me-2"></i><?= htmlspecialchars($sub) ?></a>
-                    <span>(<?= $cnt ?>)</span>
-                  </li>
-                <?php endforeach; else: ?>
-                  <li class="text-muted">Tidak ada subkategori.</li>
-                <?php endif; ?>
-              </ul>
-            <?php endif; ?>
-          </div>
-
-          <!-- Price filter -->
-          <div class="col-lg-12">
-            <div class="mb-3">
-              <h4 class="mb-2">Price</h4>
-              <form method="GET" action="shop.php">
-                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
-                <div class="d-flex gap-2 mb-2">
-                  <input type="number" name="min_price" class="form-control" placeholder="Min" value="<?= htmlspecialchars($min_price ?? '') ?>">
-                  <input type="number" name="max_price" class="form-control" placeholder="Max" value="<?= htmlspecialchars($max_price ?? '') ?>">
+            <!-- PRODUCT GRID -->
+            <div class="col-lg-9">
+                <div class="row g-4 justify-content-center">
+                    <?php if (empty($products)): ?>
+                        <div class="col-12 text-center py-5"><h5>Tidak ada produk ditemukan.</h5></div>
+                    <?php else: ?>
+                         <?php foreach ($products as $p): 
+                            // ✅ FIXED PATH DETECTION - Sesuai struktur: Paket/img/produk/{alat|paketjasa}/file.jpg
+                            $imgFile = $p['image'] ?? '';
+                            $placeholder = 'img/noimage.png';
+                            
+                            $imgUrl = $placeholder;
+                            
+                            if (!empty($imgFile)) {
+                                // Path utama: img/produk/ + database value (alat/alat1.jpg atau paketjasa/jasa1.jpg)
+                                $mainPath = 'img/produk/' . $imgFile;
+                                $fullPath = __DIR__ . '/' . $mainPath;
+                                
+                                if (file_exists($fullPath)) {
+                                    $imgUrl = $mainPath;
+                                }
+                            }
+                        ?>
+                        
+                            <div class="col-md-6 col-lg-6 col-xl-4">
+                                <div class="rounded position-relative fruite-item">
+                                
+                                    
+                                    <div class="fruite-img">
+                                        <img src="<?= $imgUrl ?>" 
+                                             class="img-fluid w-100 rounded-top" 
+                                             alt="<?= htmlspecialchars($p['name']) ?>" 
+                                             style="height:220px;object-fit:cover"
+                                             onerror="this.onerror=null; this.src='../img/noimage.jpg';">
+                                    </div>
+                                    <?php if (strtolower($p['status']) === 'bestseller'): ?>
+                                        <div class="position-absolute" style="top:10px;left:10px;">
+                                            <span class="badge bg-warning text-dark">Bestseller</span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="p-4 border border-secondary border-top-0 rounded-bottom">
+                                        <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
+                                        <div class="d-flex justify-content-between flex-lg-wrap align-items-center">
+                                            <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
+                                            <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
+                                                    data-id="<?= htmlspecialchars($p['id']) ?>"
+                                                    data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
+                                                    data-name="<?= htmlspecialchars($p['name']) ?>"
+                                                    data-kat="<?= htmlspecialchars($p['kategori']) ?>"
+                                                    data-desc="<?= htmlspecialchars($p['description']) ?>"
+                                                    data-price="<?= htmlspecialchars($p['price']) ?>"
+                                                    data-img="<?= $imgUrl ?>">
+                                                <i class="fa fa-info-circle me-2 text-primary"></i> Detail
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
-                <button class="btn btn-sm btn-outline-primary w-100" type="submit">Filter Price</button>
-              </form>
             </div>
-          </div>
-
-          <!-- Featured -->
-          <div class="col-lg-12">
-            <div class="mb-3">
-              <h4>Status</h4>
-              <form method="GET" action="shop.php">
-                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                <div class="mb-2">
-                  <input type="radio" id="f_all" name="featured" value="" <?= $featured!== '1' ? 'checked' : '' ?>>
-                  <label for="f_all"> Semua</label>
-                </div>
-                <div class="mb-2">
-                  <input type="radio" id="f_bs" name="featured" value="1" <?= $featured=== '1' ? 'checked' : '' ?>>
-                  <label for="f_bs"> Bestsellers</label>
-                </div>
-                <button class="btn btn-sm btn-outline-primary mt-2" type="submit">Apply</button>
-              </form>
-            </div>
-          </div>
-
-          <!-- Featured products preview (ambil 3 teratas dari query yang sudah kamu punya) -->
-          <div class="col-lg-12">
-            <h4 class="mb-3">Featured (Preview)</h4>
-            <!-- contoh sederhana: kita ambil 3 produk bestseller -->
-            <?php
-            $fres = $conn->query("SELECT IDAlat AS id, AlatNama AS name, AlatHarga AS price, AlatDirGbr AS image, 'alat' AS tipe FROM alat WHERE LOWER(AlatStatus)='bestseller' LIMIT 3");
-            while ($fr = $fres->fetch_assoc()):
-              $fpImg = file_exists($imgBasePath . ($fr['image'] ?? '')) ? $imgBaseUrl . $fr['image'] : $placeholder;
-            ?>
-              <div class="d-flex align-items-center mb-3">
-                <div class="rounded me-3" style="width:72px;height:72px;overflow:hidden">
-                  <img src="<?= $fpImg ?>" class="img-fluid" style="width:100%;height:100%;object-fit:cover">
-                </div>
-                <div>
-                  <div class="fw-bold mb-1"><?= htmlspecialchars($fr['name']) ?></div>
-                  <div class="text-primary"><?= rupiah($fr['price']) ?></div>
-                </div>
-              </div>
-            <?php endwhile; if ($fres) $fres->free(); ?>
-          </div>
         </div>
-      </div>
-<!-- PRODUCT GRID -->
-  <!-- PRODUCT GRID -->
-<div class="col-lg-9">
-  <div class="row g-4 justify-content-center">
-    <?php if (empty($products)): ?>
-      <div class="col-12 text-center py-5"><h5>Tidak ada produk ditemukan.</h5></div>
-    <?php else: ?>
-
-      <?php 
-        // SETTING PATH GAMBAR FIX
-        $imgBaseUrl  = "../img/paket/"; // URL gambar untuk <img>
-        $imgBasePath = __DIR__ . "/../img/paket/"; // Lokasi folder untuk file_exists
-        $placeholder = "../img/noimage.png"; // fallback
-      ?>
-
-      <?php foreach ($products as $p): ?>
-
-        <?php
-          // Nama kolom gambar dari query UNION
-          $imgFile = $p['image'] ?? ''; 
-          $imgPath = $imgBasePath . $imgFile;
-          $imgUrl  = (!empty($imgFile) && file_exists($imgPath)) 
-                      ? $imgBaseUrl . $imgFile 
-                      : $placeholder;
-        ?>
-
-        <div class="col-md-6 col-lg-6 col-xl-4">
-          <div class="rounded position-relative fruite-item">
-            <div class="fruite-img">
-              <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top"
-                   alt="<?= htmlspecialchars($p['name']) ?>"
-                   style="height:220px;object-fit:cover">
-            </div>
-
-            <?php if (strtolower($p['status']) === 'bestseller'): ?>
-              <div class="position-absolute" style="top:10px;left:10px;">
-                <span class="badge bg-warning text-dark">Bestseller</span>
-              </div>
-            <?php endif; ?>
-
-            <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-              <!-- ✅ HANYA NAMA PRODUK (tanpa deskripsi) -->
-              <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
-
-              <div class="d-flex justify-content-between flex-lg-wrap align-items-center">
-                <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
-
-                <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
-                        data-id="<?= htmlspecialchars($p['id']) ?>"
-                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
-                        data-name="<?= htmlspecialchars($p['name']) ?>"
-                        data-kat="<?= htmlspecialchars($p['kategori']) ?>"
-                        data-desc="<?= htmlspecialchars($p['description']) ?>"
-                        data-price="<?= htmlspecialchars($p['price']) ?>"
-                        data-img="<?= $imgUrl ?>">
-                  <i class="fa fa-info-circle me-2 text-primary"></i> Detail
-                </button>
-
-              </div>
-            </div>
-          </div>
-        </div>
-
-      <?php endforeach; ?>
-    <?php endif; ?>
-  </div>
-</div>
-
     </div>
-  </div>
 </div>
 
-<!-- ✅ MODAL DETAIL PRODUK DENGAN TOMBOL CLOSE (X) -->
+<!-- MODAL DETAIL PRODUK -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content p-3">
-      <!-- ✅ TOMBOL CLOSE (X) DI POJOK KANAN ATAS -->
-      <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
-      
-      <div class="row g-3">
-        <div class="col-md-5">
-          <img id="modalImg" src="" class="img-fluid rounded" alt="">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content p-3">
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <img id="modalImg" src="" class="img-fluid rounded" alt="">
+                </div>
+                <div class="col-md-7">
+                    <h4 id="modalName"></h4>
+                    <p><small id="modalCat" class="text-muted"></small></p>
+                    <h5 class="text-primary" id="modalPrice"></h5>
+                    <p id="modalDesc"></p>
+                    <div class="d-flex gap-2 align-items-center">
+                        <label for="modalQty" class="mb-0">Jumlah:</label>
+                        <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:100px;">
+                        <button id="btnAddToCart" class="btn btn-primary flex-grow-1">
+                            <i class="fa fa-shopping-cart me-2"></i>Tambah ke Keranjang
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="col-md-7">
-          <h4 id="modalName"></h4>
-          <p><small id="modalCat" class="text-muted"></small></p>
-          <h5 class="text-primary" id="modalPrice"></h5>
-          <p id="modalDesc"></p>
-
-          <!-- Pilihan durasi jika tipe paket punya durasi (jika ada) -->
-          <div id="modalExtra" class="mb-2"></div>
-
-          <!-- Jumlah & Tombol Tambah ke Keranjang -->
-          <div class="d-flex gap-2 align-items-center">
-            <label for="modalQty" class="mb-0">Jumlah:</label>
-            <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:100px;">
-            <button id="btnAddToCart" class="btn btn-primary flex-grow-1">
-              <i class="fa fa-shopping-cart me-2"></i>Tambah ke Keranjang
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 </div>
-        <!-- Footer Start -->
+
+ <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
             <div class="container py-5">
                 <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">
                     <div class="row g-4">
                         <div class="col-lg-3">
                             <a href="#">
-                                <h1 class="text-primary mb-0">Fruitables</h1>
-                                <p class="text-secondary mb-0">Fresh products</p>
+                                <h1 class="text-primary mb-0">ARTEFAX.ID</h1>
+                                <p class="text-secondary mb-0">Paket Jasa & Sewa Alat</p>
                             </a>
                         </div>
                         <div class="col-lg-6">
@@ -602,111 +454,40 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         </div>
         <!-- Footer End -->
 
-        <!-- Copyright Start -->
-        <div class="container-fluid copyright bg-dark py-4">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        <span class="text-light"><a href="#"><i class="fas fa-copyright text-light me-2"></i>Your Site Name</a>, All right reserved.</span>
-                    </div>
-                    <div class="col-md-6 my-auto text-center text-md-end text-white">
-                        <!--/*** This template is free as long as you keep the below author’s credit link/attribution link/backlink. ***/-->
-                        <!--/*** If you'd like to use the template without the below author’s credit link/attribution link/backlink, ***/-->
-                        <!--/*** you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". ***/-->
-                        Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a> Distributed By <a class="border-bottom" href="https://themewagon.com">ThemeWagon</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Copyright End -->
+<!-- Scripts -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="lib/easing/easing.min.js"></script>
+<script src="lib/waypoints/waypoints.min.js"></script>
+<script src="lib/lightbox/js/lightbox.min.js"></script>
+<script src="lib/owlcarousel/owl.carousel.min.js"></script>
 
-
-
-        <!-- Back to Top -->
-        <a href="#" class="btn btn-primary border-3 border-primary rounded-circle back-to-top"><i class="fa fa-arrow-up"></i></a>   
-
-        
-    <!-- JavaScript Libraries -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="lib/easing/easing.min.js"></script>
-    <script src="lib/waypoints/waypoints.min.js"></script>
-    <script src="lib/lightbox/js/lightbox.min.js"></script>
-    <script src="lib/owlcarousel/owl.carousel.min.js"></script>
-    <!-- cart add -->
-    <script>
-function addToCart(id, tipe, qty = 1) {
-
-    fetch('root/cart_add.php', {  // ⬅ Path yang benar
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `id=${id}&tipe=${tipe}&qty=${qty}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-
-            // Update angka keranjang di navbar
-            document.getElementById('cart-count').innerText = data.cart_count;
-
-            // Buka modal keranjang (opsional)
-            let modal = new bootstrap.Modal(document.getElementById('cartModal'));
-            modal.show();
-        } else {
-            alert(data.message);
-        }
-    });
-}
-</script>
-
- <script>
-  // ========================================
-// SCRIPT UNTUK POPUP DETAIL PRODUK (FIXED)
-// Disesuaikan dengan cart_add.php yang sudah ada
-// ========================================
-
-// 1. Buka modal product dan isi data
+<script>
+// Popup Detail
 $(document).on('click', '.openDetailBtn', function(){
     const btn = $(this);
-    
-    // Isi data ke modal
     $('#modalImg').attr('src', btn.data('img'));
     $('#modalName').text(btn.data('name'));
     $('#modalCat').text(btn.data('kat'));
     $('#modalDesc').text(btn.data('desc'));
-    
-    // Format harga ke Rupiah
     const price = btn.data('price');
-    $('#modalPrice').text(new Intl.NumberFormat('id-ID', { 
-        style: 'currency', 
-        currency: 'IDR', 
-        maximumFractionDigits: 0 
-    }).format(price));
-    
-    // Reset quantity
+    $('#modalPrice').text(new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(price));
     $('#modalQty').val(1);
-    
-    // Simpan SEMUA data yang dibutuhkan (sesuai cart_add.php)
     $('#btnAddToCart').data('id', btn.data('id'));
-    $('#btnAddToCart').data('type', btn.data('tipe'));  // ⬅️ ubah 'tipe' jadi 'type'
-    $('#btnAddToCart').data('name', btn.data('name'));   // ⬅️ tambah name
-    $('#btnAddToCart').data('price', btn.data('price')); // ⬅️ tambah price
-    
-    // Buka modal
+    $('#btnAddToCart').data('type', btn.data('tipe'));
+    $('#btnAddToCart').data('name', btn.data('name'));
+    $('#btnAddToCart').data('price', btn.data('price'));
     $('#productModal').modal('show');
 });
 
-// 2. Tambah ke keranjang - SESUAI FORMAT cart_add.php
+// Add to Cart
 $('#btnAddToCart').click(function(){
     const id = $(this).data('id');
-    const type = $(this).data('type');      // ⬅️ gunakan 'type' bukan 'tipe'
-    const name = $(this).data('name');      // ⬅️ tambah name
-    const price = $(this).data('price');    // ⬅️ tambah price
+    const type = $(this).data('type');
+    const name = $(this).data('name');
+    const price = $(this).data('price');
     const qty = parseInt($('#modalQty').val()) || 1;
 
-    console.log('📦 Mengirim data:', { id, type, name, price, qty }); // DEBUG
-
-    // Gunakan fetch seperti di cart_script.php
     fetch('root/cart_add.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -714,34 +495,21 @@ $('#btnAddToCart').click(function(){
     })
     .then(res => res.json())
     .then(data => {
-        console.log('✅ Response:', data); // DEBUG
-        
         if (data.status === 'success') {
-            // Update counter keranjang di navbar
-            if (data.cart_count) {
-                $('.position-absolute.bg-secondary').text(data.cart_count);
-            }
-            
+            if (data.cart_count) $('.position-absolute.bg-secondary').text(data.cart_count);
             alert('✅ Produk berhasil ditambahkan ke keranjang!');
-            
-            // Tutup modal
             $('#productModal').modal('hide');
-            
-            // Reload halaman untuk update cart (opsional)
-            // location.reload();
         } else {
             alert('❌ Gagal: ' + (data.message || 'Terjadi kesalahan'));
         }
     })
     .catch(error => {
-        console.error('❌ AJAX Error:', error);
-        alert('❌ Gagal menghubungi server!\n\nError: ' + error);
+        console.error('Error:', error);
+        alert('❌ Gagal menghubungi server!');
     });
 });
 </script>
-    <!-- Template Javascript -->
-    <script src="js/main.js"></script>
-   
-    </body>
 
+<script src="js/main.js"></script>
+</body>
 </html>

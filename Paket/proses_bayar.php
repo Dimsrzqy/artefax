@@ -1,6 +1,7 @@
+
 <?php
 // ============================================
-// FILE 1: proses_pembayaran.php
+// proses_pembayaran.php - FIXED
 // Fungsi: Simpan booking setelah checkout
 // ============================================
 
@@ -92,8 +93,10 @@ $BkgStatus = "Pending";
 $CreatedAt = date('Y-m-d H:i:s');
 $UpdatedAt = $CreatedAt;
 
-$alamatFinal = $needLokasi ? $alamat : NULL;
-$jaminanFinal = $needJaminan ? $jaminan : NULL;
+// ✅ PERBAIKAN: Gunakan string kosong '' jika tidak perlu, bukan NULL
+// Karena kolom BkgAlamat dan BkgJaminan di database tidak boleh NULL
+$alamatFinal = $needLokasi ? $alamat : '';
+$jaminanFinal = $needJaminan ? $jaminan : '';
 
 // Insert booking dengan BkgTotalHarga
 $sql = "INSERT INTO booking 
@@ -109,11 +112,11 @@ if (!$stmt) {
 $stmt->bind_param(
     "isssssdss",
     $userId,
-    $alamatFinal,
+    $alamatFinal,    // ✅ String kosong '' jika tidak perlu
     $tgl_mulai,
     $tgl_selesai,
     $BkgStatus,
-    $jaminanFinal,
+    $jaminanFinal,   // ✅ String kosong '' jika tidak perlu
     $total,
     $CreatedAt,
     $UpdatedAt
