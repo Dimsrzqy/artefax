@@ -288,71 +288,109 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                 </div>
             </div>
 
-            <!-- PRODUCT GRID -->
-            <div class="col-lg-9">
-                <div class="row g-4 justify-content-center">
-                    <?php if (empty($products)): ?>
-                        <div class="col-12 text-center py-5"><h5>Tidak ada produk ditemukan.</h5></div>
-                    <?php else: ?>
-                         <?php foreach ($products as $p): 
-                            // ✅ FIXED PATH DETECTION - Sesuai struktur: Paket/img/produk/{alat|paketjasa}/file.jpg
-                            $imgFile = $p['image'] ?? '';
-                            $placeholder = 'img/noimage.png';
-                            
-                            $imgUrl = $placeholder;
-                            
-                            if (!empty($imgFile)) {
-                                // Path utama: img/produk/ + database value (alat/alat1.jpg atau paketjasa/jasa1.jpg)
-                                $mainPath = 'img/produk/' . $imgFile;
-                                $fullPath = __DIR__ . '/' . $mainPath;
-                                
-                                if (file_exists($fullPath)) {
-                                    $imgUrl = $mainPath;
-                                }
-                            }
-                        ?>
+<!-- PRODUCT GRID - MODERN DESIGN -->
+<div class="col-lg-9">
+    <div class="row g-4 justify-content-center">
+        <?php if (empty($products)): ?>
+            <div class="col-12 text-center py-5">
+                <i class="fa fa-search fa-3x text-muted mb-3"></i>
+                <h5>Tidak ada produk ditemukan.</h5>
+                <p class="text-muted">Coba kata kunci lain atau filter berbeda</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($products as $p): 
+                $imgFile = $p['image'] ?? '';
+                $placeholder = 'img/noimage.png';
+                $imgUrl = $placeholder;
+                
+                if (!empty($imgFile)) {
+                    $mainPath = 'img/produk/' . $imgFile;
+                    $fullPath = __DIR__ . '/' . $mainPath;
+                    if (file_exists($fullPath)) {
+                        $imgUrl = $mainPath;
+                    }
+                }
+            ?>
+            
+            <div class="col-md-6 col-lg-6 col-xl-4">
+                <div class="product-card">
+                    
+                    <!-- Image Section -->
+                    <div class="product-image-wrapper">
+                        <img src="<?= $imgUrl ?>" 
+                             class="product-image" 
+                             alt="<?= htmlspecialchars($p['name']) ?>"
+                             onerror="this.onerror=null; this.src='img/noimage.png';">
                         
-                            <div class="col-md-6 col-lg-6 col-xl-4">
-                                <div class="rounded position-relative fruite-item">
-                                
-                                    
-                                    <div class="fruite-img">
-                                        <img src="<?= $imgUrl ?>" 
-                                             class="img-fluid w-100 rounded-top" 
-                                             alt="<?= htmlspecialchars($p['name']) ?>" 
-                                             style="height:220px;object-fit:cover"
-                                             onerror="this.onerror=null; this.src='../img/noimage.jpg';">
-                                    </div>
-                                    <?php if (strtolower($p['status']) === 'bestseller'): ?>
-                                        <div class="position-absolute" style="top:10px;left:10px;">
-                                            <span class="badge bg-warning text-dark">Bestseller</span>
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-                                        <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
-                                        <div class="d-flex justify-content-between flex-lg-wrap align-items-center">
-                                            <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
-                                            <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
-                                                    data-id="<?= htmlspecialchars($p['id']) ?>"
-                                                    data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
-                                                    data-name="<?= htmlspecialchars($p['name']) ?>"
-                                                    data-kat="<?= htmlspecialchars($p['kategori']) ?>"
-                                                    data-desc="<?= htmlspecialchars($p['description']) ?>"
-                                                    data-price="<?= htmlspecialchars($p['price']) ?>"
-                                                    data-img="<?= $imgUrl ?>">
-                                                <i class="fa fa-info-circle me-2 text-primary"></i> Detail
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Badges -->
+                        <div class="product-badges">
+                            <?php if (strtolower($p['status']) === 'bestseller'): ?>
+                                <span class="badge badge-bestseller">
+                                    <i class="fa fa-star"></i> Bestseller
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <!-- Quick View Button (Optional) -->
+                        <div class="product-overlay">
+                            <button class="btn btn-light btn-sm rounded-circle openDetailBtn"
+                                    data-id="<?= htmlspecialchars($p['id']) ?>"
+                                    data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
+                                    data-name="<?= htmlspecialchars($p['name']) ?>"
+                                    data-kat="<?= htmlspecialchars($p['kategori']) ?>"
+                                    data-desc="<?= htmlspecialchars($p['description']) ?>"
+                                    data-price="<?= htmlspecialchars($p['price']) ?>"
+                                    data-img="<?= $imgUrl ?>"
+                                    title="Lihat Detail">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Content Section -->
+                    <div class="product-content">
+                        
+                        <!-- Category Badge -->
+                        <div class="product-category">
+                            <span class="badge badge-category">
+                                <?= htmlspecialchars($p['tipe']) ?>
+                            </span>
+                        </div>
+                        
+                        <!-- Product Name -->
+                        <h5 class="product-name">
+                            <?= htmlspecialchars($p['name']) ?>
+                        </h5>
+                        
+                        <!-- Spacer -->
+                        <div class="product-spacer"></div>
+                        
+                        <!-- Price & Button -->
+                        <div class="product-footer">
+                            <div class="product-price">
+                                <?= rupiah($p['price']) ?>
                             </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                            <button class="btn btn-primary btn-sm openDetailBtn"
+                                    data-id="<?= htmlspecialchars($p['id']) ?>"
+                                    data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
+                                    data-name="<?= htmlspecialchars($p['name']) ?>"
+                                    data-kat="<?= htmlspecialchars($p['kategori']) ?>"
+                                    data-desc="<?= htmlspecialchars($p['description']) ?>"
+                                    data-price="<?= htmlspecialchars($p['price']) ?>"
+                                    data-img="<?= $imgUrl ?>">
+                                Detail <i class="fa fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                        
+                    </div>
                 </div>
             </div>
-        </div>
+            
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
+
 
 <!-- MODAL DETAIL PRODUK -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
@@ -380,6 +418,185 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         </div>
     </div>
 </div>
+
+<style>
+    
+/* ============================================
+   PRODUCT CARD - FIXED LAYOUT
+   Tambahkan CSS ini ke css/style.css
+   ============================================ */
+
+
+.product-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    transform: translateY(-4px);
+}
+
+/* Image Section */
+.product-image-wrapper {
+    position: relative;
+    overflow: hidden;
+    height: 250px;
+    background: #f8f9fa;
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.4s ease;
+}
+
+.product-card:hover .product-image {
+    transform: scale(1.08);
+}
+
+/* Badges */
+.product-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 2;
+}
+
+.badge-bestseller {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #000;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255,215,0,0.3);
+}
+
+/* Overlay Button */
+.product-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.product-card:hover .product-overlay {
+    opacity: 1;
+}
+
+.product-overlay .btn {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Content Section */
+.product-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-category {
+    margin-bottom: 8px;
+}
+
+.badge-category {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* Product Name - Max 2 lines */
+.product-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 12px 0;
+    height: 3rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.5rem;
+}
+
+/* Spacer to push footer down */
+.product-spacer {
+    flex-grow: 1;
+}
+
+/* Footer */
+.product-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+}
+
+.product-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #81c408;
+}
+
+.product-footer .btn {
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1199px) {
+    .product-image-wrapper {
+        height: 220px;
+    }
+}
+
+@media (max-width: 767px) {
+    .product-image-wrapper {
+        height: 200px;
+    }
+    
+    .product-name {
+        font-size: 0.95rem;
+        height: 2.8rem;
+    }
+    
+    .product-price {
+        font-size: 1.1rem;
+    }
+    
+    .product-footer .btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+</style>
 
  <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
@@ -488,6 +705,11 @@ $('#btnAddToCart').click(function(){
     const price = $(this).data('price');
     const qty = parseInt($('#modalQty').val()) || 1;
 
+    // Efek tombol langsung berubah biar user tahu diklik
+    const btn = $(this);
+    const originalText = btn.html();
+    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Menambahkan...');
+
     fetch('root/cart_add.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -496,16 +718,30 @@ $('#btnAddToCart').click(function(){
     .then(res => res.json())
     .then(data => {
         if (data.status === 'success') {
-            if (data.cart_count) $('.position-absolute.bg-secondary').text(data.cart_count);
-            alert('✅ Produk berhasil ditambahkan ke keranjang!');
+            // Update angka keranjang langsung
+            const cartBadge = $('.position-absolute.bg-secondary');
+            cartBadge.text(data.cart_count);
+            
+            // Efek angka naik (opsional, keren)
+            cartBadge.addClass('animate__animated animate__bounceIn');
+            setTimeout(() => cartBadge.removeClass('animate__animated animate__bounceIn'), 600);
+
+            // Tutup modal
             $('#productModal').modal('hide');
+
+            // Optional: kasih feedback halus tanpa alert
+            // Bisa ditambahin toast kecil nanti kalau mau
         } else {
-            alert('❌ Gagal: ' + (data.message || 'Terjadi kesalahan'));
+            alert('Gagal menambah ke keranjang: ' + (data.message || 'Coba lagi'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Gagal menghubungi server!');
+        alert('Gagal terhubung ke server!');
+    })
+    .finally(() => {
+        // Kembalikan tombol
+        btn.prop('disabled', false).html(originalText);
     });
 });
 </script>

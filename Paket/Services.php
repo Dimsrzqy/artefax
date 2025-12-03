@@ -5,11 +5,9 @@
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
 
-// ⬇️ TAMBAHKAN CART COMPONENTS
 include __DIR__ . "/components/cart_modal.php";
 include __DIR__ . "/components/cart_script.php";
 
-// 🔹 SweetAlert jika checkout berhasil
 if (isset($_SESSION['success_checkout'])) {
     echo "
     <script>
@@ -27,7 +25,6 @@ if (isset($_SESSION['success_checkout'])) {
     unset($_SESSION['success_checkout']);
 }
 
-// 🔹 Membuat koneksi database
 $db = new Database();
 $conn = $db->getConnection();
 
@@ -35,14 +32,60 @@ if (!$conn) {
     die("Koneksi database gagal.");
 }
 
-// Hitung cart
 $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
 // ===============================
-// 🔹 2. AMBIL DATA DARI DATABASE
+// 🔹 2. QUERY BESTSELLER BERDASARKAN BOOKING TERBANYAK
 // ===============================
 
-// 🔸 Ambil 8 produk terbaru (gabungan alat & paket)
+// ✅ BESTSELLER: Produk dengan booking terbanyak (Alat + Paket Jasa)
+$sql_bestseller = "
+    (
+        SELECT 
+            a.IDAlat AS id, 
+            'alat' AS tipe,
+            a.AlatNama AS name,
+            a.AlatKategori AS kategori,
+            a.AlatDeskripsi AS description,
+            a.AlatHarga AS price,
+            a.AlatDirGbr AS image,
+            a.AlatStatus AS status,
+            COUNT(bd.IDAlat) AS total_booking
+        FROM alat a
+        LEFT JOIN booking_detail bd ON a.IDAlat = bd.IDAlat
+        WHERE LOWER(a.AlatStatus) IN ('aktif','bestseller','tersedia')
+        GROUP BY a.IDAlat
+    )
+    UNION ALL
+    (
+        SELECT 
+            p.IDPaket AS id,
+            'paket' AS tipe,
+            p.PaketNama AS name,
+            p.PaketKategori AS kategori,
+            p.PaketDeskripsi AS description,
+            p.PaketHarga AS price,
+            p.PaketDirGbr AS image,
+            p.PaketStatus AS status,
+            COUNT(bd.IDPaket) AS total_booking
+        FROM paketjasa p
+        LEFT JOIN booking_detail bd ON p.IDPaket = bd.IDPaket
+        WHERE p.PaketStatus IN ('aktif','Bestseller','bestseller')
+        GROUP BY p.IDPaket
+    )
+    ORDER BY total_booking DESC
+    LIMIT 8
+";
+
+$result_bestseller = $conn->query($sql_bestseller);
+$bestseller_products = [];
+if ($result_bestseller) {
+    while ($row = $result_bestseller->fetch_assoc()) {
+        $bestseller_products[] = $row;
+    }
+}
+
+// ✅ PRODUK TERBARU
 $sql_latest = "
     SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kategori,
            AlatDeskripsi AS description, AlatHarga AS price, AlatDirGbr AS image, 
@@ -67,31 +110,6 @@ if ($result_latest) {
     }
 }
 
-// 🔸 Ambil produk BESTSELLER (favorit)
-$sql_bestseller = "
-    SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kategori,
-           AlatDeskripsi AS description, AlatHarga AS price, AlatDirGbr AS image, 
-           AlatStatus AS status
-    FROM alat
-    WHERE LOWER(AlatStatus) = 'bestseller'
-    UNION ALL
-    SELECT IDPaket AS id, 'paket' AS tipe, PaketNama AS name, PaketKategori AS kategori,
-           PaketDeskripsi AS description, PaketHarga AS price, PaketDirGbr AS image, 
-           PaketStatus AS status
-    FROM paketjasa
-    WHERE LOWER(PaketStatus) = 'bestseller'
-    LIMIT 8
-";
-
-$result_bestseller = $conn->query($sql_bestseller);
-$bestseller_products = [];
-if ($result_bestseller) {
-    while ($row = $result_bestseller->fetch_assoc()) {
-        $bestseller_products[] = $row;
-    }
-}
-
-// Format Rupiah
 function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
 }
@@ -179,8 +197,7 @@ function rupiah($n) {
         </div>
     </div>
     <!-- Navbar End -->
-
-    <!-- Modal Search -->
+<!-- Modal Search -->
     <div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen">
             <div class="modal-content rounded-0">
@@ -198,15 +215,13 @@ function rupiah($n) {
         </div>
     </div>
 
-    <!-- Hero Start -->
+    <!-- Hero -->
     <div class="container-fluid py-5 mb-5 hero-header">
         <div class="container py-5">
             <div class="row g-5 align-items-center">
                 <div class="col-md-12 col-lg-7">
                     <h4 class="mb-3 text-secondary">ARTEFAX.ID</h4>
                     <h1 class="mb-5 display-3 text-primary">Pemesanan Alat & Paket Jasa</h1>
-                    
-                    <!-- Form Pencarian yang Berfungsi -->
                     <form method="GET" action="shop.php" class="position-relative mx-auto">
                         <input class="form-control border-2 border-secondary w-75 py-3 px-4 rounded-pill" 
                                type="text" 
@@ -241,53 +256,65 @@ function rupiah($n) {
             </div>
         </div>
     </div>
-    <!-- Hero End -->
 
-    <!-- =============================== -->
-    <!-- 🔹 SECTION: LAYANAN FAVORIT (BESTSELLER) -->
-    <!-- =============================== -->
+    <!-- ✅ BESTSELLER BERDASARKAN BOOKING TERBANYAK -->
     <?php if (!empty($bestseller_products)): ?>
     <div class="container-fluid py-5">
         <div class="container">
             <div class="text-center mb-5">
                 <h2 class="display-5 text-primary fw-bold">⭐ Layanan Favorit</h2>
-                <p class="text-muted">Produk paling diminati oleh pelanggan kami</p>
+                <p class="text-muted">Produk paling banyak dibooking oleh pelanggan</p>
             </div>
 
             <div class="row g-4 justify-content-center">
                 <?php foreach ($bestseller_products as $p): 
                     $imgFile = $p['image'] ?? '';
-                    $placeholder = 'img/noimage.png';
-                    $imgUrl = $placeholder;
+                    $imgUrl = 'img/noimage.png';
                     
                     if (!empty($imgFile)) {
-                        $mainPath = 'img/produk/' . $imgFile;
-                        if (file_exists(__DIR__ . '/' . $mainPath)) {
-                            $imgUrl = $mainPath;
+                        // ✅ PERBAIKAN PATH
+                        $fullPath = __DIR__ . '/img/produk/' . $imgFile;
+                        if (file_exists($fullPath)) {
+                            $imgUrl = 'img/produk/' . $imgFile;
                         }
                     }
                 ?>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded position-relative fruite-item">
-                        <div class="fruite-img">
-                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover" onerror="this.onerror=null; this.src='img/noimage.png';">
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="product-card">
+                        <div class="product-image-wrapper">
+                            <img src="<?= $imgUrl ?>" 
+                                 class="product-image" 
+                                 alt="<?= htmlspecialchars($p['name']) ?>"
+                                 onerror="this.src='img/noimage.png';">
+                            <div class="product-badges">
+                                <span class="badge badge-bestseller">
+                                    <i class="fa fa-star"></i> Bestseller
+                                </span>
+                            </div>
                         </div>
-                        <div class="position-absolute" style="top:10px;left:10px;">
-                            <span class="badge bg-warning text-dark">⭐ Bestseller</span>
-                        </div>
-                        <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-                            <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
-                                <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
-                                        data-id="<?= $p['id'] ?>"
-                                        data-tipe="<?= $p['tipe'] ?>"
+                        <div class="product-content">
+                            <div class="product-category">
+                                <span class="badge badge-category">
+                                    <?= htmlspecialchars($p['tipe']) ?>
+                                </span>
+                            </div>
+                            <h5 class="product-name">
+                                <?= htmlspecialchars($p['name']) ?>
+                            </h5>
+                            <div class="product-spacer"></div>
+                            <div class="product-footer">
+                                <div class="product-price">
+                                    <?= rupiah($p['price']) ?>
+                                </div>
+                                <button class="btn btn-primary btn-sm openDetailBtn"
+                                        data-id="<?= htmlspecialchars($p['id']) ?>"
+                                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
                                         data-name="<?= htmlspecialchars($p['name']) ?>"
                                         data-kat="<?= htmlspecialchars($p['kategori']) ?>"
                                         data-desc="<?= htmlspecialchars($p['description']) ?>"
-                                        data-price="<?= $p['price'] ?>"
+                                        data-price="<?= htmlspecialchars($p['price']) ?>"
                                         data-img="<?= $imgUrl ?>">
-                                    <i class="fa fa-info-circle me-2"></i> Detail
+                                    Detail <i class="fa fa-arrow-right ms-1"></i>
                                 </button>
                             </div>
                         </div>
@@ -299,9 +326,7 @@ function rupiah($n) {
     </div>
     <?php endif; ?>
 
-    <!-- =============================== -->
-    <!-- 🔹 SECTION: PRODUK TERBARU (8 ITEMS) -->
-    <!-- =============================== -->
+    <!-- ✅ PRODUK TERBARU -->
     <div class="container-fluid py-5">
         <div class="container">
             <div class="text-center mb-5">
@@ -312,39 +337,53 @@ function rupiah($n) {
             <div class="row g-4 justify-content-center">
                 <?php foreach ($latest_products as $p): 
                     $imgFile = $p['image'] ?? '';
-                    $placeholder = 'img/noimage.png';
-                    $imgUrl = $placeholder;
+                    $imgUrl = 'img/noimage.png';
                     
                     if (!empty($imgFile)) {
-                        $mainPath = 'img/produk/' . $imgFile;
-                        if (file_exists(__DIR__ . '/' . $mainPath)) {
-                            $imgUrl = $mainPath;
+                        $fullPath = __DIR__ . '/img/produk/' . $imgFile;
+                        if (file_exists($fullPath)) {
+                            $imgUrl = 'img/produk/' . $imgFile;
                         }
                     }
                 ?>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded position-relative fruite-item">
-                        <div class="fruite-img">
-                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover" onerror="this.onerror=null; this.src='img/noimage.png';">
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="product-card">
+                        <div class="product-image-wrapper">
+                            <img src="<?= $imgUrl ?>" 
+                                 class="product-image" 
+                                 alt="<?= htmlspecialchars($p['name']) ?>"
+                                 onerror="this.src='img/noimage.png';">
+                            <?php if (strtolower($p['status']) === 'bestseller'): ?>
+                            <div class="product-badges">
+                                <span class="badge badge-bestseller">
+                                    <i class="fa fa-star"></i> Bestseller
+                                </span>
+                            </div>
+                            <?php endif; ?>
                         </div>
-                        <?php if (strtolower($p['status']) === 'bestseller'): ?>
-                        <div class="position-absolute" style="top:10px;left:10px;">
-                            <span class="badge bg-warning text-dark">Bestseller</span>
-                        </div>
-                        <?php endif; ?>
-                        <div class="p-4 border border-secondary border-top-0 rounded-bottom">
-                            <h4 class="mb-3"><?= htmlspecialchars($p['name']) ?></h4>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <p class="text-dark fs-5 fw-bold mb-0"><?= rupiah($p['price']) ?></p>
-                                <button class="btn border border-secondary rounded-pill px-3 text-primary openDetailBtn"
-                                        data-id="<?= $p['id'] ?>"
-                                        data-tipe="<?= $p['tipe'] ?>"
+                        <div class="product-content">
+                            <div class="product-category">
+                                <span class="badge badge-category">
+                                    <?= htmlspecialchars($p['tipe']) ?>
+                                </span>
+                            </div>
+                            <h5 class="product-name">
+                                <?= htmlspecialchars($p['name']) ?>
+                            </h5>
+                            <div class="product-spacer"></div>
+                            <div class="product-footer">
+                                <div class="product-price">
+                                    <?= rupiah($p['price']) ?>
+                                </div>
+                                <button class="btn btn-primary btn-sm openDetailBtn"
+                                        data-id="<?= htmlspecialchars($p['id']) ?>"
+                                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
                                         data-name="<?= htmlspecialchars($p['name']) ?>"
                                         data-kat="<?= htmlspecialchars($p['kategori']) ?>"
                                         data-desc="<?= htmlspecialchars($p['description']) ?>"
-                                        data-price="<?= $p['price'] ?>"
+                                        data-price="<?= htmlspecialchars($p['price']) ?>"
                                         data-img="<?= $imgUrl ?>">
-                                    <i class="fa fa-info-circle me-2"></i> Detail
+                                    Detail <i class="fa fa-arrow-right ms-1"></i>
                                 </button>
                             </div>
                         </div>
@@ -353,7 +392,6 @@ function rupiah($n) {
                 <?php endforeach; ?>
             </div>
 
-            <!-- Button Selengkapnya -->
             <div class="text-center mt-5">
                 <a href="shop.php" class="btn btn-primary btn-lg rounded-pill px-5">
                     <i class="fa fa-arrow-right me-2"></i> Lihat Semua Produk
@@ -366,9 +404,7 @@ function rupiah($n) {
     <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content p-3">
-                <!-- Tombol Close (X) -->
-                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
-                
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
                 <div class="row g-3">
                     <div class="col-md-5">
                         <img id="modalImg" src="" class="img-fluid rounded" alt="">
@@ -378,7 +414,6 @@ function rupiah($n) {
                         <p><small id="modalCat" class="text-muted"></small></p>
                         <h5 class="text-primary" id="modalPrice"></h5>
                         <p id="modalDesc"></p>
-                        
                         <div class="d-flex gap-2 align-items-center">
                             <label for="modalQty" class="mb-0">Jumlah:</label>
                             <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:100px;">
@@ -391,6 +426,184 @@ function rupiah($n) {
             </div>
         </div>
     </div>
+    <style>
+        
+/* ============================================
+   PRODUCT CARD - FIXED LAYOUT
+   Tambahkan CSS ini ke css/style.css
+   ============================================ */
+
+
+.product-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    transform: translateY(-4px);
+}
+
+/* Image Section */
+.product-image-wrapper {
+    position: relative;
+    overflow: hidden;
+    height: 250px;
+    background: #f8f9fa;
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.4s ease;
+}
+
+.product-card:hover .product-image {
+    transform: scale(1.08);
+}
+
+/* Badges */
+.product-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 2;
+}
+
+.badge-bestseller {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #000;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255,215,0,0.3);
+}
+
+/* Overlay Button */
+.product-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.product-card:hover .product-overlay {
+    opacity: 1;
+}
+
+.product-overlay .btn {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Content Section */
+.product-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-category {
+    margin-bottom: 8px;
+}
+
+.badge-category {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* Product Name - Max 2 lines */
+.product-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 12px 0;
+    height: 3rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.5rem;
+}
+
+/* Spacer to push footer down */
+.product-spacer {
+    flex-grow: 1;
+}
+
+/* Footer */
+.product-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+}
+
+.product-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #81c408;
+}
+
+.product-footer .btn {
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1199px) {
+    .product-image-wrapper {
+        height: 220px;
+    }
+}
+
+@media (max-width: 767px) {
+    .product-image-wrapper {
+        height: 200px;
+    }
+    
+    .product-name {
+        font-size: 0.95rem;
+        height: 2.8rem;
+    }
+    
+    .product-price {
+        font-size: 1.1rem;
+    }
+    
+    .product-footer .btn {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
+}
+    </style>
 
      <!-- Footer Start -->
         <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
@@ -488,8 +701,7 @@ function rupiah($n) {
     <script src="lib/owlcarousel/owl.carousel.min.js"></script>
 
     <!-- Script untuk Popup & Add to Cart -->
-    <script>
-    // Buka modal detail produk
+   <script>
     $(document).on('click', '.openDetailBtn', function(){
         const btn = $(this);
         $('#modalImg').attr('src', btn.data('img'));
@@ -507,24 +719,30 @@ function rupiah($n) {
         $('#btnAddToCart').data('type', btn.data('tipe'));
         $('#btnAddToCart').data('name', btn.data('name'));
         $('#btnAddToCart').data('price', btn.data('price'));
+        $('#btnAddToCart').data('img', btn.data('img'));
         $('#productModal').modal('show');
     });
 
-    // Tambah ke keranjang
     $('#btnAddToCart').click(function(){
         const id = $(this).data('id');
         const type = $(this).data('type');
         const name = $(this).data('name');
         const price = $(this).data('price');
+        const img = $(this).data('img');
         const qty = parseInt($('#modalQty').val()) || 1;
+
+        const btn = $(this);
+        const btnText = btn.html();
+        btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Loading...');
 
         fetch('root/cart_add.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}`
+            body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}&image=${encodeURIComponent(img)}`
         })
         .then(res => res.json())
         .then(data => {
+            btn.prop('disabled', false).html(btnText);
             if (data.status === 'success') {
                 if (data.cart_count) {
                     $('.position-absolute.bg-secondary').text(data.cart_count);
@@ -532,11 +750,12 @@ function rupiah($n) {
                 alert('✅ Produk berhasil ditambahkan ke keranjang!');
                 $('#productModal').modal('hide');
             } else {
-                alert('❌ Gagal: ' + (data.message || 'Terjadi kesalahan'));
+                alert('❌ Gagal: ' + (data.message || ''));
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            btn.prop('disabled', false).html(btnText);
             alert('❌ Gagal menghubungi server!');
         });
     });

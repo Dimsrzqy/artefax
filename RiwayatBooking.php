@@ -19,7 +19,7 @@ if (!$conn) die("Database error");
 $role   = $_SESSION['user']['UserRole'] ?? '';
 $idUser = $_SESSION['user']['IDUser'] ?? 0;
 
-$statusFilter = ['Diterima', 'Selesai', 'Batal'];
+$statusFilter = ['Pending', 'Menunggu Konfirmasi','Diterima', 'Selesai', 'Batal'];
 $bookings = [];
 
 $statuses = implode("','", array_map([$conn, 'real_escape_string'], $statusFilter));
