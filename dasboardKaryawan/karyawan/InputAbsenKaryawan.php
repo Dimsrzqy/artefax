@@ -33,10 +33,11 @@ $eventAktif = $result->fetch_assoc();
 $stmt->close();
 
 // Variabel default
-$namaEvent    = '';
+$namaEvent     = '';
 $idEventAktif = 0;
 $sudahAbsen   = false;
 $adaEventAktif = ($eventAktif !== null);
+$errorMsg = ''; // Pastikan variabel errorMsg diinisialisasi
 
 if ($adaEventAktif) {
     $idEventAktif = $eventAktif['IDEvent'];
@@ -53,10 +54,10 @@ if ($adaEventAktif) {
 // === Proses absensi ===
 $absenBerhasil = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
-    $latitude   = $_POST['latitude'] ?? '';
-    $longitude  = $_POST['longitude'] ?? '';
-    $fotoData   = $_POST['foto'] ?? '';
-    $clientTime = $_POST['client_time'] ?? '';
+    $latitude    = $_POST['latitude'] ?? '';
+    $longitude   = $_POST['longitude'] ?? '';
+    $fotoData    = $_POST['foto'] ?? '';
+    $clientTime  = $_POST['client_time'] ?? '';
 
     if (empty($fotoData)) {
         $errorMsg = "Ambil foto dulu ya!";
@@ -107,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <link href="../css/karyawan.css" rel="stylesheet">
     <link href="../css/absensi.css" rel="stylesheet">
 
-    <!-- SweetAlert2 harus di-load DULU -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
@@ -152,10 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             margin: 20px 0;
         }
 
-        /* PERBAIKAN MIRROR - Hanya tambahan ini */
-        #kamera,
-        #preview {
+        /* PERBAIKAN MIRROR - HANYA video yang di-mirror untuk preview live */
+        #kamera {
             transform: scaleX(-1);
+            display: block;
+        }
+        /* HILANGKAN mirror dari PREVIEW */
+        #preview {
+            transform: none; 
             display: block;
         }
     </style>
@@ -163,7 +167,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
 
 <body class="az-body">
 
-    <!-- HEADER -->
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -192,7 +195,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         </div>
     </div>
 
-    <!-- CONTENT -->
     <div class="az-content">
         <div class="az-content-body d-flex justify-content-center align-items-center min-vh-100">
             <div class="absensi-card">
@@ -245,7 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         </div>
     </div>
 
-    <!-- JS harus di-load SETELAH SweetAlert2 -->
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
@@ -299,14 +300,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                 canvas.width = video.videoWidth || 640;
                 canvas.height = video.videoHeight || 480;
 
+                // 1. Reset/Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Karena video sudah di-mirror oleh CSS, kita gambar ULANG dengan flip lagi
-                // agar hasilnya menjadi NORMAL (tidak terbalik)
-                ctx.scale(-1, 1);
-                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                // 2. Set transform untuk membalik gambar secara horizontal
+                // Karena video LIVE sudah di-flip (transform: scaleX(-1)) di CSS,
+                // kita perlu mem-flip-nya LAGI di canvas agar hasilnya normal.
+                ctx.translate(canvas.width, 0); // Pindahkan origin ke kanan
+                ctx.scale(-1, 1); // Flip horizontal
 
-                // Reset transform supaya toDataURL tidak error
+                // 3. Gambar video (kini gambar akan terlihat normal/tidak mirror)
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // 4. Reset transform agar toDataURL tidak menyertakan transformasi
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
 
                 document.getElementById('foto').value = canvas.toDataURL('image/jpeg', 0.8);
@@ -314,7 +320,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         </script>
     <?php endif; ?>
 
-    <!-- Notifikasi hasil absensi -->
     <?php if (!empty($absenBerhasil)): ?>
         <script>
             Swal.fire({

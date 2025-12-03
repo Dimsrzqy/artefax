@@ -1,5 +1,5 @@
 <?php
-// File: RiwayatBooking.php → FINAL CODE (Dengan Modal AJAX)
+// File: RiwayatBooking.php → FINAL CODE (Dengan Perbaikan SQL Error dan Redirect Pembatalan)
 session_start();
 date_default_timezone_set('Asia/Jakarta');
 
@@ -22,37 +22,60 @@ $idUser = $_SESSION['user']['IDUser'] ?? 0;
 $statusFilter = ['Diterima', 'Selesai', 'Batal'];
 $bookings = [];
 
-// Query untuk Riwayat Booking (Menggunakan u.UserNoHP sesuai class User)
 $statuses = implode("','", array_map([$conn, 'real_escape_string'], $statusFilter));
-$query = "SELECT 
-            b.IDBooking,
-            b.BkgTglMulai,
-            b.BkgTotalHarga,
-            b.BkgStatus,
-            u.UserNama,
-            u.UserNoHP, -- Mengambil UserNoHP untuk tampilan detail di RiwayatBooking (opsional)
-            COALESCE(pj.PaketNama, a.AlatNama, 'Item Tidak Diketahui') AS ItemNama
-          FROM booking b
-          LEFT JOIN users u ON b.IDUser = u.IDUser
-          LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
-          LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
-          LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
-          WHERE b.BkgStatus IN ('$statuses')";
+$result = false; // Inisialisasi $result
 
 if (strtolower($role) === 'customer') {
-    $query .= " AND b.IDUser = ?";
+    // Query untuk Customer
+    $query = "SELECT 
+                 b.IDBooking,
+                 b.BkgTglMulai,
+                 b.BkgTotalHarga,
+                 b.BkgStatus,
+                 u.UserNama,
+                 u.UserNoHP,
+                 COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
+              FROM booking b
+              LEFT JOIN users u ON b.IDUser = u.IDUser
+              LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
+              LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
+              LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
+              WHERE b.BkgStatus IN ('$statuses') AND b.IDUser = ?
+              GROUP BY b.IDBooking
+              ORDER BY b.BkgTglMulai DESC";
+              
     $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $idUser);
     $stmt->execute();
     $result = $stmt->get_result();
+    $stmt->close();
+    
 } else {
-    // Untuk Admin/Staff, tampilkan semua
-    $query .= " ORDER BY b.BkgTglMulai DESC";
+    // Query untuk Admin/Staff (Memperbaiki Fatal Error dengan GROUP BY eksplisit)
+    $query = "SELECT 
+                 b.IDBooking,
+                 b.BkgTglMulai,
+                 b.BkgTotalHarga,
+                 b.BkgStatus,
+                 u.UserNama,
+                 u.UserNoHP,
+                 COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
+              FROM booking b
+              LEFT JOIN users u ON b.IDUser = u.IDUser
+              LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
+              LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
+              LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
+              WHERE b.BkgStatus IN ('$statuses')
+              GROUP BY b.IDBooking, b.BkgTglMulai, b.BkgTotalHarga, b.BkgStatus, u.UserNama, u.UserNoHP
+              ORDER BY b.BkgTglMulai DESC";
+              
     $result = $conn->query($query);
 }
 
-while ($row = $result->fetch_assoc()) {
-    $bookings[] = $row;
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $bookings[] = $row;
+    }
 }
 ?>
 
@@ -148,14 +171,25 @@ while ($row = $result->fetch_assoc()) {
         }
         
         /* Tombol Detail */
+        .btn-action {
+            padding: 12px 30px; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;
+        }
         .btn-detail {
             background-color: var(--accent-color); color: var(--contrast-color); border: none;
-            padding: 12px 30px; border-radius: 8px; font-weight: 500; transition: all 0.3s ease;
         }
         .btn-detail:hover {
             background-color: color-mix(in srgb, var(--accent-color), black 10%);
             transform: translateY(-2px);
         }
+        .btn-cancel {
+            background-color: var(--status-batal-bg); color: var(--contrast-color); border: none;
+            padding: 8px 15px; font-size: 0.85rem; margin-top: 10px;
+        }
+        .btn-cancel:hover {
+             background-color: color-mix(in srgb, var(--status-batal-bg), black 10%);
+             transform: none;
+        }
+
 
         /* --- STYLING KHUSUS MODAL --- */
         .modal-content {
@@ -206,7 +240,7 @@ while ($row = $result->fetch_assoc()) {
         <div class="text-center py-5" style="background: var(--surface-color); border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);">
             <i class="bi bi-receipt display-1 text-muted mb-4"></i>
             <h4 class="text-muted">Riwayat booking Anda masih kosong.</h4>
-            <a href="index.php" class="btn btn-lg mt-3 btn-detail">
+            <a href="index.php" class="btn btn-lg mt-3 btn-detail btn-action">
                 Booking Sekarang
             </a>
         </div>
@@ -254,10 +288,17 @@ while ($row = $result->fetch_assoc()) {
                                     <p class="text-muted small mb-1">Total Pembayaran</p>
                                     <div class="price-gede mb-3">Rp<?= $harga ?></div>
                                     
-                                    <a href="#" class="btn btn-detail" 
+                                    <a href="#" class="btn btn-detail btn-action" 
                                         onclick="showBookingDetail(<?= $b['IDBooking'] ?>); return false;">
                                         <i class="bi bi-search me-1"></i> Lihat Detail
                                     </a>
+
+                                    <?php if ($b['BkgStatus'] === 'Diterima'): ?>
+                                    <button class="btn btn-cancel" 
+                                            onclick="requestCancellation(<?= $b['IDBooking'] ?>); return false;">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Ajukan Pembatalan
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -275,38 +316,39 @@ while ($row = $result->fetch_assoc()) {
 </div>
 
 <div class="modal fade" id="bookingDetailModal" tabindex="-1" aria-labelledby="bookingDetailModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="bookingDetailModalLabel" style="color: var(--heading-color); font-family: 'Questrial', sans-serif;">Detail Booking #<span id="modalBookingId"></span></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div id="modalContentPlaceholder">
-            <div class="text-center py-5">
-                <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: var(--accent-color);">
-                    <span class="visually-hidden">Loading...</span>
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookingDetailModalLabel" style="color: var(--heading-color); font-family: 'Questrial', sans-serif;">Detail Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContentPlaceholder">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: var(--accent-color);">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Memuat detail...</p>
+                    </div>
                 </div>
-                <p class="mt-2 text-muted">Memuat detail...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-      </div>
     </div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Fungsi JavaScript/AJAX untuk memuat detail booking
     function showBookingDetail(id) {
-        // 1. Tampilkan ID di header modal
-        document.getElementById('modalBookingId').textContent = id;
-        
-        // 2. Tampilkan Loading Spinner
         const modalBody = document.getElementById('modalContentPlaceholder');
+        const modalTitle = document.getElementById('bookingDetailModalLabel');
+        
+        // Memperbaiki title modal dengan ID Booking
+        modalTitle.textContent = 'Detail Booking #' + id; 
+
         modalBody.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border" role="status" style="width: 3rem; height: 3rem; color: var(--accent-color);">
@@ -315,11 +357,9 @@ while ($row = $result->fetch_assoc()) {
                 <p class="mt-2 text-muted">Memuat detail...</p>
             </div>`;
         
-        // 3. Tampilkan Modal
         const detailModal = new bootstrap.Modal(document.getElementById('bookingDetailModal'));
         detailModal.show();
 
-        // 4. Lakukan Panggilan AJAX ke file terpisah
         fetch(`fetch_booking_detail.php?id=${id}`)
             .then(response => {
                 if (!response.ok) {
@@ -328,17 +368,23 @@ while ($row = $result->fetch_assoc()) {
                 return response.text();
             })
             .then(data => {
-                // 5. Isi konten modal dengan data yang berhasil diambil
                 modalBody.innerHTML = data;
             })
             .catch(error => {
-                // 6. Tangani error
                 console.error("Error fetching booking detail:", error);
                 modalBody.innerHTML = `
                     <div class="alert alert-danger text-center" role="alert">
-                        <strong>Gagal memuat detail!</strong><br>${error.message}. <br>Pastikan file <code>fetch_booking_detail.php</code> sudah ada dan nama kolom database Anda sudah sesuai (Gunakan <code>UserNoHP</code>).
+                        <strong>Gagal memuat detail!</strong><br>${error.message}.
                     </div>`;
             });
+    }
+
+    // FUNGSI INI DIUBAH AGAR REDIRECT KE form PengajuanPembatalan.php
+    function requestCancellation(id) {
+        if (confirm(`Anda yakin ingin mengajukan pembatalan untuk Booking #${id}? Anda akan diarahkan ke form pengajuan.`)) {
+            // REDIRECT KE FORM PENGAJUAN PEMBATALAN
+            window.location.href = `PengajuanPembatalan.php?id=${id}`;
+        }
     }
 </script>
 </body>

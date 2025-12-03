@@ -1,15 +1,17 @@
 <?php
-// Ganti nama file ini menjadi LaporanBookingSelesai.php (atau LaporanBooking.php sesuai error)
+// Ganti nama file ini menjadi LaporanBooking.php
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/Booking.php"; // Menggunakan Class Booking
 
 $db = new Database();
 // Menggunakan koneksi mysqli
 $conn = $db->getConnection();
-$bookingCls = new Booking($conn);
+// Class Booking akan otomatis menjalankan update status Selesai
+$bookingCls = new Booking($conn); 
 
-// Status yang akan ditampilkan
-$statusFilter = 'Selesai';
+// Status yang akan ditampilkan: Selesai DAN Batal
+$statusFilterArr = ['Selesai', 'Batal'];
+$statusFilterSql = "'" . implode("','", array_map([$conn, 'real_escape_string'], $statusFilterArr)) . "'";
 
 /* ============== FILTER TANGGAL ============== */
 $startDate = $_GET['start_date'] ?? null;
@@ -42,9 +44,9 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 // --- Dapatkan Total Data ---
 $totalRows = 0;
 
-$totalSql = "SELECT COUNT(*) as total FROM booking WHERE BkgStatus = ?";
-$totalParams = [$statusFilter];
-$totalTypes = 's';
+$totalSql = "SELECT COUNT(*) as total FROM booking WHERE BkgStatus IN ($statusFilterSql)";
+$totalParams = [];
+$totalTypes = '';
 
 if ($queryStartDate && $queryEndDate) {
     $totalSql .= " AND BkgTglSelesai >= ? AND BkgTglSelesai <= ?";
@@ -57,12 +59,15 @@ $totalQuery = $conn->prepare($totalSql);
 
 if ($totalQuery) {
     // Solusi untuk Warning bind_param (menggunakan referensi)
-    $totalBindParams = array_merge([$totalTypes], $totalParams);
-    $totalRefs = [];
-    foreach ($totalBindParams as $key => $value) {
-        $totalRefs[$key] = &$totalBindParams[$key];
+    if (!empty($totalParams)) {
+        $totalBindParams = array_merge([$totalTypes], $totalParams);
+        $totalRefs = [];
+        foreach ($totalBindParams as $key => $value) {
+            $totalRefs[$key] = &$totalBindParams[$key];
+        }
+        call_user_func_array([$totalQuery, 'bind_param'], $totalRefs);
     }
-    call_user_func_array([$totalQuery, 'bind_param'], $totalRefs);
+    
 
     if ($totalQuery->execute()) {
         $result = $totalQuery->get_result();
@@ -93,10 +98,10 @@ $sql = "SELECT
         LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
         LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
         LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
-        WHERE b.BkgStatus = ? ";
+        WHERE b.BkgStatus IN ($statusFilterSql) "; // Menggunakan operator IN
 
-$params = [$statusFilter];
-$types = 's';
+$params = [];
+$types = '';
 
 if ($queryStartDate && $queryEndDate) {
     $sql .= " AND b.BkgTglSelesai >= ? AND b.BkgTglSelesai <= ?";
@@ -118,7 +123,9 @@ if ($stmt) {
         $refs[$key] = &$bindParams[$key];
     }
     // Perbaikan binding
-    call_user_func_array([$stmt, 'bind_param'], $refs);
+    if (!empty($params) || $types === 'ii') { // Bind harus selalu dilakukan jika ada LIMIT/OFFSET
+        call_user_func_array([$stmt, 'bind_param'], $refs);
+    }
 
     $stmt->execute();
     $result = $stmt->get_result();
@@ -131,7 +138,7 @@ if ($stmt) {
 // Fungsi untuk format tanggal
 function format_tanggal($dateString)
 {
-    if (empty($dateString) || $dateString === '0000-00-00') {
+    if (empty($dateString) || $dateString === '0000-00-00' || strpos($dateString, '0000') !== false) {
         return '—';
     }
     return date('d/m/Y', strtotime($dateString));
@@ -144,7 +151,7 @@ function format_tanggal($dateString)
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Laporan Booking Selesai | Artefax</title>
+    <title>Laporan Booking | Artefax</title>
 
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
@@ -152,9 +159,7 @@ function format_tanggal($dateString)
     <link rel="stylesheet" href="../css/azia.css">
 
     <style>
-        /* CSS yang sudah ada... (dibiarkan tetap) */
-
-        /* Tabel & Badge */
+        /* CSS yang sudah ada... */
         .custom-table {
             width: 100%;
             border-collapse: separate;
@@ -194,6 +199,7 @@ function format_tanggal($dateString)
             border-bottom: none
         }
 
+        /* Badge Status */
         .badge-sukses,
         .status-selesai {
             background: #d4edda;
@@ -204,6 +210,17 @@ function format_tanggal($dateString)
             font-size: .8rem;
             display: inline-block;
         }
+        /* Tambahan CSS untuk status Batal */
+        .status-batal { 
+            background: #f8d7da;
+            color: #721c24;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .8rem;
+            display: inline-block;
+        }
+
 
         /* Button style dasar */
         .btn {
@@ -317,6 +334,10 @@ function format_tanggal($dateString)
                 width: 100% !important;
             }
         }
+        .pagination .page-link {
+            min-width: 40px;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -390,7 +411,7 @@ function format_tanggal($dateString)
                     <span>Laporan</span>
                     <span>Booking</span>
                 </div>
-                <h2 class="az-content-title">Daftar Booking Selesai</h2>
+                <h2 class="az-content-title">Daftar Booking Selesai & Dibatalkan</h2>
 
                 <div class="filter-wrapper">
                     <form method="GET">
@@ -424,7 +445,7 @@ function format_tanggal($dateString)
 
                             <?php if ($displayStartDate || $displayEndDate): ?>
                                 <div>
-                                    <a href="LaporanBookingSelesai.php" class="btn btn-secondary">
+                                    <a href="LaporanBooking.php" class="btn btn-secondary">
                                         <i class="typcn typcn-refresh"></i> Reset
                                     </a>
                                 </div>
@@ -434,7 +455,7 @@ function format_tanggal($dateString)
                 </div>
 
                 <small class="text-muted d-block" style="margin-bottom: 5px;">
-                    Menampilkan booking dengan status **<?= $statusFilter ?>**
+                    Menampilkan booking dengan status **Selesai** atau **Batal**
                     <?php if ($displayStartDate && $displayEndDate): ?>
                         dari **<?= format_tanggal($displayStartDate) ?>** sampai **<?= format_tanggal($displayEndDate) ?>**
                     <?php endif; ?>
@@ -471,6 +492,9 @@ function format_tanggal($dateString)
 
                                     // Ambil Jenis dari kolom yang benar (BkgDetailJenis)
                                     $jenisBooking = htmlspecialchars($d['BkgDetailJenis'] ?? '—');
+                                    
+                                    // Tentukan class badge
+                                    $statusClass = (strtolower($d['BkgStatus']) === 'batal') ? 'status-batal' : 'status-selesai';
                                 ?>
                                     <tr>
                                         <td><?= $no++ ?></td>
@@ -480,14 +504,14 @@ function format_tanggal($dateString)
                                         <td><?= format_tanggal($d['BkgTglMulai']) ?></td>
                                         <td><?= format_tanggal($d['BkgTglSelesai']) ?></td>
                                         <td>Rp <?= number_format($d['BkgTotalHarga'], 0, ',', '.') ?></td>
-                                        <td><span class="status-selesai"><?= htmlspecialchars($d['BkgStatus']) ?></span></td>
+                                        <td><span class="<?= $statusClass ?>"><?= htmlspecialchars($d['BkgStatus']) ?></span></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
 
                         <div class="text-center text-muted small mt-3">
-                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Selesai
+                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Selesai/Batal
                         </div>
 
                         <?php if ($totalPages > 1): ?>
@@ -503,7 +527,7 @@ function format_tanggal($dateString)
                                     ?>
                                     <li class="page-item <?= $prev_class ?>">
                                         <a class="page-link" href="?page=<?= $prev_page ?><?= $pagination_query ?>" aria-label="Previous">
-                                            <span aria-hidden="true">&laquo;</span>
+                                            <span aria-hidden="true">Sebelumnya</span>
                                         </a>
                                     </li>
 
@@ -538,7 +562,7 @@ function format_tanggal($dateString)
                                     ?>
                                     <li class="page-item <?= $next_class ?>">
                                         <a class="page-link" href="?page=<?= $next_page ?><?= $pagination_query ?>" aria-label="Next">
-                                            <span aria-hidden="true">&raquo;</span>
+                                            <span aria-hidden="true">Selanjutnya</span>
                                         </a>
                                     </li>
                                 </ul>
@@ -547,7 +571,7 @@ function format_tanggal($dateString)
 
                     <?php else: ?>
                         <div class="text-center py-5">
-                            <p class="text-muted">Tidak ada transaksi **Selesai** pada periode ini.</p>
+                            <p class="text-muted">Tidak ada transaksi **Selesai** atau **Batal** pada periode ini.</p>
                         </div>
                     <?php endif; ?>
                 </div>

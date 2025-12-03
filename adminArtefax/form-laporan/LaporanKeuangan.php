@@ -5,20 +5,20 @@ require_once __DIR__ . "/../../class/pembayaran.php";
 
 $db = new Database();
 $conn = $db->getConnection();
+
 $pembayaran = new Pembayaran($conn);
 
-/* ============== FILTER TANGGAL & STATUS LUNAS ============== */
+/* ============== FILTER TANGGAL & STATUS BARU ============== */
 $startDate = $_GET['start_date'] ?? null;
 $endDate = $_GET['end_date'] ?? null;
-$statusFilter = 'Lunas';
+// Status yang difilter: Lunas, Pending, Lunas DP, dan Gagal
+$statusFilter = ['Lunas', 'Pending', 'Lunas DP', 'Gagal']; 
 
 try {
-    // Format tanggal untuk query SQL: startDate 00:00:00, endDate 23:59:59 (dengan modify('+1 day') pada endDate)
     if ($startDate) $startDate = (new DateTime($startDate))->format('Y-m-d');
     if ($endDate)  $endDate  = (new DateTime($endDate))->modify('+1 day')->format('Y-m-d');
 } catch (Exception $e) {
     $startDate = $endDate = null;
-    // Pesan error tidak langsung ditampilkan di sini, melainkan di bagian body HTML
     $_SESSION['error_message'] = "Format tanggal tidak valid.";
 }
 
@@ -26,33 +26,33 @@ try {
 if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     $dataToExport = $pembayaran->readJoin(null, null, $startDate, $endDate, $statusFilter);
 
-    // Fungsi helper untuk menentukan jenis
     $getJenis = fn($j) => $j == 'Paket Jasa,Alat' ? 'Paket & Alat' : ($j ?? '-');
 
     header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment; filename="Laporan_Keuangan_Lunas_ArtefaxID_' . date('Ymd_His') . '.xls"');
+    header('Content-Disposition: attachment; filename="Laporan_Keuangan_ArtefaxID_' . date('Ymd_His') . '.xls"');
 
     $out = fopen('php://output', 'w');
-    // Header CSV (menggunakan tabulator "\t" agar kompatibel dengan Excel)
-    fputcsv($out, ['No', 'Nama Pelanggan', 'Jenis', 'Pesanan', 'Jumlah', 'Metode', 'Status', 'Waktu', 'ID Pembayaran', 'ID Booking', 'ID User', 'Total Tagihan', 'Confirmed', 'Bukti'], "\t");
+    fputcsv($out, ['No', 'Nama Pelanggan', 'Jenis', 'Pesanan', 'Harga Awal', 'Jumlah Refund', 'PENDAPATAN BERSIH', 'Metode', 'Status Pembayaran', 'Waktu', 'ID Pembayaran', 'ID Booking'], "\t");
 
     $no = 1;
     foreach ($dataToExport as $p) {
+        $refundJumlah = $p['RefundJumlah'] ?? 0;
+        $pendapatanBersih = $p['PbrJumlah']; 
+        $hargaAwal = $pendapatanBersih + $refundJumlah;
+        
         $dataRow = [
             $no++,
             $p['UserNama'],
             $getJenis($p['JenisBooking']),
             $p['DaftarPesanan'] ?? '-',
-            $p['PbrJumlah'],
+            $hargaAwal, 
+            $refundJumlah, 
+            $pendapatanBersih, 
             $p['PbrMetode'],
-            'Lunas',
+            $p['PbrStatus'], 
             date('d/m/Y H:i', strtotime($p['CreatedAt'])),
             $p['IDPembayaran'],
             $p['IDBooking'],
-            $p['IDUser'],
-            $p['BkgTotalHarga'],
-            $p['PbrConfirmed'] ? 'Ya' : 'Belum',
-            $p['PbrBukti'] ? 'Ada' : 'Tidak Ada'
         ];
         fputcsv($out, $dataRow, "\t");
     }
@@ -67,7 +67,19 @@ $offset = ($page - 1) * $limit;
 
 $totalBooking = $pembayaran->TotalBooking($startDate, $endDate, $statusFilter);
 $totalPages  = ceil($totalBooking / $limit);
+
 $daftarPembayaran = $pembayaran->readJoin($limit, $offset, $startDate, $endDate, $statusFilter);
+
+// --- HITUNG TOTAL PENDAPATAN BERSIH UNTUK SEMUA DATA (TANPA PAGINASI) ---
+$grandTotalPendapatan = 0;
+$allDataForTotal = $pembayaran->readJoin(null, null, $startDate, $endDate, $statusFilter); 
+
+foreach ($allDataForTotal as $p) {
+    $pendapatanBersih = $p['PbrJumlah']; 
+    $grandTotalPendapatan += $pendapatanBersih;
+}
+// -----------------------------------------------------------------------
+
 
 $success_message = $_SESSION['success_message'] ?? '';
 $error_message  = $_SESSION['error_message'] ?? '';
@@ -82,7 +94,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Laporan Keuangan (Lunas) - ArtefaxID</title>
+    <title>Laporan Keuangan - ArtefaxID</title>
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
@@ -138,7 +150,25 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             font-weight: 600;
             font-size: .8rem
         }
-
+        
+        .badge-pending {
+            background: #ffc107;
+            color: #383d41;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .8rem
+        }
+        
+        .badge-gagal { 
+            background: #dc3545;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .8rem
+        }
+        
         /* Button style dasar */
         .btn {
             padding: 10px 20px;
@@ -153,7 +183,6 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             cursor: pointer;
             text-decoration: none;
             height: 40px;
-            /* Ditambahkan agar tinggi sama dengan input tanggal */
         }
 
         /* Primary/Filter Button */
@@ -247,6 +276,24 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             .filter-actions .form-control {
                 width: 100% !important;
             }
+        }
+        
+        .total-box {
+            background-color: #f1f5f9;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 5px solid #3366ff;
+            font-size: 1.1rem;
+        }
+        .total-box strong {
+            font-size: 1.4rem;
+            color: #0f8f4f;
+        }
+        
+        .pagination .page-link {
+            min-width: 40px;
+            text-align: center;
         }
     </style>
 </head>
@@ -368,6 +415,14 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 
                 <div class="table-responsive">
                     <?php if ($daftarPembayaran): ?>
+                        
+                        <div class="total-box mb-3">
+                            Total Pendapatan Bersih (Periode Filter): 
+                            <strong style="color: <?= $grandTotalPendapatan < 0 ? '#dc3545' : '#0f8f4f' ?>;">
+                                Rp <?= number_format($grandTotalPendapatan, 0, ',', '.') ?>
+                            </strong>
+                        </div>
+                        
                         <table class="table custom-table">
                             <thead>
                                 <tr>
@@ -375,8 +430,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                                     <th>Nama Pelanggan</th>
                                     <th>Jenis</th>
                                     <th>Pesanan</th>
-                                    <th>Jumlah</th>
-                                    <th>Metode</th>
+                                    <th>Pendapatan Bersih</th> <th>Metode</th>
                                     <th>Status</th>
                                     <th>Waktu</th>
                                     <th>Aksi</th>
@@ -384,18 +438,43 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                             </thead>
                             <tbody>
                                 <?php $no = $offset + 1;
-                                foreach ($daftarPembayaran as $p): ?>
+                                foreach ($daftarPembayaran as $p): 
+                                    // Hitung Pendapatan Bersih
+                                    $refundJumlah = $p['RefundJumlah'] ?? 0;
+                                    $pendapatanBersih = $p['PbrJumlah']; // PbrJumlah sudah di-update menjadi pendapatan bersih di DB
+                                    $hargaAwalBooking = ($pendapatanBersih + $refundJumlah); // Hitung mundur harga awal
+
+                                    // Tentukan badge status
+                                    $statusBadgeClass = 'badge-sukses';
+                                    $statusText = $p['PbrStatus'] ?? 'Lunas';
+                                    
+                                    if (isset($p['BkgStatus']) && $p['BkgStatus'] == 'Batal') {
+                                        $statusBadgeClass = 'badge-gagal';
+                                        $statusText = 'Batal';
+                                    } elseif (isset($p['PbrStatus'])) {
+                                        if ($p['PbrStatus'] == 'Pending' || $p['PbrStatus'] == 'Lunas DP') {
+                                            $statusBadgeClass = 'badge-pending';
+                                            $statusText = $p['PbrStatus'];
+                                        } elseif ($p['PbrStatus'] == 'Gagal') {
+                                            $statusBadgeClass = 'badge-gagal';
+                                            $statusText = 'Gagal';
+                                        } else {
+                                            $statusBadgeClass = 'badge-sukses';
+                                            $statusText = 'Lunas';
+                                        }
+                                    }
+                                ?>
                                     <tr>
                                         <td><?= $no++ ?></td>
                                         <td><?= htmlspecialchars($p['UserNama']) ?></td>
                                         <td><?= $p['JenisBooking'] == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($p['JenisBooking'] ?? '-') ?></td>
                                         <td><?= htmlspecialchars($p['DaftarPesanan'] ?? '-') ?></td>
-                                        <td>Rp <?= number_format($p['PbrJumlah'], 0, ',', '.') ?></td>
+                                        <td><strong style="color: <?= $refundJumlah > 0 ? '#dc3545' : '#0f8f4f' ?>;">Rp <?= number_format($pendapatanBersih, 0, ',', '.') ?></strong></td>
                                         <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
-                                        <td><span class="badge-sukses">Lunas</span></td>
+                                        <td><span class="<?= $statusBadgeClass ?>"><?= htmlspecialchars($statusText) ?></span></td>
                                         <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
                                         <td>
-                                            <button class="btn btn-sm btn-info" onclick='openDetail(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Detail</button>
+                                            <button class="btn btn-sm btn-info" onclick='openDetail(<?= json_encode($p, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= $hargaAwalBooking ?>)'>Detail</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -403,31 +482,67 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                         </table>
 
                         <div class="text-center text-muted small mt-3">
-                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> transaksi Lunas
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> transaksi Lunas/Pending/Gagal
                         </div>
 
                         <?php if ($totalPages > 1): ?>
-                            <nav class="mt-4">
-                                <ul class="pagination justify-content-center">
-                                    <?php
-                                    $pagination_query = '';
-                                    if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
-                                    if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <?php
+                                $pagination_query = '';
+                                if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
+                                if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
 
-                                    for ($i = 1; $i <= $totalPages; $i++):
-                                        $active = ($i == $page) ? "active" : "";
-                                    ?>
-                                        <li class="page-item <?= $active ?>">
-                                            <a class="page-link" href="?page=<?= $i ?><?= $pagination_query ?>"><?= $i ?></a>
-                                        </li>
-                                    <?php endfor; ?>
-                                </ul>
-                            </nav>
+                                $prev_page = $page - 1;
+                                $prev_class = ($page <= 1) ? 'disabled' : '';
+                                ?>
+                                <li class="page-item <?= $prev_class ?>">
+                                    <a class="page-link" href="?page=<?= $prev_page ?><?= $pagination_query ?>" aria-label="Previous">
+                                        <span aria-hidden="true">Sebelumnya</span>
+                                    </a>
+                                </li>
+
+                                <?php
+                                $start_loop = max(1, $page - 2);
+                                $end_loop = min($totalPages, $page + 2);
+
+                                if ($start_loop > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1' . $pagination_query . '">1</a></li>';
+                                    if ($start_loop > 2) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                }
+
+                                for ($i = $start_loop; $i <= $end_loop; $i++):
+                                    $active = ($i == $page) ? "active" : "";
+                                ?>
+                                    <li class="page-item <?= $active ?>">
+                                        <a class="page-link" href="?page=<?= $i ?><?= $pagination_query ?>"><?= $i ?></a>
+                                    </li>
+                                <?php endfor;
+
+                                if ($end_loop < $totalPages) {
+                                    if ($end_loop < $totalPages - 1) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                    echo '<li class="page-item"><a class="page-link" href="?page=' . $totalPages . $pagination_query . '">' . $totalPages . '</a></li>';
+                                }
+
+                                $next_page = $page + 1;
+                                $next_class = ($page >= $totalPages) ? 'disabled' : '';
+                                ?>
+                                <li class="page-item <?= $next_class ?>">
+                                    <a class="page-link" href="?page=<?= $next_page ?><?= $pagination_query ?>" aria-label="Next">
+                                        <span aria-hidden="true">Selanjutnya</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
                         <?php endif; ?>
 
                     <?php else: ?>
                         <div class="text-center py-5">
-                            <p class="text-muted">Tidak ada transaksi <strong>Lunas</strong> pada periode ini.</p>
+                            <p class="text-muted">Tidak ada transaksi **Lunas**, **Pending**, atau **Gagal** pada periode ini.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -446,8 +561,15 @@ $displayEndDate  = $_GET['end_date'] ?? '';
     </div>
 
     <script>
-        function openDetail(data) {
+        function openDetail(data, hargaAwalBooking) {
             const jenis = data.JenisBooking === 'Paket Jasa,Alat' ? 'Paket & Alat' : (data.JenisBooking || '-');
+
+            // Nilai dari data
+            const hargaBayarSaatIni = data.PbrJumlah;
+            const refundJumlah = data.RefundJumlah || 0;
+            const pendapatanBersih = hargaBayarSaatIni; 
+            const totalAwal = hargaAwalBooking || (pendapatanBersih + refundJumlah);
+
 
             // Helper untuk format rupiah
             const formatRupiah = (angka) => {
@@ -457,15 +579,45 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                 return new Intl.NumberFormat('id-ID').format(number);
             }
 
-            document.getElementById('detailContent').innerHTML = `
+            let detailHtml = `
             <div style="margin-bottom:8px;"><strong>ID Pembayaran:</strong> #${String(data.IDPembayaran).padStart(5,'0')}</div>
             <div style="margin-bottom:8px;"><strong>Nama Pelanggan:</strong> ${data.UserNama}</div>
             <div style="margin-bottom:8px;"><strong>Jenis Layanan:</strong> ${jenis}</div>
-            <div style="margin-bottom:8px;"><strong>Total Tagihan:</strong> Rp ${formatRupiah(data.BkgTotalHarga)}</div>
-            <div style="margin-bottom:8px;"><strong>Jumlah Dibayar:</strong> Rp ${formatRupiah(data.PbrJumlah)}</div>
-            <div style="margin-bottom:8px;"><strong>Status:</strong> <span class="badge-sukses">Lunas</span></div>
-            <div style="margin-bottom:8px;"><strong>Waktu:</strong> ${new Date(data.CreatedAt).toLocaleString('id-ID')}</div>
-        `;
+            <div style="margin-bottom:8px;"><strong>Status Pembayaran:</strong> <span class="${(data.PbrStatus == 'Pending' || data.PbrStatus == 'Lunas DP') ? 'badge-pending' : (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal' ? 'badge-gagal' : 'badge-sukses')}">${data.PbrStatus || 'Lunas'}</span></div>
+            <div style="margin-bottom:8px;"><strong>Metode:</strong> ${data.PbrMetode}</div>
+            <div style="margin-bottom:15px;"><strong>Waktu:</strong> ${new Date(data.CreatedAt).toLocaleString('id-ID')}</div>
+            
+            <hr style="border-top: 1px dashed #ccc;">`;
+            
+            if (refundJumlah > 0) {
+                 // Kasus Pembatalan/Refund
+                 detailHtml += `
+                 <div style="font-size: 14px; margin-bottom: 5px;">
+                     <strong>1. Jumlah Pembayaran Awal:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                 </div>
+                 <div style="font-size: 14px; margin-bottom: 5px; color: #dc3545;">
+                     <strong>2. Potongan Refund (Diajukan):</strong> <span style="float:right;">- Rp ${formatRupiah(refundJumlah)}</span>
+                 </div>
+                 <hr style="margin-top: 5px; margin-bottom: 5px;">
+                 <div style="font-size: 16px; font-weight: bold; color: #0f8f4f;">
+                     <strong>3. PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                 </div>
+                 <div style="font-size: 12px; color: #6c757d; margin-top: 10px;">
+                     *Nominal PbrJumlah di database telah di-*update* menjadi pendapatan bersih.
+                 </div>`;
+            } else {
+                 // Kasus Normal (Tidak Ada Refund)
+                 detailHtml += `
+                 <div style="font-size: 14px; margin-bottom: 5px;">
+                     <strong>Total Tagihan:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                 </div>
+                 <div style="font-size: 16px; font-weight: bold; color: #0f8f4f; margin-top: 10px;">
+                     <strong>PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                 </div>`;
+            }
+
+
+            document.getElementById('detailContent').innerHTML = detailHtml;
             document.getElementById('detailModal').style.display = 'flex';
         }
     </script>
