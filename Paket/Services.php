@@ -91,11 +91,6 @@ if ($result_bestseller) {
     }
 }
 
-// Path gambar
-$imgBaseUrl = '../img/paket/';
-$imgBasePath = __DIR__ . '/../img/paket/';
-$placeholder = '../img/noimage.png';
-
 // Format Rupiah
 function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
@@ -262,13 +257,20 @@ function rupiah($n) {
             <div class="row g-4 justify-content-center">
                 <?php foreach ($bestseller_products as $p): 
                     $imgFile = $p['image'] ?? '';
-                    $imgPath = $imgBasePath . $imgFile;
-                    $imgUrl = (!empty($imgFile) && file_exists($imgPath)) ? $imgBaseUrl . $imgFile : $placeholder;
+                    $placeholder = 'img/noimage.png';
+                    $imgUrl = $placeholder;
+                    
+                    if (!empty($imgFile)) {
+                        $mainPath = 'img/produk/' . $imgFile;
+                        if (file_exists(__DIR__ . '/' . $mainPath)) {
+                            $imgUrl = $mainPath;
+                        }
+                    }
                 ?>
                 <div class="col-md-6 col-lg-6 col-xl-3">
                     <div class="rounded position-relative fruite-item">
                         <div class="fruite-img">
-                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover">
+                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover" onerror="this.onerror=null; this.src='img/noimage.png';">
                         </div>
                         <div class="position-absolute" style="top:10px;left:10px;">
                             <span class="badge bg-warning text-dark">⭐ Bestseller</span>
@@ -310,13 +312,20 @@ function rupiah($n) {
             <div class="row g-4 justify-content-center">
                 <?php foreach ($latest_products as $p): 
                     $imgFile = $p['image'] ?? '';
-                    $imgPath = $imgBasePath . $imgFile;
-                    $imgUrl = (!empty($imgFile) && file_exists($imgPath)) ? $imgBaseUrl . $imgFile : $placeholder;
+                    $placeholder = 'img/noimage.png';
+                    $imgUrl = $placeholder;
+                    
+                    if (!empty($imgFile)) {
+                        $mainPath = 'img/produk/' . $imgFile;
+                        if (file_exists(__DIR__ . '/' . $mainPath)) {
+                            $imgUrl = $mainPath;
+                        }
+                    }
                 ?>
                 <div class="col-md-6 col-lg-6 col-xl-3">
                     <div class="rounded position-relative fruite-item">
                         <div class="fruite-img">
-                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover">
+                            <img src="<?= $imgUrl ?>" class="img-fluid w-100 rounded-top" alt="<?= htmlspecialchars($p['name']) ?>" style="height:220px;object-fit:cover" onerror="this.onerror=null; this.src='img/noimage.png';">
                         </div>
                         <?php if (strtolower($p['status']) === 'bestseller'): ?>
                         <div class="position-absolute" style="top:10px;left:10px;">
@@ -390,8 +399,8 @@ function rupiah($n) {
                     <div class="row g-4">
                         <div class="col-lg-3">
                             <a href="#">
-                                <h1 class="text-primary mb-0">Fruitables</h1>
-                                <p class="text-secondary mb-0">Fresh products</p>
+                                <h1 class="text-primary mb-0">ARTEFAX.ID</h1>
+                                <p class="text-secondary mb-0">Paket Jasa & Sewa Alat</p>
                             </a>
                         </div>
                         <div class="col-lg-6">
@@ -464,9 +473,6 @@ function rupiah($n) {
                         <span class="text-light"><a href="#"><i class="fas fa-copyright text-light me-2"></i>Your Site Name</a>, All right reserved.</span>
                     </div>
                     <div class="col-md-6 my-auto text-center text-md-end text-white">
-                        <!--/*** This template is free as long as you keep the below author’s credit link/attribution link/backlink. ***/-->
-                        <!--/*** If you'd like to use the template without the below author’s credit link/attribution link/backlink, ***/-->
-                        <!--/*** you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". ***/-->
                         Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a> Distributed By <a class="border-bottom" href="https://themewagon.com">ThemeWagon</a>
                     </div>
                 </div>
