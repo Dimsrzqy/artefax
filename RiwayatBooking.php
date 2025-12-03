@@ -189,7 +189,7 @@ while ($row = $result->fetch_assoc()) {
     <div class="container">
         <a class="navbar-brand fw-bold" href="index.php" style="font-family: 'Questrial', sans-serif;">Artefax</a>
         <div class="d-flex align-items-center gap-3">
-            <span class="text-white small">Hi, **<?= htmlspecialchars($_SESSION['user']['UserNama']) ?>**</span>
+            <span class="text-white small">Hi, **<?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?>**</span>
             <a href="logout.php" class="btn btn-outline-light btn-sm">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>

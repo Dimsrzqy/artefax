@@ -1,6 +1,7 @@
 <?php
 ob_start();
 session_start();
+date_default_timezone_set('Asia/Jakarta');
 
 require_once "config/koneksi.php";
 require_once "class/users.php";
@@ -11,249 +12,238 @@ $user = new User($conn);
 
 $message = "";
 
-// ==== PROSES LOGOUT ====
+// === LOGOUT ===
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
-  session_unset();
-  session_destroy();
-  header("Location: index.php?logout=success");
-  exit;
+    session_unset();
+    session_destroy();
+    header("Location: index.php?logout=success");
+    exit;
 }
 
-// ==== PROSES LOGIN ====
+// === PROSES LOGIN DARI MODAL ===
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
-  if (!isset($_SESSION['login_attempts'])) {
-    $_SESSION['login_attempts'] = 0;
-  }
-
-  // Cek timeout
-  if (isset($_SESSION['login_timeout']) && time() < $_SESSION['login_timeout']) {
-    $message = "Akun Anda terkunci sementara. Silakan coba lagi nanti.";
-  } elseif ($_SESSION['login_attempts'] >= 5) {
-    $message = "Terlalu banyak percobaan login. Silakan coba lagi setelah 5 menit.";
-    $_SESSION['login_timeout'] = time() + 300;
-  } else {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    $email    = trim($_POST['email'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
     if (empty($email) || empty($password)) {
-      $message = "Email dan password wajib diisi!";
-      $_SESSION['login_attempts']++;
+        $message = "Email dan password wajib diisi!";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      $message = "Format email tidak valid!";
-      $_SESSION['login_attempts']++;
+        $message = "Format email tidak valid!";
     } else {
-      $user->UserEmail = $email;
-      $user->UserPassword = $password;
+        $user->UserEmail = $email;
+        $user->UserPassword = $password;
+        $login = $user->login();
 
-      $login = $user->login();
-
-      if ($login) {
-        $_SESSION['login_attempts'] = 0;
-        unset($_SESSION['login_timeout']);
-        session_regenerate_id(true);
-
-        $_SESSION['user'] = [
-          'id' => $login['IDUser'],
-          'nama' => $login['UserNama'],
-          'email' => $login['UserEmail'],
-          'role' => $login['UserRole']
-        ];
-
-        // Arahkan ke halaman layanan jika role adalah customer
-        header("Location: layanan/service-details.php");
-        exit;
-      } else {
-        $message = "Email atau password salah!";
-        $_SESSION['login_attempts']++;
-      }
+        if ($login) {
+            session_regenerate_id(true);
+            $_SESSION['user'] = [
+                'id'    => $login['IDUser'],
+                'nama'  => $login['UserNama'],
+                'email' => $login['UserEmail'],
+                'role'  => $login['UserRole']
+            ];
+            // PERBAIKAN: Arahkan langsung ke halaman Services
+            header("Location: Paket/Services.php"); 
+            exit;
+        } else {
+            // Jika login gagal, pastikan modal muncul kembali dengan pesan
+            // Anda mungkin perlu menambahkan JavaScript untuk memicu modal di halaman yang sama
+            $message = "Email atau password salah!";
+        }
     }
-  }
 }
-
-ob_end_flush();
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>Index - Artefax</title>
-  <meta name="description" content="" />
-  <meta name="keywords" content="" />
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Index - Artefax</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
 
-  <!-- Favicons -->
-  <link href="assets/img/logo Artefax1.png" rel="icon" />
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
+    <link href="assets/img/logo Artefax1.png" rel="icon" />
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com" rel="preconnect" />
-  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Questrial:wght@400&display=swap"
-    rel="stylesheet" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Questrial:wght@400&display=swap"
+        rel="stylesheet" />
 
-  <!-- Vendor CSS Files -->
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet" />
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet" />
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
+    <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet" />
+    <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet" />
 
-  <!-- Main CSS File -->
-  <link href="assets/css/main.css" rel="stylesheet" />
+    <link href="assets/css/main.css" rel="stylesheet" />
 </head>
 
 <body class="index-page">
 
-  <header id="header" class="header d-flex align-items-center fixed-top">
-    <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-      <a href="index.php" class="logo d-flex align-items-center">
-        <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
-      </a>
+    <header id="header" class="header d-flex align-items-center fixed-top">
+        <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+            <a href="index.php" class="logo d-flex align-items-center">
+                <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
+            </a>
 
-      <nav id="navmenu" class="navmenu">
-        <ul>
-          <li><a href="#hero" class="active">Home</a></li>
-          <li><a href="#about">About</a></li>
-          <li><a href="#services">Layanan</a></li>
-          <li><a href="#portfolio">Portfolio</a></li>
-          <li><a href="#contact">Contact</a></li>
-          <li><a href="view/profil.php">Profile</a></li> <!-- Tambahkan menu Profile -->
-          <li><a href="RiwayatBooking.php">Riwayat</a></li>
-        </ul>
-        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-      </nav>
+            <nav id="navmenu" class="navmenu">
+                <ul>
+                    <li><a href="#hero" class="active">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#services">Layanan</a></li>
+                    <li><a href="#portfolio">Portfolio</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="view/profil.php">Profile</a></li>
+                    <li><a href="RiwayatBooking.php">Riwayat</a></li>
+                </ul>
+                <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <section id="hero" class="hero section">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6">
+                        <div class="hero-content">
+                            <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
+                            <p>
+                                ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan.
+                                Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer
+                                dan multimedia yang inovatif, profesional, dan terintegrasi.
+                            </p>
+                            <div class="hero-actions justify-content-center justify-content-lg-start">
+                                <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="hero-image">
+                            <img src="assets/img/animasi.png" class="img-fluid floating" alt="Hero Image" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="services" class="services section">
+            <div class="container section-title">
+                <h2>Layanan Kami</h2>
+                <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
+            </div>
+
+            <div class="container">
+                <div class="row justify-content-center gy-4">
+
+                    <div class="col-lg-6 col-md-8">
+                        <div class="service-card">
+                            <div class="service-icon"><i class="bi bi-palette"></i></div>
+                            <h3>Jasa Event</h3>
+                            <p>Kami siap membantu merancang dan menjalankan acara kamu dengan konsep terbaik dan hasil yang maksimal.</p>
+                            <?php if (isset($_SESSION['user'])): ?>
+                                <a href="Paket/Services.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+                            <?php else: ?>
+                                <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    </div>
+            </div>
+        </section>
+        </main>
+    
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content overflow-hidden border-0" style="border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+          <div class="modal-header text-white text-center position-relative" style="background: linear-gradient(135deg, #5c99ee, #4c89de); padding: 2.5rem 1rem;">
+            <h4 class="modal-title w-100 fw-bold mb-0" id="loginModalLabel" style="font-size: 1.75rem; color: white !important; letter-spacing: 0.5px;">
+              Login ke Artefax
+            </h4>
+            <button type="button" class="btn-close btn-close-white position-absolute end-0 me-4 top-50 translate-middle-y" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <?php if (!empty($message)): ?>
+              <div class="alert alert-danger alert-dismissible fade show">
+                <?= htmlspecialchars($message) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            <?php endif; ?>
+
+            <form method="POST" action="" novalidate>
+              <input type="hidden" name="login_submit" value="1">
+              
+              <div class="mb-3">
+                <input type="email" name="email" class="form-control form-control-lg" 
+                       placeholder="Email" required autocomplete="email"
+                       value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                       style="font-size: 1.25rem;"> 
+              </div>
+              
+              <div class="mb-4">
+                <div class="password-wrapper position-relative">
+                  <input type="password" name="password" id="modalPassword" class="form-control form-control-lg" 
+                         placeholder="Password" required autocomplete="current-password"
+                         style="font-size: 1.25rem; padding-right: 3.5rem;"> 
+                         
+                  <button type="button" class="btn toggle-password position-absolute end-0 top-50 translate-middle-y me-3" 
+                          onclick="toggleModalPass()" 
+                          style="padding: 0; width: 2.5rem; height: 100%; color: #6c757d;">
+                    <i class="bi bi-eye" style="font-size: 1.5rem;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100 fw-bold py-3" style="border-radius: 50px; background: linear-gradient(135deg, #5c99ee, #4c89de); border: none; font-size: 1.1rem;">
+                Login Sekarang
+              </button>
+            </form>
+
+            <div class="text-center mt-4">
+              <p class="mb-2">Belum punya akun? 
+                <a href="view/register.php" class="text-primary fw-bold">Daftar di sini</a>
+              </p>
+              <a href="view/forgot_password.php" class="text-muted small">Lupa Password?</a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </header>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+    <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Pastikan fungsi toggleModalPass tersedia
+        function toggleModalPass() {
+            var x = document.getElementById("modalPassword");
+            var icon = document.querySelector("#loginModal .toggle-password i");
 
-
-  <main class="main">
-    <!-- Hero Section -->
-    <section id="hero" class="hero section">
-      <div class="container">
-        <div class="row align-items-center">
-          <div class="col-lg-6">
-            <div class="hero-content">
-              <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
-              <p>
-                ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan.
-                Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer
-                dan multimedia yang inovatif, profesional, dan terintegrasi.
-              </p>
-              <div class="hero-actions justify-content-center justify-content-lg-start">
-                <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-6">
-            <div class="hero-image">
-              <img src="assets/img/animasi.png" class="img-fluid floating" alt="Hero Image" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- /Hero Section -->
-
-    <!-- Clients Section -->
-    <section id="clients" class="clients section">
-      <div class="container">
-        <div class="swiper init-swiper">
-          <script type="application/json" class="swiper-config">
-            {
-              "loop": true,
-              "speed": 600,
-              "autoplay": {
-                "delay": 5000
-              },
-              "slidesPerView": "auto",
-              "breakpoints": {
-                "320": {
-                  "slidesPerView": 2,
-                  "spaceBetween": 40
-                },
-                "480": {
-                  "slidesPerView": 3,
-                  "spaceBetween": 60
-                },
-                "640": {
-                  "slidesPerView": 4,
-                  "spaceBetween": 80
-                },
-                "992": {
-                  "slidesPerView": 6,
-                  "spaceBetween": 120
-                }
-              }
+            if (x.type === "password") {
+                x.type = "text";
+                // Ganti ikon menjadi mata tertutup
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                x.type = "password";
+                // Ganti ikon kembali menjadi mata terbuka
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
             }
-          </script>
-    </section>
-    <!-- /Clients Section -->
+        }
+        
+        // Tambahkan fungsi untuk menampilkan modal jika ada pesan error
+        <?php if (!empty($message)): ?>
+            var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+            loginModal.show();
+        <?php endif; ?>
+    </script>
 
-    <!-- About Section -->
-    <section id="about" class="about section">
-      <div class="container">
-        <div class="row align-items-center">
-          <!-- Image Column -->
-          <div class="col-lg-6">
-            <div class="about-image">
-              <img src="assets/img/tambahan/index/Blue and Black Mind Map Presentation.jpg" alt="About" class="img-fluid" />
-            </div>
-          </div>
-
-          <!-- Content Column -->
-          <div class="col-lg-6">
-            <div class="content">
-              <h2>Mengenal Lebih Dekat ARTEFAX.ID</h2>
-              <p class="lead">ARTEFAX.ID adalah perusahaan kreatif yang bergerak di bidang Event Organizer (EO) dan layanan multimedia terintegrasi.</p>
-
-              <p>
-                Kami menghadirkan solusi lengkap untuk berbagai kebutuhan acara dan dokumentasi profesional, mulai dari perencanaan hingga eksekusi. Dengan tim yang berpengalaman dan peralatan berstandar industri, kami berkomitmen
-                memberikan hasil terbaik bagi setiap klien.
-              </p>
-              <!-- CTA Button -->
-              <div class="cta-wrapper">
-                <a href="#" class="btn-cta">
-                  <span>Discover Our Story</span>
-                  <i class="bi bi-arrow-right"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    <!-- /About Section -->
-
-    <!-- Services Section -->
-    <section id="services" class="services section">
-      <div class="container section-title">
-        <h2>Layanan Kami</h2>
-        <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
-      </div>
-
-      <div class="container">
-        <div class="row justify-content-center gy-4">
-
-          <!-- Layanan 1: Event Organizer -->
-          <div class="col-lg-6 col-md-8">
-            <div class="service-card">
-              <div class="service-icon"><i class="bi bi-palette"></i></div>
-              <h3>Jasa Event</h3>
-              <p>Kami siap membantu merancang dan menjalankan acara kamu dengan konsep terbaik dan hasil yang maksimal.</p>
-              <?php if (isset($_SESSION['user'])): ?>
-                <a href="Paket/Services.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-              <?php else: ?>
-                <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-              <?php endif; ?>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
+  <!-- Akhir Modal -->
     <!-- End Services Section -->
 
     <!-- Features Section -->
