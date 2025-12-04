@@ -1,4 +1,5 @@
 <?php
+// ✅ PERBAIKAN: ob_start() sudah ada, pastikan tidak ada output sebelum header redirect
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Jakarta');
@@ -11,6 +12,7 @@ $conn = $database->getConnection();
 $user = new User($conn);
 
 $message = "";
+$showModal = false; // ✅ Tambahan: Flag untuk menampilkan modal
 
 // === LOGOUT ===
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
@@ -27,14 +29,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
 
     if (empty($email) || empty($password)) {
         $message = "Email dan password wajib diisi!";
+        $showModal = true;
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = "Format email tidak valid!";
+        $showModal = true;
     } else {
         $user->UserEmail = $email;
         $user->UserPassword = $password;
         $login = $user->login();
 
         if ($login) {
+            // ✅ PERBAIKAN: Clear output buffer sebelum redirect
+            ob_end_clean();
+            
             session_regenerate_id(true);
             $_SESSION['user'] = [
                 'id'    => $login['IDUser'],
@@ -42,16 +49,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
                 'email' => $login['UserEmail'],
                 'role'  => $login['UserRole']
             ];
-            // PERBAIKAN: Arahkan langsung ke halaman Services
-            header("Location: Paket/Services.php"); 
+            
+            // Redirect ke Services.php
+            header("Location: Paket/Services.php");
             exit;
         } else {
-            // Jika login gagal, pastikan modal muncul kembali dengan pesan
-            // Anda mungkin perlu menambahkan JavaScript untuk memicu modal di halaman yang sama
             $message = "Email atau password salah!";
+            $showModal = true;
         }
     }
 }
+
+// ✅ Flush output buffer untuk halaman normal
+ob_end_flush();
 ?>
 
 <!DOCTYPE html>
@@ -61,23 +71,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Index - Artefax</title>
-    <meta name="description" content="" />
-    <meta name="keywords" content="" />
-
+    
     <link href="assets/img/logo Artefax1.png" rel="icon" />
-    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
-
-    <link href="https://fonts.googleapis.com" rel="preconnect" />
-    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Questrial:wght@400&display=swap"
-        rel="stylesheet" />
-
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
     <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
     <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
-    <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet" />
-    <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet" />
-
     <link href="assets/css/main.css" rel="stylesheet" />
 </head>
 
@@ -114,6 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     </div>
 </header>
 
+     <!-- Hero Section -->
     <main class="main">
         <section id="hero" class="hero section">
             <div class="container">
@@ -140,6 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
             </div>
         </section>
 
+        <!-- Services Section -->
         <section id="services" class="services section">
             <div class="container section-title">
                 <h2>Layanan Kami</h2>
@@ -167,6 +167,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
         </section>
         </main>
     
+        <!-- Modal Login -->
     <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content overflow-hidden border-0" style="border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">

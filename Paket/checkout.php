@@ -141,11 +141,8 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
             </button>
             <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
                 <div class="navbar-nav mx-auto">
-                    <a href="../index.php" class="nav-item nav-link">Home</a>
-                    <a href="Services.php" class="nav-item nav-link">Services</a>
+                    <a href="Services.php" class="nav-item nav-link">Home</a>
                     <a href="shop.php" class="nav-item nav-link">Shop</a>
-                    <a href="checkout.php" class="nav-item nav-link active">Checkout</a>
-                    <a href="contact.php" class="nav-item nav-link">Contact</a>
                 </div>
                 <div class="d-flex m-3 me-0">
                     <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" data-bs-toggle="modal" data-bs-target="#searchModal">
