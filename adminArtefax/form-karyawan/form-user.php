@@ -280,11 +280,64 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
 <body class="az-body">
 
-    <div class="az-header">
-        <div class="container">
-            <div class="az-header-left">
-                <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
-                <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
+  <!-- HEADER -->
+  <div class="az-header">
+    <div class="container">
+      <div class="az-header-left">
+        <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+        <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
+      </div>
+      <!-- az-header-left -->
+      <div class="az-header-menu">
+        <div class="az-header-menu-header">
+          <a href="index.html" class="az-logo"><span></span> Artefax</a>
+          <a href="" class="close">×</a>
+        </div>
+        <!-- az-header-menu-header -->
+        <ul class="nav">
+          <li class="nav-item">
+            <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+          </li>
+          <li class="nav-item active">
+            <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+          </li>
+          <li class="nav-item">
+            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+          </li>
+          <li class="nav-item">
+            <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+          </li>
+          <li class="nav-item">
+            <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+          </li>
+          <li class="nav-item">
+            <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
+            <div class="az-menu-sub">
+              <div class="container">
+                <div>
+                  <nav class="nav">
+                    <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
+                    <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
+                    <a href="../template/elem-icons.html" class="nav-link">Icons</a>
+                    <a href="../template/table-basic.html" class="nav-link">Table</a>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div><!-- az-header-menu -->
+      <div class="az-header-right">
+        <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
+        <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
+        <div class="az-header-message">
+          <a href="#"><i class="typcn typcn-messages"></i></a>
+        </div><!-- az-header-message -->
+        <div class="dropdown az-header-notification">
+          <a href="" class="new"><i class="typcn typcn-bell"></i></a>
+          <div class="dropdown-menu">
+            <div class="az-dropdown-header mg-b-20 d-sm-none">
+              <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
             </div>
             <div class="az-header-menu">
                 <div class="az-header-menu-header">

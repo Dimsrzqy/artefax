@@ -4,12 +4,12 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/paketjasa.php";
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/alat.php";
 
 $db = new Database();
 $conn = $db->getConnection();
-$paket = new PaketJasa($conn);
+$alat = new Alat($conn);
 
 // Menangani preflight OPTIONS request (CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -34,11 +34,11 @@ switch ($method) {
         // Jika ada parameter ID
         if (isset($_GET['id'])) {
             $id = intval($_GET['id']);
-            $data = $paket->readOne($id);
+            $data = $alat->readOne($id);
             if ($data) response("success", "Data ditemukan", $data);
             else response("error", "Data tidak ditemukan");
         } else {
-            $data = $paket->readAll();
+            $data = $alat->readAll();
             response("success", "Data semua layanan", $data);
         }
         break;
@@ -47,25 +47,25 @@ switch ($method) {
         $input = json_decode(file_get_contents("php://input"), true);
         if (!$input) response("error", "Input JSON tidak valid");
 
-        $result = $paket->create($input);
+        $result = $alat->create($input);
         if ($result) response("success", "Data berhasil ditambahkan");
         else response("error", "Gagal menambah data");
         break;
 
     case 'PUT':
         $input = json_decode(file_get_contents("php://input"), true);
-        if (!isset($input['IDPaket'])) response("error", "IDPaket wajib disertakan");
+        if (!isset($input['IDAlat'])) response("error", "IDAlat wajib disertakan");
 
-        $result = $paket->update($input['IDPaket'], $input);
+        $result = $alat->update($input['IDAlat'], $input);
         if ($result) response("success", "Data berhasil diupdate");
         else response("error", "Gagal update data");
         break;
 
     case 'DELETE':
         $input = json_decode(file_get_contents("php://input"), true);
-        if (!isset($input['IDPaket'])) response("error", "IDPaket wajib disertakan");
+        if (!isset($input['IDAlat'])) response("error", "IDAlat wajib disertakan");
 
-        $result = $paket->delete($input['IDPaket']);
+        $result = $alat->delete($input['IDAlat']);
         if ($result) response("success", "Data berhasil dihapus");
         else response("error", "Gagal menghapus data");
         break;
