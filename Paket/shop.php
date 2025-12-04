@@ -2,8 +2,6 @@
 // shop.php - FINAL VERSION
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
-include __DIR__ . "/components/cart_modal.php";
-include __DIR__ . "/components/cart_script.php";
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -128,11 +126,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
             </button>
             <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
                 <div class="navbar-nav mx-auto">
-                    <a href="../index.php" class="nav-item nav-link">Home</a>
-                    <a href="Services.php" class="nav-item nav-link">Services</a>
+                    <a href="Services.php" class="nav-item nav-link">Home</a>
                     <a href="shop.php" class="nav-item nav-link active">Shop</a>
-                    <a href="checkout.php" class="nav-item nav-link">Checkout</a>
-                    <a href="contact.php" class="nav-item nav-link">Contact</a>
                 </div>
                 <div class="d-flex m-3 me-0">
                     <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" data-bs-toggle="modal" data-bs-target="#searchModal">
@@ -418,7 +413,11 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         </div>
     </div>
 </div>
-
+<!-- ✅ CART MODAL & SCRIPT - HANYA DI SINI -->
+    <?php 
+    include __DIR__ . "/components/cart_modal.php";
+    include __DIR__ . "/components/cart_script.php";
+    ?>
 <style>
     
 /* ============================================
