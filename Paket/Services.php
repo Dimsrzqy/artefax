@@ -5,9 +5,6 @@
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
 
-include __DIR__ . "/components/cart_modal.php";
-include __DIR__ . "/components/cart_script.php";
-
 if (isset($_SESSION['success_checkout'])) {
     echo "
     <script>
@@ -127,6 +124,9 @@ function rupiah($n) {
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- Animate.css untuk animasi -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
     <!-- Library CSS -->
     <link href="lib/lightbox/css/lightbox.min.css" rel="stylesheet">
     <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
@@ -163,11 +163,8 @@ function rupiah($n) {
                 <!-- Menu Items -->
                 <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
                     <div class="navbar-nav mx-auto">
-                        <a href="../index.php" class="nav-item nav-link">Home</a>
-                        <a href="Services.php" class="nav-item nav-link active">Services</a>
+                        <a href="Services.php" class="nav-item nav-link active">Home</a>
                         <a href="shop.php" class="nav-item nav-link">Shop</a>
-                        <a href="checkout.php" class="nav-item nav-link">Checkout</a>
-                        <a href="contact.php" class="nav-item nav-link">Contact</a>
                     </div>
 
                     <!-- Right Side Icons -->
@@ -692,7 +689,11 @@ function rupiah($n) {
             </div>
         </div>
         <!-- Copyright End -->
-
+    <!-- ✅ CART MODAL & SCRIPT - DIPINDAHKAN KE SINI -->
+    <?php 
+    include __DIR__ . "/components/cart_modal.php";
+    include __DIR__ . "/components/cart_script.php";
+    ?>
     <!-- JavaScript -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -723,42 +724,52 @@ function rupiah($n) {
         $('#productModal').modal('show');
     });
 
-    $('#btnAddToCart').click(function(){
-        const id = $(this).data('id');
-        const type = $(this).data('type');
-        const name = $(this).data('name');
-        const price = $(this).data('price');
-        const img = $(this).data('img');
-        const qty = parseInt($('#modalQty').val()) || 1;
+$('#btnAddToCart').click(function(){
+    const id = $(this).data('id');
+    const type = $(this).data('type');
+    const name = $(this).data('name');
+    const price = $(this).data('price');
+    const qty = parseInt($('#modalQty').val()) || 1;
 
-        const btn = $(this);
-        const btnText = btn.html();
-        btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Loading...');
+    // Efek tombol langsung berubah biar user tahu diklik
+    const btn = $(this);
+    const originalText = btn.html();
+    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Menambahkan...');
 
-        fetch('root/cart_add.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}&image=${encodeURIComponent(img)}`
-        })
-        .then(res => res.json())
-        .then(data => {
-            btn.prop('disabled', false).html(btnText);
-            if (data.status === 'success') {
-                if (data.cart_count) {
-                    $('.position-absolute.bg-secondary').text(data.cart_count);
-                }
-                alert('✅ Produk berhasil ditambahkan ke keranjang!');
-                $('#productModal').modal('hide');
-            } else {
-                alert('❌ Gagal: ' + (data.message || ''));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            btn.prop('disabled', false).html(btnText);
-            alert('❌ Gagal menghubungi server!');
-        });
+    fetch('root/cart_add.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Update angka keranjang langsung
+            const cartBadge = $('.position-absolute.bg-secondary');
+            cartBadge.text(data.cart_count);
+            
+            // Efek angka naik (opsional, keren)
+            cartBadge.addClass('animate__animated animate__bounceIn');
+            setTimeout(() => cartBadge.removeClass('animate__animated animate__bounceIn'), 600);
+
+            // Tutup modal
+            $('#productModal').modal('hide');
+
+            // Optional: kasih feedback halus tanpa alert
+            // Bisa ditambahin toast kecil nanti kalau mau
+        } else {
+            alert('Gagal menambah ke keranjang: ' + (data.message || 'Coba lagi'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal terhubung ke server!');
+    })
+    .finally(() => {
+        // Kembalikan tombol
+        btn.prop('disabled', false).html(originalText);
     });
+});
     </script>
 
     <script src="js/main.js"></script>
