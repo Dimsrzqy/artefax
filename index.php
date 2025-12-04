@@ -4,11 +4,14 @@ ob_start();
 session_start();
 date_default_timezone_set('Asia/Jakarta');
 
+// Pastikan file koneksi dan kelas user/lainnya ada
 require_once "config/koneksi.php";
 require_once "class/users.php";
+// require_once "class/notification.php"; // Asumsi jika ada kelas terpisah
 
 $database = new Database();
-$conn = $database->getConnection();
+// Asumsi: $conn mengembalikan objek PDO (PHP Data Objects)
+$conn = $database->getConnection(); 
 $user = new User($conn);
 
 $message = "";
@@ -86,6 +89,89 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     }
 }
 
+// =================================================================
+// 🔔 Logika Ambil Notifikasi dari Database
+// =================================================================
+$notifications = []; // Array untuk menyimpan notifikasi
+$userID = $_SESSION['user']['IDUser'] ?? null;
+
+/**
+ * Mengambil notifikasi terkait booking dan refund untuk user tertentu.
+ */
+function getBookingNotifications($conn, $userID) {
+    if (!$userID) return [];
+
+    $notifs = [];
+    
+    // Pastikan koneksi yang digunakan adalah PDO
+    if (!$conn instanceof PDO) {
+        error_log("Error: Koneksi database bukan objek PDO. Periksa config/koneksi.php.");
+        return [];
+    }
+    
+    try {
+        // 1. Notifikasi Booking Diterima (BkgStatus = 'Diterima')
+        $queryBooking = "SELECT 
+                            IDBooking, BkgTglMulai, BkgTglSelesai, UpdatedAt
+                         FROM 
+                            booking
+                         WHERE 
+                            IDUser = :userID AND BkgStatus = 'Diterima'
+                         LIMIT 5"; 
+        
+        $stmtBooking = $conn->prepare($queryBooking);
+        // ✅ Perbaikan sintaks PDO: Menggunakan execute([array])
+        $stmtBooking->execute([':userID' => $userID]);
+        
+        while ($row = $stmtBooking->fetch(PDO::FETCH_ASSOC)) {
+            $notifs[] = [
+                'type' => 'success',
+                'icon' => 'bi-check-circle-fill',
+                'title' => 'Booking Diterima',
+                'message' => "Booking #{$row['IDBooking']} untuk tgl " . date('d M', strtotime($row['BkgTglMulai'])) . " telah **Diterima**. Segera lakukan pembayaran!",
+                'time' => date('H:i, d M', strtotime($row['UpdatedAt']))
+            ];
+        }
+        
+        // 2. Notifikasi Pengajuan Pembatalan Disetujui (RefundStatus = 'Disetujui')
+        $queryRefund = "SELECT 
+                            r.IDRefund, r.IDBooking, r.RefundWaktu, b.BkgTglMulai 
+                        FROM 
+                            refund r
+                        JOIN 
+                            booking b ON r.IDBooking = b.IDBooking
+                        WHERE 
+                            b.IDUser = :userID AND r.RefundStatus = 'Disetujui'
+                        LIMIT 5"; 
+
+        $stmtRefund = $conn->prepare($queryRefund);
+        // ✅ Perbaikan sintaks PDO: Menggunakan execute([array])
+        $stmtRefund->execute([':userID' => $userID]);
+
+        while ($row = $stmtRefund->fetch(PDO::FETCH_ASSOC)) {
+            $notifs[] = [
+                'type' => 'info',
+                'icon' => 'bi-wallet2',
+                'title' => 'Refund Disetujui',
+                'message' => "Pengajuan pembatalan (Booking ID #{$row['IDBooking']}) telah **Disetujui**. Dana sedang diproses.",
+                'time' => date('H:i, d M', strtotime($row['RefundWaktu']))
+            ];
+        }
+    } catch (PDOException $e) {
+        // Log error database
+        error_log("Database Error in notifications: " . $e->getMessage());
+        return [];
+    }
+
+    return $notifs;
+}
+
+if ($userID) {
+    $notifications = getBookingNotifications($conn, $userID);
+}
+
+// =================================================================
+
 // ✅ Flush output buffer untuk halaman normal
 if (ob_get_level() > 0) {
     ob_end_flush();
@@ -129,7 +215,53 @@ if (ob_get_level() > 0) {
             <span class="text-black fw-medium">
                 Hi, <strong><?= htmlspecialchars($_SESSION['user']['UserNama'] ?? 'Guest') ?></strong>
             </span>
+            
+            <?php if (isset($_SESSION['user'])): ?>
+            <div class="dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi" style="font-size: 1.5rem; color: black; position: relative;">
+                    <i class="bi bi-bell-fill"></i>
+                    <?php if (!empty($notifications)): ?>
+                        <span class="position-absolute translate-middle p-1 bg-danger border border-light rounded-circle" 
+                              style="top: 10px; right: -5px; height: 10px; width: 10px;">
+                            <span class="visually-hidden">New alerts</span>
+                        </span>
+                    <?php endif; ?>
+                </a>
 
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notificationsDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                    <li class="dropdown-header">
+                        <h6 class="mb-0 fw-bold">Pemberitahuan (<?= count($notifications) ?>)</h6>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+
+                    <?php if (empty($notifications)): ?>
+                        <li class="text-center py-4 text-muted">Tidak ada notifikasi baru.</li>
+                    <?php else: ?>
+                        <?php foreach ($notifications as $notif): ?>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-start py-2" href="view/notifications.php" title="<?= htmlspecialchars($notif['title']) ?>">
+                                <div class="flex-shrink-0 me-3 mt-1">
+                                    <i class="bi <?= $notif['icon'] ?> text-<?= $notif['type'] ?>" style="font-size: 1.2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-bold"><?= htmlspecialchars($notif['title']) ?></h6>
+                                    <small class="text-muted"><?= $notif['message'] ?></small>
+                                    <div class="small text-end text-secondary mt-1"><?= $notif['time'] ?></div>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-0"></li>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($notifications)): ?>
+                    <li class="text-center mt-2">
+                         <a href="view/notifications.php" class="btn btn-sm btn-outline-secondary w-75 rounded-pill">Lihat Semua</a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            <?php endif; ?>
             <a href="view/profil.php" title="Profil Saya">
                 <i class="bi bi-person-circle" style="font-size: 2.2rem; color: black;"></i>
             </a>
@@ -137,7 +269,7 @@ if (ob_get_level() > 0) {
             <?php if (isset($_SESSION['user'])): ?>
                 <?php endif; ?>
             
-            </div>
+        </div>
     </div>
 </header>
 
@@ -289,14 +421,9 @@ if (ob_get_level() > 0) {
     </script>
 </body>
 </html>
-  <!-- Akhir Modal -->
-    <!-- End Services Section -->
-
-    <!-- Features Section -->
-    <section id="features" class="features section">
+  <section id="features" class="features section">
       <div class="container">
         <div class="features-grid">
-          <!-- Keunggulan 1 -->
           <div class="features-card">
             <div class="icon-wrapper">
               <i class="bi bi-lightbulb"></i>
@@ -318,11 +445,10 @@ if (ob_get_level() > 0) {
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/At the office-amico.png" alt="Creative Team" class="img-fluid" />
+              <img src="assets/img/At the office-amico.png" class="img-fluid" alt="Creative Team" />
             </div>
           </div>
 
-          <!-- Keunggulan 2 -->
           <div class="features-card">
             <div class="icon-wrapper">
               <i class="bi bi-camera-reels"></i>
@@ -344,11 +470,10 @@ if (ob_get_level() > 0) {
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/Studio photographer-amico.png" alt="Multimedia Services" class="img-fluid" />
+              <img src="assets/img/Studio photographer-amico.png" class="img-fluid" alt="Multimedia Services" />
             </div>
           </div>
 
-          <!-- Keunggulan 3 -->
           <div class="features-card">
             <div class="icon-wrapper">
               <i class="bi bi-gear-wide-connected"></i>
@@ -370,11 +495,10 @@ if (ob_get_level() > 0) {
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/Events-amico.png" alt="Professional Workflow" class="img-fluid" />
+              <img src="assets/img/Events-amico.png" class="img-fluid" alt="Professional Workflow" />
             </div>
           </div>
 
-          <!-- Keunggulan 4 -->
           <div class="features-card">
             <div class="icon-wrapper">
               <i class="bi bi-people"></i>
@@ -396,24 +520,18 @@ if (ob_get_level() > 0) {
               </div>
             </div>
             <div class="image-container">
-              <img src="assets/img/Partnership-amico.png" alt="Client Focus" class="img-fluid" />
+              <img src="assets/img/Partnership-amico.png" class="img-fluid" alt="Client Focus" />
             </div>
           </div>
 
         </div>
       </div>
     </section>
-    <!-- /Features Section -->
-
-    <!-- Portfolio Section -->
     <section id="portfolio" class="portfolio section">
-      <!-- Section Title -->
       <div class="container section-title">
         <h2>Portfolio</h2>
         <p>Kumpulan hasil karya terbaik kami yang mencerminkan kreativitas, kualitas, dan komitmen dalam setiap proyek.</p>
       </div>
-      <!-- End Section Title -->
-
       <div class="container">
         <div class="isotope-layout" data-default-filter="*" data-layout="fitRows" data-sort="original-order">
           <div class="portfolio-filters-wrapper">
@@ -447,8 +565,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-graduation">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -470,8 +586,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -493,8 +607,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -516,8 +628,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -539,8 +649,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -562,8 +670,6 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
-
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
               <div class="portfolio-card">
                 <div class="image-container">
@@ -585,23 +691,15 @@ if (ob_get_level() > 0) {
                 </div>
               </div>
             </div>
-            <!-- End Portfolio Item -->
+            </div>
           </div>
-          <!-- End Portfolio Grid -->
-        </div>
       </div>
     </section>
-    <!-- /Portfolio Section -->
-
-    <!-- How We Work Section -->
     <section id="how-we-work" class="how-we-work section">
-      <!-- Section Title -->
       <div class="container section-title">
         <h2>Langkah Kami</h2>
         <p>Langkah-langkah kami dalam membantu mewujudkan event dan proyek multimedia Anda dengan hasil terbaik.</p>
       </div>
-      <!-- End Section Title -->
-
       <div class="container">
         <div class="steps-wrapper">
           <div class="row">
@@ -648,10 +746,6 @@ if (ob_get_level() > 0) {
         </div>
       </div>
     </section>
-    <!-- /How We Work Section -->
-
-
-    <!-- Tabs Section (How We Work Version) -->
     <section id="tabs" class="tabs section">
       <div class="container">
         <div class="tabs-wrapper">
@@ -705,7 +799,6 @@ if (ob_get_level() > 0) {
           </div>
 
           <div class="tab-content">
-            <!-- Step 1 -->
             <div class="tab-pane fade active show" id="tabs-tab-1">
               <div class="row align-items-center">
                 <div class="col-lg-6">
@@ -737,13 +830,12 @@ if (ob_get_level() > 0) {
                 </div>
                 <div class="col-lg-6">
                   <div class="visual-content">
-                    <img src="assets/img/features/features-1.webp" alt="Konsultasi Artefax" class="img-fluid" />
+                    <img src="assets/img/features/features-1.webp" class="img-fluid" alt="Konsultasi Artefax" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 2 -->
             <div class="tab-pane fade" id="tabs-tab-2">
               <div class="row align-items-center">
                 <div class="col-lg-6">
@@ -775,13 +867,12 @@ if (ob_get_level() > 0) {
                 </div>
                 <div class="col-lg-6">
                   <div class="visual-content">
-                    <img src="assets/img/features/features-2.webp" alt="Perencanaan Artefax" class="img-fluid" />
+                    <img src="assets/img/features/features-2.webp" class="img-fluid" alt="Perencanaan Artefax" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 3 -->
             <div class="tab-pane fade" id="tabs-tab-3">
               <div class="row align-items-center">
                 <div class="col-lg-6">
@@ -813,13 +904,12 @@ if (ob_get_level() > 0) {
                 </div>
                 <div class="col-lg-6">
                   <div class="visual-content">
-                    <img src="assets/img/features/features-4.webp" alt="Pelaksanaan Artefax" class="img-fluid" />
+                    <img src="assets/img/features/features-4.webp" class="img-fluid" alt="Pelaksanaan Artefax" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 4 -->
             <div class="tab-pane fade" id="tabs-tab-4">
               <div class="row align-items-center">
                 <div class="col-lg-6">
@@ -851,7 +941,7 @@ if (ob_get_level() > 0) {
                 </div>
                 <div class="col-lg-6">
                   <div class="visual-content">
-                    <img src="assets/img/features/features-5.webp" alt="Dokumentasi Artefax" class="img-fluid" />
+                    <img src="assets/img/features/features-5.webp" class="img-fluid" alt="Dokumentasi Artefax" />
                   </div>
                 </div>
               </div>
@@ -860,31 +950,20 @@ if (ob_get_level() > 0) {
         </div>
       </div>
     </section>
-    <!-- /Tabs Section -->
-
-    <!-- Testimonials Section removed on index to hide it -->
-    <!-- Testimonials section removed -->
-    <!-- /Testimonials Section -->
-
-    <!-- Faq Section -->
     <section id="faq" class="faq section">
-      <!-- Section Title -->
       <div class="container section-title">
         <h2>Pertanyaan yang Sering Diajukan</h2>
         <p>Temukan jawaban atas pertanyaan umum seputar layanan, pemesanan, dan pelaksanaan acara bersama Artefax.</p>
       </div>
-      <!-- End Section Title -->
-
       <div class="container">
         <div class="row justify-content-center">
           <div class="col-lg-9">
             <div class="faq-wrapper">
 
-              <!-- FAQ Item 1 -->
               <div class="faq-item faq-active">
                 <div class="faq-header">
                   <span class="faq-number">01</span>
-                  <h4>Bagaimana cara memesan layanan atau paket acara di Artefax?</h4>
+                  <h4>Bagaimana cara memesan layanan atau paket acara di Artefax? </h4>
                   <div class="faq-toggle">
                     <i class="bi bi-plus"></i>
                     <i class="bi bi-dash"></i>
@@ -896,9 +975,6 @@ if (ob_get_level() > 0) {
                   </div>
                 </div>
               </div>
-              <!-- End FAQ Item -->
-
-              <!-- FAQ Item 2 -->
               <div class="faq-item">
                 <div class="faq-header">
                   <span class="faq-number">02</span>
@@ -914,9 +990,6 @@ if (ob_get_level() > 0) {
                   </div>
                 </div>
               </div>
-              <!-- End FAQ Item -->
-
-              <!-- FAQ Item 3 -->
               <div class="faq-item">
                 <div class="faq-header">
                   <span class="faq-number">03</span>
@@ -932,9 +1005,6 @@ if (ob_get_level() > 0) {
                   </div>
                 </div>
               </div>
-              <!-- End FAQ Item -->
-
-              <!-- FAQ Item 4 -->
               <div class="faq-item">
                 <div class="faq-header">
                   <span class="faq-number">04</span>
@@ -950,9 +1020,6 @@ if (ob_get_level() > 0) {
                   </div>
                 </div>
               </div>
-              <!-- End FAQ Item -->
-
-              <!-- FAQ Item 5 -->
               <div class="faq-item">
                 <div class="faq-header">
                   <span class="faq-number">05</span>
@@ -968,59 +1035,17 @@ if (ob_get_level() > 0) {
                   </div>
                 </div>
               </div>
-              <!-- End FAQ Item -->
-
-            </div>
+              </div>
           </div>
         </div>
       </div>
     </section>
-    <!-- /Faq Section -->
-
-
-    <!-- Team Section -->
     <section id="team" class="team section">
-      <!-- Section Title 
-        <div class="container section-title">
-          <h2>Team</h2>
-          <p>Necessitatibus eius consequatur ex aliquid fuga eum quidem sint consectetur velit</p>
-        </div>-->
-      <!-- End Section Title -->
-
-      <div class="container">
-        <!-- Team members are optional — commented out. 
-               Untuk mengaktifkan kembali, hapus komentar  dan -->
-        <!--
-          <div class="row gy-4">
-            <div class="col-lg-6">
-              <div class="team-member d-flex">
-                <div class="member-img">
-                  <img src="assets/img/person/person-m-7.webp" class="img-fluid" alt="" loading="lazy" />
-                </div>
-                <div class="member-info flex-grow-1">
-                  <h4>Walter White</h4>
-                  <span>Chief Executive Officer</span>
-                  <p>Aliquam iure quaerat voluptatem praesentium possimus unde laudantium vel dolorum distinctio dire flow</p>
-                  <div class="social">
-                    <a href=""><i class="bi bi-facebook"></i></a>
-                    <a href=""><i class="bi bi-twitter-x"></i></a>
-                    <a href=""><i class="bi bi-linkedin"></i></a>
-                    <a href=""><i class="bi bi-youtube"></i></a>
-                  </div>
-                </div>
-              </div>
-            </div>
-             End Team Member -->
-
-        <!-- Contact Section -->
-        <section id="contact" class="contact section">
-          <!-- Section Title -->
+      <section id="contact" class="contact section">
           <div class="container section-title">
             <h2>Hubungi Kami</h2>
             <p>Punya pertanyaan atau ingin memesan layanan dari Artefax? Silakan isi formulir di bawah atau hubungi kami langsung.</p>
           </div>
-          <!-- End Section Title -->
-
           <div class="container">
             <div class="row align-items-stretch">
               <div class="col-lg-7 order-lg-1 order-2">
@@ -1145,8 +1170,7 @@ if (ob_get_level() > 0) {
             </div>
           </div>
         </section>
-        <!-- /Contact Section -->
-  </main>
+        </main>
 
   <footer id="footer" class="footer position-relative light-background">
     <div class="container">
@@ -1237,7 +1261,7 @@ if (ob_get_level() > 0) {
               <a href="#"><i class="bi bi-instagram"></i></a>
               <a href="#"><i class="bi bi-facebook"></i></a>
               <a href="#"><i class="bi bi-tiktok"></i></a>
-              <a href="#"><i class="bi bi-whatsapp"></i></a>
+              <a href="#" class="social-link"><i class="bi bi-whatsapp"></i></a>
             </div>
           </div>
         </div>
@@ -1267,13 +1291,10 @@ if (ob_get_level() > 0) {
     </div>
   </footer>
 
-  <!-- Scroll Top -->
   <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
-  <!-- Preloader -->
   <div id="preloader"></div>
 
-  <!-- Vendor JS Files -->
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
@@ -1282,8 +1303,8 @@ if (ob_get_level() > 0) {
   <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
   <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
 
-  <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
+
 </body>
 
 </html>

@@ -1,5 +1,23 @@
 <?php
 session_start();
+// --- START: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+// CRITICAL FIX 1: Adaptasi dari kunci sesi 'user' ke kunci top-level yang diharapkan template
+// Ini mengatasi loop login dan Guest User
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    // Menyalin data dari array nested 'user' ke top-level keys
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+// CRITICAL FIX 2: VERIFIKASI LOGIN
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Sesuaikan path ke halaman login Anda jika berbeda
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/Users.php";
 require_once __DIR__ . "/../../class/EventAssignment.php";
@@ -13,6 +31,14 @@ $eventAssign = new EventAssignment($conn);
 
 // Otomatis ubah status event yang sudah selesai
 $eventAssign->updateStatusOtomatis();
+
+// --- START: DATA USER LOGIN (Ambil dari $_SESSION yang sudah diadaptasi) ---
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/face1.jpg'; 
+// --- END: DATA USER LOGIN ---
 
 /* ============== BOOKING YANG BELUM PERNAH DIBUATKAN EVENT ============== */
 // Query ini memastikan: Status 'Diterima', Ada 'Paket Jasa', DAN BELUM ada entri di tabel 'event'
@@ -119,6 +145,51 @@ unset($_SESSION['success_message']);
     <link href="../lib/select2/css/select2.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
     <style>
+        /* --- START: Perbaikan untuk Fixed Layout --- */
+        .az-body {
+            padding-top: 70px !important; 
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px; 
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important; 
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+            }
+            .az-content-body {
+                margin-left: 0 !important;
+            }
+            .az-body {
+                padding-top: 0 !important; 
+            }
+        }
+        /* --- END: Perbaikan untuk Fixed Layout --- */
+
+
         /* CSS DISAMAKAN DENGAN BOOKING ACTIVE */
         .badge-paket{background:#28a745;color:#fff;padding:6px 12px;margin:3px 3px 3px 0;font-size:12px;border-radius:50px;display:inline-block;font-weight:500;white-space: nowrap;}
         .table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin-bottom:0;}
@@ -236,22 +307,24 @@ unset($_SESSION['success_message']);
                     </div>
                 </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <a href="profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
-                        <div class="az-dropdown-header d-sm-none">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
                             </div>
-                            <h6>Aziana Pechon</h6>
-                            <span>Premium Member</span>
-                        </div><a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
@@ -298,8 +371,8 @@ unset($_SESSION['success_message']);
                                 <?php foreach ($bookings as $i => $b): ?>
                                     <?php
                                     // Hitung durasi estimasi (untuk tampilan saja)
-                                    $mulai    = new DateTime($b['BkgTglMulai']);
-                                    $selesai  = new DateTime($b['BkgTglSelesai'] ?? $b['BkgTglMulai']);
+                                    $mulai     = new DateTime($b['BkgTglMulai']);
+                                    $selesai   = new DateTime($b['BkgTglSelesai'] ?? $b['BkgTglMulai']);
                                     
                                     if ($mulai >= $selesai) {
                                         $durasi = "N/A";
@@ -410,6 +483,7 @@ unset($_SESSION['success_message']);
 <script src="../lib/jquery/jquery.min.js"></script>
 <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="../lib/select2/js/select2.min.js"></script>
+<script src="../js/azia.js"></script>
 <script>
     // Data Karyawan dimuat dari PHP
     const semuaKaryawan = [
@@ -420,10 +494,38 @@ unset($_SESSION['success_message']);
 
     let select2Instance = null;
 
+    $(document).ready(function() {
+        // Fix for dropdown menu initialization in fixed header
+        $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+        
+        // Ensure Azia menu handlers are active if Azia JS is not complete
+        $('#azMenuShow').on('click', function(e) {
+            e.preventDefault();
+            $('.az-header-menu').toggleClass('show');
+            $(this).toggleClass('open');
+        });
+        $('.az-header-menu .close').on('click', function(e) {
+            e.preventDefault();
+            $('.az-header-menu').removeClass('show');
+            $('#azMenuShow').removeClass('open');
+        });
+
+        // Auto fadeout alert
+        setTimeout(() => $('.alert').fadeOut('slow'), 5000);
+
+        // Initialize Select2 on page load (hidden, for reference)
+        $('#selectKaryawan').select2({
+            dropdownParent: $('#popupForm'),
+            placeholder: "Pilih karyawan...",
+            width: '100%'
+        });
+        select2Instance = $('#selectKaryawan');
+    });
+
+
     function openPopup(id, namaPaket, alamat, tgl) {
-        if (select2Instance) {
+        if (select2Instance.hasClass('select2-hidden-accessible')) {
             select2Instance.select2('destroy');
-            select2Instance = null;
         }
 
         $('#formEvent')[0].reset();
@@ -441,12 +543,11 @@ unset($_SESSION['success_message']);
         
         $("#popupForm").fadeIn(200);
 
-        $('#selectKaryawan').select2({
+        select2Instance.select2({
             dropdownParent: $('#popupForm'),
             placeholder: "Pilih karyawan...",
             width: '100%'
-        });
-        select2Instance = $('#selectKaryawan');
+        }).val(null).trigger('change');
 
         updateKaryawanList();
     }
@@ -456,23 +557,24 @@ unset($_SESSION['success_message']);
         const jam     = $('#event_mulai').val();
         const durasi  = $('#event_durasi').val() || 8;
 
-        if (!tanggal || !jam) {
+        if (!tanggal || !jam || durasi < 1) {
             rebuildKaryawanList([]);
             return;
         }
         
-        const selected = select2Instance ? select2Instance.val() : [];
+        const previouslySelected = select2Instance ? select2Instance.val() : [];
         if (select2Instance) select2Instance.select2('destroy');
 
         // Panggil AJAX untuk mendapatkan ID karyawan yang sedang bentrok
+        // Asumsi file get_karyawan_tersedia.php ada di direktori yang sama
         $.get('get_karyawan_tersedia.php', {
             tanggal: tanggal,
             jam_mulai: jam,
             durasi: durasi
         }, function(busyIds) {
-            rebuildKaryawanList(busyIds || [], selected);
+            rebuildKaryawanList(busyIds || [], previouslySelected);
         }, 'json').fail(function() {
-            rebuildKaryawanList([], selected);
+            rebuildKaryawanList([], previouslySelected);
             $('#infoBentrok').text('Gagal memuat data ketersediaan karyawan.').show();
         });
     }
@@ -486,10 +588,10 @@ unset($_SESSION['success_message']);
         let availableIds = [];
 
         semuaKaryawan.forEach(k => {
-            const isBusy = busyIds.includes(k.id);
+            const isBusy = busyIds.includes(k.id.toString()); 
             
+            // Logika: HANYA tampilkan yang TIDAK bentrok
             if (!isBusy) {
-                // HANYA TAMBAHKAN JIKA TIDAK BENTROK
                 const option = new Option(k.nama, k.id, false, false);
                 availableOptions.push(option);
                 availableIds.push(k.id.toString());
@@ -501,7 +603,6 @@ unset($_SESSION['success_message']);
 
         if (tersedia === 0 && semuaKaryawan.length > 0) {
             $('#infoBentrok').text('Semua karyawan sedang bertugas pada waktu ini!').show();
-            // Non-aktifkan select jika tidak ada yang tersedia
             $select.prop('disabled', true); 
         } else {
             $('#infoBentrok').hide();
@@ -514,25 +615,20 @@ unset($_SESSION['success_message']);
             width: '100%'
         });
         
-        // Filter pilihan sebelumnya agar hanya ID yang tersedia yang dipilih
-        const filteredSelected = previouslySelected.filter(id => availableIds.includes(id));
+        // Pilih kembali opsi yang sebelumnya dipilih dan masih tersedia
+        const filteredSelected = previouslySelected.filter(id => availableIds.includes(id.toString()));
         select2Instance.val(filteredSelected).trigger('change');
     }
 
     function closePopup() {
         $("#popupForm").fadeOut(200);
         if (select2Instance) {
-            select2Instance.select2('destroy');
-            select2Instance = null;
+            select2Instance.val(null).trigger('change');
         }
         $('#infoBentrok').hide();
     }
 
-    // Event listener untuk update ketersediaan karyawan
     $(document).on('change', '#event_tanggal, #event_mulai, #event_durasi', updateKaryawanList);
-    $(document).on('click', function(e) {
-        if ($(e.target).is('#popupForm')) closePopup();
-    });
 </script>
 </body>
 </html>
