@@ -1,3 +1,54 @@
+/* --- START: Perbaikan untuk Fixed Layout --- */
+
+/* Membuat body memiliki padding atas sebesar tinggi header agar konten tidak tertutup header */
+.az-body {
+  /* Asumsi tinggi header Azia adalah sekitar 70px */
+  padding-top: 70px !important;
+}
+
+/* Membuat Header Tetap (Fixed) */
+.az-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030; /* Pastikan header di atas konten lain */
+  background-color: #fff; /* Tambahkan background agar tidak transparan */
+  border-bottom: 1px solid #e9ecef; /* Garis pemisah opsional */
+}
+
+/* Membuat Sidebar Tetap (Fixed) */
+.az-content-left {
+  position: fixed;
+  top: 70px; /* Di bawah header. Sesuaikan jika tinggi header berbeda */
+  bottom: 0;
+  z-index: 1020; /* Di bawah header, di atas konten */
+  overflow-y: auto; /* Memungkinkan sidebar di-scroll jika isinya panjang */
+}
+
+/* Menyesuaikan konten utama agar tidak tertutup sidebar */
+.az-content-body {
+  /* Menggeser konten utama ke kanan selebar sidebar */
+  margin-left: 240px; /* Asumsi lebar sidebar default Azia adalah 240px */
+  padding-top: 0 !important; /* Hilangkan padding top bawaan jika ada */
+}
+
+/* Perbaikan untuk tampilan mobile/kecil (di bawah 992px), agar fixed dihilangkan */
+@media (max-width: 991.98px) {
+  .az-content-left {
+    position: static;
+    top: auto;
+    bottom: auto;
+    overflow-y: visible;
+    display: none !important; /* Sembunyikan jika tidak ingin terlihat di mobile/tablet */
+  }
+  .az-content-body {
+    margin-left: 0 !important;
+  }
+}
+
+/* --- END: Perbaikan untuk Fixed Layout --- */
+
 /* === Custom Table === */
 .custom-table {
   width: 100%;
