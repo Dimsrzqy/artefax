@@ -19,8 +19,8 @@ $max_price = is_numeric($_GET['max_price'] ?? '') ? (float)$_GET['max_price'] : 
 function esc($conn, $v) { return $conn->real_escape_string($v); }
 
 // BUILD WHERE CONDITIONS
-$whereAlat = ["LOWER(AlatStatus) IN ('aktif','bestseller','tersedia')"];
-$wherePaket = ["PaketStatus IN ('aktif','Bestseller','bestseller')"];
+$whereAlat = [];
+$wherePaket = [];
 
 if ($q !== '') {
     $s = esc($conn, $q);
@@ -306,16 +306,18 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                     }
                 }
             ?>
-            
+        <?php 
+        $isNonaktif = !in_array(strtolower($p['status']), ['aktif', 'bestseller', 'tersedia']);
+        ?>
             <div class="col-md-6 col-lg-6 col-xl-4">
-                <div class="product-card">
+                <div class="product-card <?= $isNonaktif ? 'product-nonaktif' : '' ?>">
                     
                     <!-- Image Section -->
-                    <div class="product-image-wrapper">
+                    <div class="product-image-wrapper <?= $isNonaktif ? 'grayscale' : '' ?>">
                         <img src="<?= $imgUrl ?>" 
-                             class="product-image" 
-                             alt="<?= htmlspecialchars($p['name']) ?>"
-                             onerror="this.onerror=null; this.src='img/noimage.png';">
+                            class="product-image" 
+                            alt="<?= htmlspecialchars($p['name']) ?>"
+                            onerror="this.onerror=null; this.src='img/noimage.png';">
                         
                         <!-- Badges -->
                         <div class="product-badges">
@@ -347,13 +349,13 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         
                         <!-- Category Badge -->
                         <div class="product-category">
-                            <span class="badge badge-category">
+                            <span class="badge badge-category <?= $isNonaktif ? 'text-muted' : '' ?>">
                                 <?= htmlspecialchars($p['tipe']) ?>
                             </span>
                         </div>
                         
                         <!-- Product Name -->
-                        <h5 class="product-name">
+                        <h5 class="product-name <?= $isNonaktif ? 'text-muted' : '' ?>">
                             <?= htmlspecialchars($p['name']) ?>
                         </h5>
                         
@@ -362,9 +364,15 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         
                         <!-- Price & Button -->
                         <div class="product-footer">
-                            <div class="product-price">
+                            <div class="product-price <?= $isNonaktif ? 'text-muted' : '' ?>">
                                 <?= rupiah($p['price']) ?>
                             </div>
+                            
+                        <?php if ($isNonaktif): ?>
+                            <button class="btn btn-secondary btn-sm" disabled>
+                                Tidak Tersedia
+                            </button>
+                        <?php else: ?>
                             <button class="btn btn-primary btn-sm openDetailBtn"
                                     data-id="<?= htmlspecialchars($p['id']) ?>"
                                     data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
@@ -375,6 +383,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                     data-img="<?= $imgUrl ?>">
                                 Detail <i class="fa fa-arrow-right ms-1"></i>
                             </button>
+                        <?php endif; ?>   
                         </div>
                         
                     </div>
@@ -449,6 +458,9 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     height: 250px;
     background: #f8f9fa;
 }
+.product-image-wrapper.grayscale {
+    filter: grayscale(100%) brightness(0.8) contrast(1.2);
+}
 
 .product-image {
     width: 100%;
@@ -468,6 +480,37 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     top: 12px;
     left: 12px;
     z-index: 2;
+}
+.product-soldout-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px 12px 0 0;
+    z-index: 3;
+}
+
+.soldout-text {
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+    transform: rotate(-20deg);
+}
+
+
+.product-card.product-nonaktif {
+    pointer-events: none;           
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.product-card.product-nonaktif .openDetailBtn {
+    display: none;                  
 }
 
 .badge-bestseller {
