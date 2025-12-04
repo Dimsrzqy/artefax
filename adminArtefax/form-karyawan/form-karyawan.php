@@ -111,7 +111,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <div class="az-header-menu">
         <div class="az-header-menu-header">
           <a href="index.html" class="az-logo"><span></span> Artefax</a>
-          <a href="" class="close">×</a>
+          <a href="" class="close">&times;</a>
         </div>
         <!-- az-header-menu-header -->
         <ul class="nav">
@@ -208,11 +208,11 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <span>Premium Member</span>
             </div><!-- az-header-profile -->
 
-            <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-            <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-            <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-            <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-            <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+            <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+            <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+            <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+            <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+            <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
           </div><!-- dropdown-menu -->
         </div>
       </div><!-- az-header-right -->
@@ -251,13 +251,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <?php if ($success_message): ?>
           <div class="alert alert-success alert-dismissible fade show" role="alert">
             <?php echo htmlspecialchars($success_message); ?>
-            <button type="button" class="close" data-dismiss="alert">×</button>
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
           </div>
         <?php endif; ?>
         <?php if ($error_message): ?>
           <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <?php echo htmlspecialchars($error_message); ?>
-            <button type="button" class="close" data-dismiss="alert">×</button>
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
           </div>
         <?php endif; ?>
 
@@ -304,7 +304,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <nav class="mt-4">
                 <ul class="pagination justify-content-center">
                   <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page - 1 ?>">« Sebelumnya</a>
+                    <a class="page-link" href="?page=<?= $page - 1 ?>">&laquo; Sebelumnya</a>
                   </li>
 
                   <?php
@@ -328,7 +328,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                   ?>
 
                   <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page + 1 ?>">Berikutnya »</a>
+                    <a class="page-link" href="?page=<?= $page + 1 ?>">Berikutnya &raquo;</a>
                   </li>
                 </ul>
               </nav>
@@ -354,7 +354,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <div class="modal-content">
         <div class="modal-header">
           <h5 id="popupTitle" class="modal-title">Tambah Karyawan</h5>
-          <button type="button" class="close" onclick="closePopup()">×</button>
+          <button type="button" class="close" onclick="closePopup()">&times;</button>
         </div>
         <div class="modal-body">
           <form id="formKaryawan" action="tambah_karyawan.php" method="POST">

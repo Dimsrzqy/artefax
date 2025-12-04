@@ -1,5 +1,5 @@
 <?php
-// File: profil.php → FINAL CODE LENGKAP & KONSISTEN (HANYA DIPERBAIKI 2 MASALAH)
+// File: profil.php → FINAL CODE LENGKAP & KONSISTEN
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -59,13 +59,14 @@ try {
 // Mask nomor telepon (tampilkan 4 digit terakhir)
 function maskPhone($phone) {
     if (empty($phone)) return "****";
+    $phone = (string)$phone;
     $length = strlen($phone);
     if ($length <= 4) return $phone;
     return str_repeat("*", $length - 4) . substr($phone, -4);
 }
 
-// Tambahkan timestamp anti-cache pada URL foto
-$currentPhotoName = htmlspecialchars($userData['UserPhoto']);
+// PERBAIKAN DEPRECATED WARNING: Pastikan UserPhoto tidak NULL sebelum dioper ke htmlspecialchars
+$currentPhotoName = htmlspecialchars($userData['UserPhoto'] ?? ''); 
 $photoPath = __DIR__ . "/../uploads/profile/" . $currentPhotoName;
 
 $photoUrl = "../uploads/profile/" . $currentPhotoName;
@@ -277,7 +278,6 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 text-align: center;
                 width: 100%;
             }
-            .navbar .btn-riwayat, /* Dihapus dari HTML, tapi biarkan style ini untuk safety */
             .navbar .btn-logout-red {
                 width: 100%;
                 justify-content: center;
@@ -323,7 +323,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
 
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-white small">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?></strong></span>
+                <span class="text-white small">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></strong></span>
                 
                 
                 <a href="../logout.php" class="btn btn-sm btn-logout-red d-inline-flex align-items-center gap-2">
@@ -344,6 +344,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 <div class="profile-photo-container">
                     <div class="profile-photo" id="profilePhoto">
                         <?php 
+                        // Periksa apakah UserPhoto ada DAN file-nya benar-benar ada di server
                         if (!empty($userData['UserPhoto']) && file_exists($photoPath)): 
                         ?>
                             <img src="<?php echo $photoUrl; ?>" alt="Profile Photo" id="photoPreview">
@@ -358,8 +359,8 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     </div>
                     <input type="file" id="photoInput" accept="image/jpeg,image/jpg,image/png">
                 </div>
-                <div class="profile-name" id="displayName"><?php echo htmlspecialchars($userData['UserNama']); ?></div>
-                <div class="profile-email"><?php echo htmlspecialchars($userData['UserEmail']); ?></div>
+                <div class="profile-name" id="displayName"><?php echo htmlspecialchars($userData['UserNama'] ?? ''); ?></div>
+                <div class="profile-email"><?php echo htmlspecialchars($userData['UserEmail'] ?? ''); ?></div>
             </div>
 
             <form id="profileForm" class="profile-body" method="POST" enctype="multipart/form-data">
@@ -372,11 +373,11 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Nama Lengkap</label>
-                            <input type="text" id="userNama" name="userNama" value="<?php echo htmlspecialchars($userData['UserNama']); ?>" readonly required>
+                            <input type="text" id="userNama" name="userNama" value="<?php echo htmlspecialchars($userData['UserNama'] ?? ''); ?>" readonly required>
                         </div>
                         <div class="form-group">
                             <label>Email</label>
-                            <input type="email" id="userEmail" name="userEmail" value="<?php echo htmlspecialchars($userData['UserEmail']); ?>" readonly required data-original-email="<?php echo htmlspecialchars($userData['UserEmail']); ?>">
+                            <input type="email" id="userEmail" name="userEmail" value="<?php echo htmlspecialchars($userData['UserEmail'] ?? ''); ?>" readonly required data-original-email="<?php echo htmlspecialchars($userData['UserEmail'] ?? ''); ?>">
                         </div>
                     </div>
                 </div>
@@ -388,12 +389,12 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     <div class="form-grid">
                         <div class="form-group">
                             <label>No. Handphone</label>
-                            <input type="text" id="userNoHp" name="userNoHp" class="phone-masked" value="<?php echo maskPhone($userData['UserNoHp']); ?>" data-original="<?php echo htmlspecialchars($userData['UserNoHp']); ?>" readonly>
+                            <input type="text" id="userNoHp" name="userNoHp" class="phone-masked" value="<?php echo maskPhone($userData['UserNoHp']); ?>" data-original="<?php echo htmlspecialchars($userData['UserNoHp'] ?? ''); ?>" readonly>
                             <span class="info-text"><i class="bi bi-lock-fill"></i> Nomor disamarkan untuk keamanan</span>
                         </div>
                         <div class="form-group full-width">
                             <label>Alamat Lengkap</label>
-                            <textarea id="userAddress" name="userAddress" placeholder="Masukkan alamat lengkap Anda..." readonly><?php echo htmlspecialchars($userData['UserAlamat']); ?></textarea>
+                            <textarea id="userAddress" name="userAddress" placeholder="Masukkan alamat lengkap Anda..." readonly><?php echo htmlspecialchars($userData['UserAlamat'] ?? ''); ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -427,14 +428,23 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         let originalData = {};
         let photoChanged = false;
 
+        // Ambil fungsi maskPhone dari PHP dan terapkan di JavaScript
+        function maskPhone(phone) {
+            if (!phone) return "****";
+            phone = String(phone);
+            const length = phone.length;
+            if (length <= 4) return phone;
+            return "*".repeat(length - 4) + phone.slice(-4);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const noHpInput = document.getElementById('userNoHp');
-            const emailInput = document.getElementById('userEmail');
             
+            // Simpan data asli dari atribut data-* yang sudah di-escape di PHP
             originalData = {
                 name: document.getElementById('userNama').value,
-                email: emailInput.value,
-                noHp: noHpInput.dataset.original || '',
+                email: document.getElementById('userEmail').value,
+                noHp: noHpInput.dataset.original || '', // Ambil nilai asli (tidak di-mask) dari data-original
                 address: document.getElementById('userAddress').value
             };
         });
@@ -458,7 +468,8 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 reader.onload = function(e) {
                     document.getElementById('photoPreview').src = e.target.result;
                     document.getElementById('photoPreview').style.display = 'block';
-                    document.getElementById('photoPlaceholder').style.display = 'none';
+                    const placeholder = document.getElementById('photoPlaceholder');
+                    if(placeholder) placeholder.style.display = 'none';
                     photoChanged = true;
                 };
                 reader.readAsDataURL(file);
@@ -469,35 +480,34 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
             const noHpInput = document.getElementById('userNoHp');
             const emailInput = document.getElementById('userEmail');
             
-            originalData.name = document.getElementById('userNama').value;
-            originalData.noHp = noHpInput.dataset.original; 
-            originalData.address = document.getElementById('userAddress').value;
-
+            // Masukkan nilai asli (tidak di-mask) ke input No HP saat edit mode
             noHpInput.value = originalData.noHp;
             noHpInput.classList.remove('phone-masked');
-            emailInput.readOnly = false;
             
             document.getElementById('profileForm').classList.add('edit-mode');
             document.getElementById('userNama').readOnly = false;
-            document.getElementById('userNoHp').readOnly = false;
+            emailInput.readOnly = false;
+            noHpInput.readOnly = false;
             document.getElementById('userAddress').readOnly = false;
         }
 
         function cancelEdit() {
+            if (photoChanged) {
+                // Jika foto diubah, kita refresh halaman agar preview foto kembali ke foto lama
+                location.reload(); 
+                return; 
+            }
+            
             if (originalData.name) {
                 document.getElementById('userNama').value = originalData.name;
                 document.getElementById('userEmail').value = originalData.email;
                 
                 const noHpInput = document.getElementById('userNoHp');
-                noHpInput.value = maskPhone(originalData.noHp);
+                // Kembalikan ke nilai yang di-mask
+                noHpInput.value = maskPhone(originalData.noHp); 
                 noHpInput.classList.add('phone-masked');
                 
                 document.getElementById('userAddress').value = originalData.address;
-            }
-
-            if (photoChanged) {
-                 location.reload(); 
-                 return; 
             }
 
             document.getElementById('profileForm').classList.remove('edit-mode');
@@ -506,13 +516,6 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
             document.getElementById('userNoHp').readOnly = true;
             document.getElementById('userAddress').readOnly = true;
             photoChanged = false; 
-        }
-
-        function maskPhone(phone) {
-            if (!phone) return "****";
-            const length = phone.length;
-            if (length <= 4) return phone;
-            return "*".repeat(length - 4) + phone.slice(-4);
         }
 
         function showToast(message, isError = false) {
@@ -531,6 +534,13 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
             const formData = new FormData();
             const currentEmail = document.getElementById('userEmail').value;
             const currentNoHp = document.getElementById('userNoHp').value;
+
+            // Validasi sederhana: pastikan No HP tidak kosong saat submit
+            if (!currentNoHp) {
+                 showToast('Nomor Handphone tidak boleh kosong!', true);
+                 return;
+            }
+
 
             formData.append('idUser', <?php echo $userData['IDUser']; ?>);
             formData.append('userNama', document.getElementById('userNama').value);
@@ -566,16 +576,19 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     showToast('Profile berhasil diperbarui!');
                     
                     document.getElementById('displayName').textContent = data.userName;
-                    document.getElementById('userEmail').value = currentEmail;
-                    document.getElementById('userNoHp').dataset.original = data.userNoHp;
                     
+                    // Cek apakah email atau foto berubah, jika ya, harus reload.
                     if (shouldReload || currentEmail !== originalData.email) {
+                        // Reload untuk memperbarui session dan gambar
                         location.reload(); 
                         return;
                     }
                     
+                    // Update data di client tanpa reload (karena hanya nama/alamat/nohp yang berubah)
+                    document.getElementById('userNoHp').dataset.original = data.userNoHp;
+                    
                     const noHpInput = document.getElementById('userNoHp');
-                    noHpInput.value = maskPhone(data.userNoHp);
+                    noHpInput.value = maskPhone(data.userNoHp); // Masking lagi
                     noHpInput.classList.add('phone-masked');
                     
                     document.getElementById('profileForm').classList.remove('edit-mode');
@@ -585,6 +598,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     document.getElementById('userAddress').readOnly = true;
                     photoChanged = false; 
                     
+                    // Update originalData untuk sesi edit berikutnya
                     originalData.name = data.userName;
                     originalData.email = currentEmail;
                     originalData.noHp = data.userNoHp;
@@ -599,14 +613,10 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 showToast('Terjadi kesalahan pada koneksi atau server! (' + error.message + ')', true);
                 console.error('Error:', error);
                 
-                document.getElementById('profileForm').classList.remove('edit-mode');
-                document.getElementById('userNama').readOnly = true;
-                document.getElementById('userEmail').readOnly = true;
-                document.getElementById('userNoHp').readOnly = true;
-                document.getElementById('userAddress').readOnly = true;
+                // Matikan mode edit setelah error
+                cancelEdit(); 
             });
         });
     </script>
 </body>
 </html>
-}

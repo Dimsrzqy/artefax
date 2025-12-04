@@ -1,5 +1,18 @@
 <?php
 session_start();
+// --- START: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/Booking.php";
 
@@ -10,14 +23,20 @@ $booking = new Booking($conn);
 // OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL SUDAH LEWAT
 $booking->updateStatusSelesaiOtomatis();
 
-// --- LOGIKA PENUGASAN BARU Dihapus ---
+// --- START: DATA USER LOGIN (Ambil dari $_SESSION yang sudah diadaptasi) ---
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/face1.jpg'; 
+// --- END: DATA USER LOGIN ---
 
 /* ============== PAGINATION ============== */
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-/* ============ QUERY MANUAL YANG AMAN & SESUAI DENGAN CLASS BOOKING LAMA ============ */
+/* ============ QUERY MANUAL YANG AMAN & SESUAI ============ */
 // Hanya ambil booking Diterima + punya Paket Jasa + BELUM punya event (Penugasan)
 $sql = "
     SELECT 
@@ -34,7 +53,6 @@ $sql = "
     INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
     LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
     WHERE b.BkgStatus = 'Diterima'
-      -- KONDISI UNTUK MENGHILANGKAN BOOKING YANG SUDAH DITUGASKAN/PUNYA EVENT
       AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
     GROUP BY b.IDBooking
     ORDER BY b.CreatedAt DESC
@@ -56,7 +74,6 @@ $totalSql = "
         FROM booking b
         INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
         WHERE b.BkgStatus = 'Diterima'
-          -- KONDISI YANG SAMA UNTUK HITUNGAN TOTAL
           AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
         GROUP BY b.IDBooking
     ) AS aktif
@@ -82,6 +99,52 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
     <style>
+        /* --- START: Perbaikan untuk Fixed Layout --- */
+        .az-body {
+            padding-top: 70px !important; /* Memberi ruang di atas untuk header */
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040; /* Pastikan di atas semua konten, termasuk dropdown */
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px; /* Tepat di bawah header */
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        
+        @media (min-width: 992px) {
+            /* Mengkompensasi lebar sidebar di konten utama */
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important; 
+            }
+        }
+        @media (max-width: 991.98px) {
+            /* Non-aktifkan fixed layout pada mobile/tablet */
+            .az-content-left {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+            }
+            .az-content-body {
+                margin-left: 0 !important;
+            }
+            .az-body {
+                padding-top: 0 !important; 
+            }
+        }
+        /* --- END: Perbaikan untuk Fixed Layout --- */
+        
         /* CSS Badge Paket Jasa yang Sudah Diperbaiki */
         .badge-paket{
             background:#28a745;
@@ -199,22 +262,23 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     </div>
                 </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <a href="profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
-                        <div class="az-dropdown-header d-sm-none">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
                             </div>
-                            <h6>Aziana Pechon</h6>
-                            <span>Premium Member</span>
-                        </div><a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
@@ -242,12 +306,12 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
                 <?php if ($success): ?>
                     <div class="alert alert-success alert-dismissible fade show">
-                        <?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">x</button>
+                        <?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
                 <?php if ($error): ?>
                     <div class="alert alert-danger alert-dismissible fade show">
-                        <?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">x</button>
+                        <?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
 
@@ -334,11 +398,15 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     </div>
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/azia.js"></script>
     <script>
-        // Auto fadeout alert
-        setTimeout(() => $('.alert').fadeOut('slow'), 5000);
-
-        // Tidak ada skrip JavaScript lain yang terkait penugasan
+        $(document).ready(function() {
+            // Fix for dropdown menu initialization in fixed header
+            $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+            
+            // Auto fadeout alert
+            setTimeout(() => $('.alert').fadeOut('slow'), 5000);
+        });
     </script>
 </body>
 </html>
