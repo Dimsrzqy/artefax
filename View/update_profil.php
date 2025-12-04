@@ -1,37 +1,33 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
+// File: update_profil.php - FINAL CODE 
 session_start();
 header('Content-Type: application/json; charset=utf-8');
+error_reporting(E_ALL);
+ini_set('display_errors', 1); // Tampilkan error untuk debugging
 
-// Cek apakah user sudah login
-if (!isset($_SESSION['user']['UserEmail'])) {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Sesi login habis, silakan login kembali'
-    ]);
+// Cek autentikasi
+if (!isset($_SESSION['user']['IDUser'])) {
+    echo json_encode(['success' => false, 'message' => 'Sesi login habis, silakan login kembali']);
     exit;
 }
 
-// Koneksi database - SESUAIKAN DENGAN CLASS DATABASE
+// Ambil IDUser dan data lama dari session
+$idUser = $_SESSION['user']['IDUser'];
+$oldEmail = $_SESSION['user']['UserEmail'] ?? '';
+$oldPhoto = $_SESSION['user']['UserPhoto'] ?? null;
+
+// Koneksi database
 require_once __DIR__ . '/../config/koneksi.php';
 
 $database = new Database();
 $connection = $database->getConnection();
 
 if (!$connection) {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Koneksi database gagal'
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Koneksi database gagal']);
     exit;
 }
 
-// Ambil email lama dari session
-$oldEmail = $_SESSION['user']['UserEmail'];
-
-// Ambil data dari form
+// Ambil data dari POST
 $nama = trim($_POST['userNama'] ?? '');
 $email = trim($_POST['userEmail'] ?? '');
 $noHp = trim($_POST['userNoHp'] ?? '');
@@ -40,19 +36,13 @@ $alamat = trim($_POST['userAddress'] ?? '');
 // ==========================================
 // VALIDASI INPUT
 // ==========================================
-if (empty($nama)) {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Nama tidak boleh kosong'
-    ]);
+if (empty($nama) || empty($email) || empty($noHp)) {
+    echo json_encode(['success' => false, 'message' => 'Nama, Email, dan Nomor HP tidak boleh kosong']);
     exit;
 }
 
-if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'Format email tidak valid'
-    ]);
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo json_encode(['success' => false, 'message' => 'Format email tidak valid']);
     exit;
 }
 
@@ -60,16 +50,13 @@ if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 // CEK EMAIL SUDAH DIPAKAI USER LAIN?
 // ==========================================
 if ($email !== $oldEmail) {
-    $checkEmail = $connection->prepare("SELECT UserEmail FROM users WHERE UserEmail = ?");
-    $checkEmail->bind_param("s", $email);
+    $checkEmail = $connection->prepare("SELECT IDUser FROM users WHERE UserEmail = ? AND IDUser != ?");
+    $checkEmail->bind_param("si", $email, $idUser);
     $checkEmail->execute();
     $resultCheck = $checkEmail->get_result();
     
     if ($resultCheck->num_rows > 0) {
-        echo json_encode([
-            'success' => false, 
-            'message' => 'Email sudah digunakan oleh user lain'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Email sudah digunakan oleh user lain']);
         exit;
     }
 }
@@ -77,116 +64,96 @@ if ($email !== $oldEmail) {
 // ==========================================
 // PROSES UPLOAD FOTO PROFILE
 // ==========================================
-$photoFileName = null;
-$uploadDir = __DIR__ . '/../uploads/profile/';
+$photoFileName = $oldPhoto; 
+$uploadDir = __DIR__ . '/../uploads/profile/'; 
 
-// Buat folder jika belum ada
+// Pastikan folder ada dan memiliki izin tulis
 if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
+    @mkdir($uploadDir, 0755, true); 
 }
 
-// Cek apakah ada file foto yang diupload
-if (!empty($_FILES['userPhoto']['name']) && $_FILES['userPhoto']['error'] === UPLOAD_ERR_OK) {
+if (isset($_FILES['userPhoto']) && $_FILES['userPhoto']['error'] === UPLOAD_ERR_OK) {
     
     $fileSize = $_FILES['userPhoto']['size'];
     $fileTmpName = $_FILES['userPhoto']['tmp_name'];
-    $fileType = $_FILES['userPhoto']['type'];
     $fileExtension = strtolower(pathinfo($_FILES['userPhoto']['name'], PATHINFO_EXTENSION));
     
-    // Validasi tipe file
     $allowedExtensions = ['jpg', 'jpeg', 'png'];
     if (!in_array($fileExtension, $allowedExtensions)) {
-        echo json_encode([
-            'success' => false, 
-            'message' => 'Format file tidak valid! Gunakan JPG, JPEG, atau PNG'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Format file tidak valid! Gunakan JPG, JPEG, atau PNG']);
         exit;
     }
     
-    // Validasi ukuran file (max 2MB)
     if ($fileSize > 2 * 1024 * 1024) {
-        echo json_encode([
-            'success' => false, 
-            'message' => 'Ukuran file terlalu besar! Maksimal 2MB'
-        ]);
+        echo json_encode(['success' => false, 'message' => 'Ukuran file terlalu besar! Maksimal 2MB']);
         exit;
     }
     
-    // Hapus foto lama jika ada
-    $getOldPhoto = $connection->prepare("SELECT UserPhoto FROM users WHERE UserEmail = ?");
-    $getOldPhoto->bind_param("s", $oldEmail);
-    $getOldPhoto->execute();
-    $oldPhotoData = $getOldPhoto->get_result()->fetch_assoc();
-    
-    if (!empty($oldPhotoData['UserPhoto'])) {
-        $oldPhotoPath = $uploadDir . $oldPhotoData['UserPhoto'];
+    // Hapus foto lama sebelum upload yang baru
+    if (!empty($oldPhoto)) {
+        $oldPhotoPath = $uploadDir . $oldPhoto;
         if (file_exists($oldPhotoPath)) {
-            unlink($oldPhotoPath);
+            // KRUSIAL: Log status penghapusan
+            $unlink_status = @unlink($oldPhotoPath); 
+            if (!$unlink_status) {
+                 error_log("FOTO DEBUG: GAGAL unlink foto lama: " . $oldPhotoPath . ". Check file permission!");
+            }
         }
     }
     
-    // Generate nama file baru yang unik
-    $photoFileName = 'profile_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
+    // Generate nama file baru
+    $photoFileName = 'profile_' . $idUser . '_' . time() . '.' . $fileExtension;
     $targetPath = $uploadDir . $photoFileName;
     
     // Upload file
     if (!move_uploaded_file($fileTmpName, $targetPath)) {
-        echo json_encode([
-            'success' => false, 
-            'message' => 'Gagal mengupload foto'
-        ]);
+        error_log("FOTO DEBUG: GAGAL move_uploaded_file ke: " . $targetPath . ". Check directory permission!");
+        echo json_encode(['success' => false, 'message' => 'Gagal mengupload foto. Periksa izin direktori.']);
         exit;
     }
 }
 
 // ==========================================
-// UPDATE DATABASE
+// UPDATE DATABASE (Menggunakan IDUser)
 // ==========================================
 try {
-    if ($photoFileName) {
-        // Update dengan foto baru
+    if ($photoFileName !== $oldPhoto) {
+        // Jika ada update foto
         $sql = "UPDATE users SET 
-                UserNama = ?, 
-                UserEmail = ?, 
-                UserNoHp = ?, 
-                UserAlamat = ?, 
-                UserPhoto = ? 
-                WHERE UserEmail = ?";
+                UserNama = ?, UserEmail = ?, UserNoHp = ?, UserAlamat = ?, UserPhoto = ? 
+                WHERE IDUser = ?";
         $stmt = $connection->prepare($sql);
-        $stmt->bind_param("ssssss", $nama, $email, $noHp, $alamat, $photoFileName, $oldEmail);
+        $stmt->bind_param("sssssi", $nama, $email, $noHp, $alamat, $photoFileName, $idUser);
     } else {
-        // Update tanpa mengubah foto
+        // Jika tidak ada update foto
         $sql = "UPDATE users SET 
-                UserNama = ?, 
-                UserEmail = ?, 
-                UserNoHp = ?, 
-                UserAlamat = ? 
-                WHERE UserEmail = ?";
+                UserNama = ?, UserEmail = ?, UserNoHp = ?, UserAlamat = ? 
+                WHERE IDUser = ?";
         $stmt = $connection->prepare($sql);
-        $stmt->bind_param("sssss", $nama, $email, $noHp, $alamat, $oldEmail);
+        $stmt->bind_param("ssssi", $nama, $email, $noHp, $alamat, $idUser);
     }
     
     if ($stmt->execute()) {
-        // Update session dengan data baru
-        $_SESSION['user']['UserEmail'] = $email;
+        // Update session dengan data baru yang lengkap
         $_SESSION['user']['UserNama'] = $nama;
+        $_SESSION['user']['UserEmail'] = $email;
+        $_SESSION['user']['UserNoHp'] = $noHp;
+        $_SESSION['user']['UserAlamat'] = $alamat;
+        $_SESSION['user']['UserPhoto'] = $photoFileName; 
         
         echo json_encode([
             'success' => true,
             'message' => 'Profile berhasil diperbarui!',
-            'userName' => $nama
+            'userName' => htmlspecialchars($nama),
+            'userNoHp' => htmlspecialchars($noHp) 
         ]);
     } else {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Gagal menyimpan data: ' . $stmt->error
-        ]);
+        error_log("SQL Error: " . $stmt->error);
+        echo json_encode(['success' => false, 'message' => 'Gagal menyimpan data ke database: ' . $stmt->error]);
     }
     
 } catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error: ' . $e->getMessage()
-    ]);
+    error_log("General Error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 ?>

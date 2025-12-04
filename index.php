@@ -81,25 +81,36 @@ ob_end_flush();
 
 <body class="index-page">
 
-    <header id="header" class="header d-flex align-items-center fixed-top">
-        <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-            <a href="index.php" class="logo d-flex align-items-center">
-                <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
-            </a>
+<header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+        <a href="index.php" class="logo d-flex align-items-center">
+            <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
+        </a>
 
-            <nav id="navmenu" class="navmenu">
-                <ul>
-                    <li><a href="#hero" class="active">Home</a></li>
-                    <li><a href="#services">Layanan</a></li>
-                    <li><a href="#portfolio">Portfolio</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><a href="view/profil.php">Profile</a></li>
-                    <li><a href="RiwayatBooking.php">Riwayat</a></li>
-                </ul>
-                <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-            </nav>
+        <nav id="navmenu" class="navmenu">
+            <ul>
+                <li><a href="#hero" class="active">Home</a></li>
+                <li><a href="#services">Layanan</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+
+        <!-- USER YANG SEDANG LOGIN + IKON PROFIL -->
+        <div class="d-flex align-items-center gap-3">
+            <!-- Nama User -->
+            <span class="text-black fw-medium">
+                Hi, <strong><?= htmlspecialchars($_SESSION['user']['UserNama'] ?? $_SESSION['user']['nama'] ?? 'User') ?></strong>
+            </span>
+
+            <!-- Ikon Profil (klik ke profil.php) -->
+            <a href="view/profil.php" title="Profil Saya">
+                <i class="bi bi-person-circle" style="font-size: 2.2rem; color: black;"></i>
+            </a>
         </div>
-    </header>
+    </div>
+</header>
 
      <!-- Hero Section -->
     <main class="main">
