@@ -1,0 +1,316 @@
+.card-payment {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .card-payment:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-refund .card-header {
+        background: linear-gradient(135deg, #ffc107, #ffb300) !important;
+        color: #000 !important;
+        font-weight: 600;
+        font-size: 1.1em;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+        .status-refund-badge {
+            white-space: nowrap !important;
+            display: inline-block !important;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.85rem;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            width: 45%;
+        }
+
+        .info-value {
+            color: #333;
+            text-align: right;
+            width: 55%;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+            padding: 3px 8px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        .card-footer {
+            padding: 12px 16px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+        }
+
+        /* Tombol Aksi Seragam */
+        .btn-action {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            font-weight: 500;
+            color: white;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+
+        .btn-detail {
+            background: #17a2b8;
+        }
+
+        .btn-setuju-refund {
+            min-width: 130px;
+            background: #28a745;
+        }
+
+        .btn-tolak {
+            background: #dc3545;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 16px;
+        }
+
+        /* Modal Konfirmasi - Fixed & Lebih Jelas */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: muncul 0.3s ease-out;
+    }
+
+        @keyframes muncul {
+        from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+        .modal-header {
+            padding: 15px 20px;
+            color: white;
+            font-weight: 600;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header.setuju {
+            background: #28a745;
+        }
+
+        .modal-header.tolak {
+            background: #dc3545;
+        }
+
+        .modal-body {
+            padding: 20px;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+
+        .close-btn:hover {
+            opacity: 0.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    /* Detail Refund */
+    
+    .popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    .popup-content {
+        background: #fff;
+        width: 80%;
+        max-width: 900px;
+        max-height: 92vh;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 70px rgba(0,0,0,0.4);
+        position: relative;
+    }
+    .popup-header {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        color: white;
+        padding: 18px 25px;
+        font-size: 1.5em;
+        font-weight: bold;
+        cursor: grab;
+        user-select: none;
+        position: relative;
+    }
+    .popup-header:active { cursor: grabbing; }
+    .close-popup {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 34px;
+        cursor: pointer;
+        opacity: 0.9;
+    }
+    .close-popup:hover { opacity: 1; }
+    .popup-body {
+        padding: 25px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border-left: 6px solid #4361ee;
+    }
+    .section h3 {
+        margin: 0 0 18px 0;
+        color: #2d3436;
+        font-size: 1.35em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    table.info-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 1.02em;
+    }
+    table.info-table td {
+        padding: 11px 0;
+        border-bottom: 1px dashed #ddd;
+    }
+    table.info-table td:first-child {
+        width: 38%;
+        font-weight: 600;
+        color: #444;
+    }
+    .badge {
+        padding: 6px 16px;
+        border-radius: 50px;
+        font-weight: bold;
+        font-size: 0.9em;
+    }
+    .badge-lunas { background: #d4edda; color: #155724; }
+    .badge-dp { background: #fff3cd; color: #856404; }
+    .badge-pending { background: #fff3cd; color: #b8860b; }
+    .item-list {
+        margin: 15px 0;
+        padding-left: 5px;
+    }
+    .item-list li {
+        padding: 8px 0;
+        color: #2d3436;
+        font-size: 1.05em;
+    }
+    .btn-bukti {
+        background: #4361ee;
+        color: white;
+        border: none;
+        padding: 11px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .btn-bukti:hover {
+        background: #3f37c9;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(67,97,238,0.4);
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }

@@ -15,13 +15,21 @@ if ($paket->IDPaket <= 0) {
     exit;
 }
 
+$stmt = $conn->prepare("SELECT PaketDirGbr FROM paketjasa WHERE IDPaket = ?");
+$stmt->bind_param("i", $paket->IDPaket);
+$stmt->execute();
+$result = $stmt->get_result();
+$row = $result->fetch_assoc();
+$gambarLamaDb = $row ? trim($row['PaketDirGbr'] ?? '') : '';
+
+
 $uploadDir = $_SERVER['DOCUMENT_ROOT'] . "/artefax/Paket/img/produk/paketjasa/";
 $webPath = "paketjasa/";
-$gambarBaruPath = null;
-$hapusGambarLama = false; 
+$gambarBaruPath = $gambarLamaDb; 
 
-$gambarLama = trim($_POST['gambarLama'] ?? '');
+$gambarLamaPost = trim($_POST['gambarLama'] ?? '');
 
+ 
 if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
     $file = $_FILES['gambar'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -39,52 +47,59 @@ if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
         exit;
     }
 
+    // Generate nama baru
     $stmt = $conn->query("SELECT PaketDirGbr FROM paketjasa WHERE PaketDirGbr LIKE 'paketjasa/jasa%' ORDER BY IDPaket DESC LIMIT 1");
     $last = $stmt->fetch_assoc();
     $nextNum = 1;
-
-    if ($last) {
+    if ($last) { 
         preg_match('/jasa(\d+)/', $last['PaketDirGbr'], $m);
         $nextNum = isset($m[1]) ? (intval($m[1]) + 1) : 1;
-    }
-
+    } 
     $newFilename = "jasa" . $nextNum . "." . $ext;
     $destination = $uploadDir . $newFilename;
 
     if (move_uploaded_file($file['tmp_name'], $destination)) {
         $gambarBaruPath = $webPath . $newFilename;
-        $hapusGambarLama = true; 
+        // Hapus gambar lama jika ada
+        if ($gambarLamaDb !== '') {
+            $fileLamaPath = $_SERVER['DOCUMENT_ROOT'] . "/artefax/Paket/img/produk/" . $gambarLamaDb;
+            if (file_exists($fileLamaPath)) {
+                unlink($fileLamaPath);
+            }
+        }
     } else {
         $_SESSION['error_message'] = "Gagal upload gambar baru.";
         header("Location: form-layanan.php"); 
         exit;
     }
-} 
-
-elseif (isset($_POST['gambarLama']) && $gambarLama !== '' && empty($_FILES['gambar']['name'])) {
+}
+// Jika user klik hapus gambar (gambarLamaPost kosong, dan no upload baru)
+elseif ($gambarLamaPost === '' && empty($_FILES['gambar']['name'])) {
     $gambarBaruPath = null;
-    $hapusGambarLama = true;
-}
-// Jika tidak ada perubahan → tetap pakai gambar lama
-else {
-    $gambarBaruPath = $gambarLama;
-}
-
-if ($hapusGambarLama && $gambarLama !== '' && $gambarLama !== null) {
-    $fileLamaPath = $_SERVER['DOCUMENT_ROOT'] . "/artefax/Paket/img/produk/" . $gambarLama;
-    if (file_exists($fileLamaPath)) {
-        unlink($fileLamaPath);
+    // Hapus gambar lama jika ada
+    if ($gambarLamaDb !== '') {
+        $fileLamaPath = $_SERVER['DOCUMENT_ROOT'] . "/artefax/Paket/img/produk/" . $gambarLamaDb;
+        if (file_exists($fileLamaPath)) {
+            unlink($fileLamaPath);
+        }
     }
 }
+// Else: no change, keep $gambarBaruPath = $gambarLamaDb (sudah di-set default)
 
-// Isi data paket
+// Validasi keamanan opsional: Jika gambarLamaPost tidak match DB, bisa tolak atau log
+if ($gambarLamaPost !== '' && $gambarLamaPost !== $gambarLamaDb) {
+    // Opsional: $_SESSION['error_message'] = "Data gambar tidak valid.";
+    // header("Location: form-layanan.php"); exit;
+}
+
+// Isi data paket lainnya (sama seperti sebelumnya)
 $paket->PaketNama       = trim($_POST['PaketNama'] ?? '');
 $paket->PaketKategori   = $_POST['PaketKategori'] ?? '';
 $paket->PaketDeskripsi  = trim($_POST['PaketDeskripsi'] ?? '');
 $paket->PaketHarga      = (int)$_POST['PaketHarga'];
 $paket->PaketDurasi     = trim($_POST['PaketDurasi'] ?? '');
 $paket->PaketStatus     = $_POST['PaketStatus'] ?? '';
-$paket->PaketDirGbr     = $gambarBaruPath; 
+$paket->PaketDirGbr     = $gambarBaruPath; // Bisa null
 
 if (empty($paket->PaketNama) || empty($paket->PaketKategori) || $paket->PaketHarga < 0) {
     $_SESSION['error_message'] = "Harap isi semua field wajib.";
