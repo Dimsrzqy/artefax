@@ -3,10 +3,7 @@ session_start();
 require_once '../../config/koneksi.php';
 require_once '../../class/Absensi.php';
 
-$db = new Database();
-$conn = $db->getConnection();
-if (!$conn) die("<script>alert('Gagal terhubung ke database!');</script>");
-
+// === CEK LOGIN ===
 if (!isset($_SESSION['user']) || $_SESSION['user']['UserRole'] !== 'Karyawan') {
     header('Location: ../../View/login.php');
     exit();
@@ -16,7 +13,23 @@ $userData     = $_SESSION['user'];
 $namaKaryawan = $userData['UserNama'];
 $idKaryawan   = $userData['IDUser'];
 
+// === KONEKSI DB ===
+$db = new Database();
+$conn = null;
+try {
+    $conn = $db->getConnection();
+} catch (Exception $e) {
+    // Tangani pengecualian jika koneksi gagal sebelum die()
+}
+
+// ✅ PERBAIKAN: Cek koneksi yang lebih aman
+if ($conn === null) {
+    // Jika koneksi gagal, hentikan skrip dan tampilkan pesan
+    die("<script>alert('Gagal terhubung ke database!');</script>");
+}
+
 // === Cari event aktif ===
+// Baris 25 ada di sini:
 $sqlEvent = "
     SELECT e.IDEvent, e.EventNama 
     FROM event e
@@ -25,7 +38,7 @@ $sqlEvent = "
     ORDER BY e.EventTanggal DESC, e.EventMulai DESC
     LIMIT 1
 ";
-$stmt = $conn->prepare($sqlEvent);
+$stmt = $conn->prepare($sqlEvent); // ERROR terjadi jika $conn adalah NULL
 $stmt->bind_param("i", $idKaryawan);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -33,7 +46,7 @@ $eventAktif = $result->fetch_assoc();
 $stmt->close();
 
 // Variabel default
-$namaEvent     = '';
+$namaEvent    = '';
 $idEventAktif = 0;
 $sudahAbsen   = false;
 $adaEventAktif = ($eventAktif !== null);
@@ -107,60 +120,157 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../css/karyawan.css" rel="stylesheet">
     <link href="../css/absensi.css" rel="stylesheet">
+    <link href="../lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        .no-event-notif,
-        .sudah-absen-notif {
+        /* ✅ PERBAIKAN: Background Biru Penuh */
+        .az-body {
+            /* Warna dan gradien yang konsisten dengan template Azia/Login */
+            background: linear-gradient(135deg, #5c99ee 0%, #4c89de 100%);
+            height: 100vh; /* Memastikan body mengisi seluruh viewport */
+            margin: 0;
+            overflow-y: auto; /* Mengizinkan scroll jika konten melebihi 100vh */
+        }
+        
+        /* ✅ PERBAIKAN: Fixed Header */
+        .az-header {
+            position: fixed; 
+            top: 0;
+            width: 100%;
+            z-index: 1030;
+            background-color: #ffffff; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 10px 0; /* Sesuaikan padding */
+        }
+        /* Memberikan padding pada body agar konten tidak tertutup header */
+        .az-body {
+            padding-top: 60px; /* Nilai ini disesuaikan dengan tinggi header Azia */
+        }
+        /* Mengatur kontainer konten agar terpusat di latar belakang biru */
+        .az-content {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        /* Gaya tambahan untuk ikon profil */
+        .az-profile-icon {
+            font-size: 28px;
+            color: #4b4be5 !important; 
+            transition: color 0.2s;
+        }
+        .az-profile-icon:hover {
+            color: #3a3ad1;
+        }
+        
+        /* Style untuk tombol logout di navbar */
+        .btn-logout-nav {
+            padding: 5px 10px;
+            font-size: 13px;
+            /* margin-left akan diatur di az-header-right */
+            display: flex;
+            align-items: center;
+        }
+        .btn-logout-nav i {
+            margin-right: 5px; /* Jarak antara ikon dan teks */
+        }
+        /* CSS untuk Mobile (Hamburger) */
+        .az-menu-toggle {
+            display: none; /* Sembunyikan di desktop */
+            font-size: 24px;
+            cursor: pointer;
+            color: #4b4be5;
+            padding: 0 10px;
+        }
+        
+        /* Mobile Menu Style */
+        .az-mobile-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #fff;
+            border: 1px solid #e4e6eb;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+            padding: 10px;
+            min-width: 150px;
+            display: none; /* Default hidden */
+            flex-direction: column;
+        }
+        .az-mobile-menu .nav-item {
+            padding: 5px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .az-mobile-menu .nav-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* Pengaturan Layout Kanan Header */
+        .az-header-right {
+            display: flex;
+            align-items: center;
+            /* ✅ PERBAIKAN: Menambahkan margin di antara ikon profil dan tombol logout */
+            gap: 10px; /* Jarak yang lebih baik antar elemen di header kanan */
+        }
+
+        /* Responsive Navbar */
+        @media (max-width: 991px) {
+            .az-header-menu {
+                display: none; /* Sembunyikan menu desktop di mobile */
+            }
+            .az-menu-toggle {
+                display: block;
+                order: 3; 
+                margin-left: 10px; 
+            }
+        }
+        
+        /* Notif dan Kamera CSS (TIDAK BERUBAH) */
+        .no-event-notif, .sudah-absen-notif {
             text-align: center;
             padding: 50px 30px;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             border: 2px solid #e2e8f0;
-            margin: 30px 0;
+            margin: 30px auto; 
+            max-width: 500px; 
             color: #4a5568;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
-
         .no-event-notif i {
             font-size: 70px;
             color: #a0aec0;
             margin-bottom: 20px;
         }
-
-        .no-event-notif h3,
-        .sudah-absen-notif h3 {
+        .no-event-notif h3, .sudah-absen-notif h3 {
             color: #2d3748;
             font-size: 24px;
             margin-bottom: 12px;
         }
-
         .sudah-absen-notif {
             background: rgba(16, 185, 129, 0.15);
             border: 2px solid #10b981;
             color: #065f46;
         }
-
         .sudah-absen-notif h3 {
             color: #10b981;
         }
-
         .sudah-absen-notif i {
             font-size: 70px;
             color: #10b981;
             margin: 20px 0;
         }
-
-        /* PERBAIKAN MIRROR - HANYA video yang di-mirror untuk preview live */
         #kamera {
             transform: scaleX(-1);
             display: block;
         }
-        /* HILANGKAN mirror dari PREVIEW */
         #preview {
             transform: none; 
             display: block;
+        }
+        .az-content-body.d-flex {
+            min-height: calc(100vh - 60px); 
         }
     </style>
 </head>
@@ -172,31 +282,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             <div class="az-header-left">
                 <a href="index.php" class="az-logo"><span>artefax</span></a>
             </div>
-            <div class="az-header-menu">
+            
+            <div class="az-header-menu" id="desktopMenu">
                 <ul class="nav">
                     <li class="nav-item"><a href="index.php" class="nav-link">Penugasan</a></li>
                     <li class="nav-item active"><a href="InputAbsenKaryawan.php" class="nav-link">Absensi</a></li>
-                    <li class="nav-item"><a href="LaporanPenugasan.php" class="nav-link">Laporan</a></li>
                 </ul>
             </div>
+            
             <div class="az-header-right">
-                <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-                    <div class="dropdown-menu">
-                        <div class="az-header-profile">
-                            <div class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></div>
-                            <h6><?= htmlspecialchars($namaKaryawan) ?></h6>
-                            <span>Karyawan</span>
-                        </div>
-                        <a href="../../logout.php" class="dropdown-item">Keluar</a>
-                    </div>
-                </div>
+                <a href="../../view/profile.php" title="Profil Saya" class="d-flex align-items-center">
+                    <i class="fas fa-user-circle az-profile-icon"></i>
+                </a>
+                
+                <a href="../../logout.php" class="btn btn-sm btn-danger btn-logout-nav">
+                    <i class="fas fa-sign-out-alt"></i> Keluar
+                </a>
+
+                <i class="fas fa-bars az-menu-toggle" id="azMenuToggle"></i>
             </div>
+        </div>
+        
+        <div class="az-mobile-menu" id="mobileMenu">
+            <ul class="nav flex-column">
+                <li class="nav-item"><a href="index.php" class="nav-link">Penugasan</a></li>
+                <li class="nav-item"><a href="InputAbsenKaryawan.php" class="nav-link">Absensi</a></li>
+            </ul>
         </div>
     </div>
 
     <div class="az-content">
-        <div class="az-content-body d-flex justify-content-center align-items-center min-vh-100">
+        <div class="az-content-body d-flex justify-content-center align-items-center">
             <div class="absensi-card">
 
                 <?php if (!$adaEventAktif): ?>
@@ -335,6 +451,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             Swal.fire('Gagal', '<?= addslashes($errorMsg) ?>', 'error');
         </script>
     <?php endif; ?>
+    
+    <script>
+        // JAVASCRIPT UNTUK HAMBURGER MENU:
+        document.getElementById('azMenuToggle').addEventListener('click', function() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            // Toggle display flex/none
+            if (mobileMenu.style.display === 'flex') {
+                mobileMenu.style.display = 'none';
+            } else {
+                mobileMenu.style.display = 'flex';
+            }
+        });
+
+        // Hapus style inline saat resize ke desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 991) {
+                document.querySelector('.az-header-menu').style.cssText = '';
+                document.getElementById('mobileMenu').style.display = 'none'; // Sembunyikan mobile menu di desktop
+            }
+        });
+    </script>
 
 </body>
 
