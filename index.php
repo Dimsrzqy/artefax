@@ -12,14 +12,21 @@ $conn = $database->getConnection();
 $user = new User($conn);
 
 $message = "";
-$showModal = false; // ✅ Tambahan: Flag untuk menampilkan modal
+$showModal = false; // Flag untuk menampilkan modal
 
 // === LOGOUT ===
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     session_unset();
     session_destroy();
+    // Redirect ke index dengan status logout untuk memunculkan pesan di modal
     header("Location: index.php?logout=success");
     exit;
+}
+
+// === Tampilkan pesan sukses logout di modal jika ada parameter
+if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
+    $message = "Anda berhasil logout.";
+    $showModal = true; 
 }
 
 // === PROSES LOGIN DARI MODAL ===
@@ -44,14 +51,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
             
             session_regenerate_id(true);
             $_SESSION['user'] = [
-                'id'    => $login['IDUser'],
-                'nama'  => $login['UserNama'],
-                'email' => $login['UserEmail'],
-                'role'  => $login['UserRole']
+                'IDUser'    => $login['IDUser'],
+                'UserNama'  => $login['UserNama'],
+                'UserEmail' => $login['UserEmail'],
+                'UserRole'  => $login['UserRole'] // Memastikan role ada
             ];
             
-            // Redirect ke Services.php
-            header("Location: Paket/Services.php");
+            // Logika Redirect Berdasarkan Role
+            $role = strtolower($login['UserRole']);
+            switch ($role) {
+                case 'customer':
+                    // Customer diarahkan ke services
+                    header("Location: Paket/Services.php"); 
+                    break;
+                case 'service':
+                    // Redirect ke menu service
+                    header("Location: service/index.php"); 
+                    break;
+                case 'karyawan':
+                    // Redirect ke dashboard karyawan
+                    header("Location: dasboardKaryawan/index.html"); 
+                    break;
+                case 'admin':
+                default:
+                    // Redirect ke dashboard admin
+                    header("Location: adminArtefax/index.html"); 
+                    break;
+            }
             exit;
         } else {
             $message = "Email atau password salah!";
@@ -61,7 +87,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
 }
 
 // ✅ Flush output buffer untuk halaman normal
-ob_end_flush();
+if (ob_get_level() > 0) {
+    ob_end_flush();
+}
 ?>
 
 <!DOCTYPE html>
@@ -97,23 +125,23 @@ ob_end_flush();
             <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
 
-        <!-- USER YANG SEDANG LOGIN + IKON PROFIL -->
         <div class="d-flex align-items-center gap-3">
-            <!-- Nama User -->
             <span class="text-black fw-medium">
-                Hi, <strong><?= htmlspecialchars($_SESSION['user']['UserNama'] ?? $_SESSION['user']['nama'] ?? 'User') ?></strong>
+                Hi, <strong><?= htmlspecialchars($_SESSION['user']['UserNama'] ?? 'Guest') ?></strong>
             </span>
 
-            <!-- Ikon Profil (klik ke profil.php) -->
             <a href="view/profil.php" title="Profil Saya">
                 <i class="bi bi-person-circle" style="font-size: 2.2rem; color: black;"></i>
             </a>
-        </div>
+            
+            <?php if (isset($_SESSION['user'])): ?>
+                <?php endif; ?>
+            
+            </div>
     </div>
 </header>
 
-     <!-- Hero Section -->
-    <main class="main">
+      <main class="main">
         <section id="hero" class="hero section">
             <div class="container">
                 <div class="row align-items-center">
@@ -126,7 +154,11 @@ ob_end_flush();
                                 dan multimedia yang inovatif, profesional, dan terintegrasi.
                             </p>
                             <div class="hero-actions justify-content-center justify-content-lg-start">
-                                <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
+                                <?php if (isset($_SESSION['user'])): ?>
+                                    <a href="Paket/Services.php" class="btn-primary scrollto">Pesan Sekarang</a>
+                                <?php else: ?>
+                                    <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -139,7 +171,6 @@ ob_end_flush();
             </div>
         </section>
 
-        <!-- Services Section -->
         <section id="services" class="services section">
             <div class="container section-title">
                 <h2>Layanan Kami</h2>
@@ -167,8 +198,7 @@ ob_end_flush();
         </section>
         </main>
     
-        <!-- Modal Login -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content overflow-hidden border-0" style="border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
           <div class="modal-header text-white text-center position-relative" style="background: linear-gradient(135deg, #5c99ee, #4c89de); padding: 2.5rem 1rem;">
@@ -179,10 +209,14 @@ ob_end_flush();
           </div>
           <div class="modal-body p-4">
             <?php if (!empty($message)): ?>
-              <div class="alert alert-danger alert-dismissible fade show">
-                <?= htmlspecialchars($message) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
+                <?php 
+                    // Tentukan class alert berdasarkan apakah itu sukses logout atau error login
+                    $alert_class = (isset($_GET['logout']) && $_GET['logout'] === 'success') ? 'alert-success' : 'alert-danger';
+                ?>
+                <div class="alert <?= $alert_class ?> alert-dismissible fade show">
+                    <?= htmlspecialchars($message) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             <?php endif; ?>
 
             <form method="POST" action="" novalidate>
@@ -190,20 +224,20 @@ ob_end_flush();
               
               <div class="mb-3">
                 <input type="email" name="email" class="form-control form-control-lg" 
-                       placeholder="Email" required autocomplete="email"
-                       value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
-                       style="font-size: 1.25rem;"> 
+                        placeholder="Email" required autocomplete="email"
+                        value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                        style="font-size: 1.25rem;"> 
               </div>
               
               <div class="mb-4">
                 <div class="password-wrapper position-relative">
                   <input type="password" name="password" id="modalPassword" class="form-control form-control-lg" 
-                         placeholder="Password" required autocomplete="current-password"
-                         style="font-size: 1.25rem; padding-right: 3.5rem;"> 
-                         
+                              placeholder="Password" required autocomplete="current-password"
+                              style="font-size: 1.25rem; padding-right: 3.5rem;"> 
+                              
                   <button type="button" class="btn toggle-password position-absolute end-0 top-50 translate-middle-y me-3" 
-                          onclick="toggleModalPass()" 
-                          style="padding: 0; width: 2.5rem; height: 100%; color: #6c757d;">
+                              onclick="toggleModalPass()" 
+                              style="padding: 0; width: 2.5rem; height: 100%; color: #6c757d;">
                     <i class="bi bi-eye" style="font-size: 1.5rem;"></i>
                   </button>
                 </div>
@@ -247,13 +281,14 @@ ob_end_flush();
             }
         }
         
-        // Tambahkan fungsi untuk menampilkan modal jika ada pesan error
-        <?php if (!empty($message)): ?>
+        // Tambahkan fungsi untuk menampilkan modal jika ada pesan error atau sukses logout
+        <?php if ($showModal): ?>
             var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
             loginModal.show();
         <?php endif; ?>
     </script>
-
+</body>
+</html>
   <!-- Akhir Modal -->
     <!-- End Services Section -->
 
