@@ -327,7 +327,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                         <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item active">
                         <a href="../form-laporan/LaporanPenugasan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>

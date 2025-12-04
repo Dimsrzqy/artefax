@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/paketjasa.php";
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/paketjasa.php";
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -11,7 +11,7 @@ $paket->IDPaket = (int)($_POST['id'] ?? 0);
  
 if ($paket->IDPaket <= 0) {
     $_SESSION['error_message'] = "ID layanan tidak valid.";
-    header("Location: form-layanan.php");
+    header("Location: form-paketjasa.php");
     exit;
 }
 
@@ -42,6 +42,6 @@ if ($paket->delete()) {
     $_SESSION['error_message'] = "Gagal menghapus layanan dari database.";
 }
 
-header("Location: form-layanan.php");
+header("Location: form-paketjasa.php");
 exit;
 ?>

@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/paketjasa.php";
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/paketjasa.php";
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -15,16 +15,16 @@ $gambarPath = null;
 if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
     $file = $_FILES['gambar'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+    $allowed = ['jpg'];
 
     if (!in_array($ext, $allowed)) {
-        $_SESSION['error_message'] = "Format gambar tidak didukung!";
-        header("Location: form-layanan.php"); exit;
+        $_SESSION['error_message'] = "Untuk format gambar yang diupload harus jpg!";
+        header("Location: form-paketjasa.php"); exit;
     }
 
     if ($file['size'] > 5 * 1024 * 1024) {
         $_SESSION['error_message'] = "Ukuran gambar maksimal 5MB!";
-        header("Location: form-layanan.php"); exit;
+        header("Location: form-paketjasa.php"); exit;
     }
 
     // Cari nomor urut terakhir
@@ -44,7 +44,7 @@ if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
         $gambarPath = $webPath . $newFilename;
     } else {
         $_SESSION['error_message'] = "Gagal upload gambar.";
-        header("Location: form-layanan.php"); exit;
+        header("Location: form-paketjasa.php"); exit;
     }
 }
 
@@ -63,6 +63,6 @@ if ($paket->create()) {
     $_SESSION['error_message'] = "Gagal menambahkan layanan.";
 }
 
-header("Location: form-layanan.php");
+header("Location: form-paketjasa.php");
 exit; 
 ?>
