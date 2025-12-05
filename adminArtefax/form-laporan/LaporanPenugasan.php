@@ -6,49 +6,54 @@ $db = new Database();
 $conn = $db->getConnection();
 $event = new EventAssignment($conn);
 
-/* ============== FILTER RENTANG TANGGAL ============== */
+// 1. Eksekusi update status event otomatis
+// Status event akan diupdate (Menunggu/Berjalan/Selesai) berdasarkan waktu server saat ini.
+$event->updateStatusOtomatis();
+
+/* ============== 2. FILTER RENTANG TANGGAL ============== */
 $start_date = $_GET['start_date'] ?? null;
 $end_date = $_GET['end_date'] ?? null;
 
 // Tentukan klausa WHERE berdasarkan filter
 $where_clauses = [];
-$params = [];
-$types = '';
+$params_filter = []; // Parameter hanya untuk filter (tipe string)
+$types_filter = '';
 
 if (!empty($start_date)) {
     $where_clauses[] = "e.EventTanggal >= ?";
-    $params[] = $start_date;
-    $types .= 's';
+    $params_filter[] = $start_date;
+    $types_filter .= 's';
 }
 if (!empty($end_date)) {
     $where_clauses[] = "e.EventTanggal <= ?";
-    $params[] = $end_date;
-    $types .= 's';
+    $params_filter[] = $end_date;
+    $types_filter .= 's';
 }
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-/* ============== PAGINASI ============== */
+/* ============== 3. PAGINASI ============== */
 $limit = 10;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-// 1. Hitung Total Event (dengan Filter)
+// 3.1. Hitung Total Event (dengan Filter)
 $total_sql = "SELECT COUNT(*) AS total FROM event e" . $where_sql;
 $total_stmt = $conn->prepare($total_sql);
 
-if ($types) {
-    $total_stmt->bind_param($types, ...$params);
+if ($types_filter) {
+    // Binding parameter filter
+    $total_stmt->bind_param($types_filter, ...$params_filter);
 }
 $total_stmt->execute();
 $totalRows = $total_stmt->get_result()->fetch_assoc()['total'];
 $totalPages = ceil($totalRows / $limit);
 $total_stmt->close();
 
-// 2. Ambil data event + karyawan (dengan Filter dan Paginasi)
+// 3.2. Ambil data event + karyawan (dengan Filter dan Paginasi)
 $sql = "
     SELECT e.*, 
-        GROUP_CONCAT(u.UserNama SEPARATOR ', ') AS Karyawan
+        GROUP_CONCAT(u.UserNama ORDER BY u.UserNama ASC SEPARATOR ', ') AS Karyawan
     FROM event e
     LEFT JOIN event_karyawan ek ON e.IDEvent = ek.IDEvent
     LEFT JOIN users u ON ek.IDKaryawan = u.IDUser
@@ -60,21 +65,20 @@ $sql = "
 
 $stmt = $conn->prepare($sql);
 
-// Gabungkan parameter filter dan paginasi
-$types .= 'ii';
-$params[] = $limit;
-$params[] = $offset;
+// Gabungkan parameter filter (tipe string) dan paginasi (tipe integer)
+$params_final = array_merge($params_filter, [$limit, $offset]);
+$types_final = $types_filter . 'ii'; // Tambahkan 'ii' untuk LIMIT dan OFFSET
 
-if ($types) {
-    // Perlu memisahkan jenis dan parameter untuk bind_param
-    $stmt->bind_param($types, ...$params);
+// Binding parameter: menggunakan unpack operator '...'
+if ($types_final) {
+    $stmt->bind_param($types_final, ...$params_final);
 }
 $stmt->execute();
 $result = $stmt->get_result();
 
 // Nilai yang ditampilkan di input filter
 $displayStartDate = $_GET['start_date'] ?? '';
-$displayEndDate  = $_GET['end_date'] ?? '';
+$displayEndDate = $_GET['end_date'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -217,7 +221,6 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             text-align: center;
             vertical-align: middle;
             border: none;
-            /* Tambahkan ini agar border-radius berfungsi */
         }
 
         .custom-table tbody td {
@@ -236,21 +239,18 @@ $displayEndDate  = $_GET['end_date'] ?? '';
         }
 
         /* Status Badge */
-        .status-baru,
-        .status-new {
-            color: #0d6efd;
+        .status-menunggu {
+            color: #0d6efd; /* Blue */
             font-weight: 700;
         }
 
-        .status-proses,
-        .status-progress {
-            color: #ffc107;
+        .status-berjalan {
+            color: #ffc107; /* Yellow/Orange */
             font-weight: 700;
         }
 
-        .status-selesai,
-        .status-completed {
-            color: #0a8f1f;
+        .status-selesai {
+            color: #0a8f1f; /* Green */
             font-weight: 700;
         }
 
@@ -312,7 +312,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             right: 0;
             z-index: 1040;
             background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
         body {
@@ -321,21 +321,25 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 
         .az-content-left {
             position: fixed;
-            top: 70px; /* Di bawah header */
+            top: 70px;
+            /* Di bawah header */
             bottom: 0;
             z-index: 1020;
             overflow-y: auto;
             background-color: #fff;
             padding-top: 30px !important;
         }
+
         .az-content-left .component-item {
             padding-top: 10px;
         }
+
         .az-content-left .component-item label {
             margin-top: 15px;
             margin-bottom: 10px;
             display: block;
         }
+
         .az-content-left .component-item label:first-child {
             margin-top: 0;
         }
@@ -385,7 +389,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                         <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../form-laporan/LaporanPenugasan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+                        <a href="LaporanPenugasan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                     <li class="nav-item">
                         <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -415,28 +419,28 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                     <div class="dropdown-menu">
                     </div>
                 </div>
-                        <div class="dropdown az-profile-menu">
-                            <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown">
-                                <img src="../img/faces/face1.jpg" alt="">
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right">
-                                <div class="az-dropdown-header d-sm-none">
-                                    <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-                                </div>
-
-                                <div class="az-header-profile">
-                                    <div class="az-img-user">
-                                        <img src="../img/faces/face1.jpg" alt="">
-                                    </div>
-                                    <h6>Hello, User</h6>
-                                    <span>Role Karyawan</span>
-                                </div>
-
-                                <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                                <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                                <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-                            </div>
+                <div class="dropdown az-profile-menu">
+                    <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown">
+                        <img src="../img/faces/face1.jpg" alt="">
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right">
+                        <div class="az-dropdown-header d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
+
+                        <div class="az-header-profile">
+                            <div class="az-img-user">
+                                <img src="../img/faces/face1.jpg" alt="">
+                            </div>
+                            <h6>Hello, User</h6>
+                            <span>Role Karyawan</span>
+                        </div>
+
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
+                </div>
 
             </div>
         </div>
@@ -492,7 +496,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                                 </a>
                             </div>
 
-                            <?php if ($displayStartDate || $displayEndDate): ?>
+                            <?php if ($displayStartDate || $displayEndDate) : ?>
                                 <div>
                                     <a href="LaporanPenugasan.php" class="btn btn-secondary">
                                         <i class="typcn typcn-refresh"></i> Reset
@@ -517,7 +521,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 
                     <tbody>
                         <?php
-                        if ($result->num_rows === 0) {
+                        if ($totalRows === 0) {
                             $colSpan = 7;
                             if (!empty($displayStartDate) || !empty($displayEndDate)) {
                                 echo "<tr><td colspan='{$colSpan}' class='text-center py-5'>Tidak ada penugasan pada rentang tanggal tersebut.</td></tr>";
@@ -528,19 +532,20 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                             $no = $offset + 1;
                             while ($row = $result->fetch_assoc()) {
                                 $tanggal = (new DateTime($row['EventTanggal']))->format('d/m/Y');
-                                $waktu  = $row['EventMulai'] . " - " . $row['EventSelesai'];
+                                // Mengambil hanya HH:MM dari H:i:s
+                                $waktu = substr($row['EventMulai'], 0, 5) . " - " . substr($row['EventSelesai'], 0, 5);
                                 $status = strtolower($row['EventStatus']);
 
                                 echo "
                             <tr>
                                 <td data-label='No'>$no</td>
-                                <td data-label='Nama Event'><strong>{$row['EventNama']}</strong></td>
-                                <td data-label='Lokasi'>{$row['EventLokasi']}</td>
+                                <td data-label='Nama Event'><strong>" . htmlspecialchars($row['EventNama']) . "</strong></td>
+                                <td data-label='Lokasi'>" . htmlspecialchars($row['EventLokasi']) . "</td>
                                 <td data-label='Tanggal'>$tanggal</td>
                                 <td data-label='Waktu'>$waktu</td>
-                                <td data-label='Karyawan'>{$row['Karyawan']}</td>
+                                <td data-label='Karyawan'>" . htmlspecialchars($row['Karyawan']) . "</td>
                                 <td data-label='Status' class='status-{$status}'>
-                                    {$row['EventStatus']}
+                                    " . htmlspecialchars($row['EventStatus']) . "
                                 </td>
                             </tr>";
                                 $no++;

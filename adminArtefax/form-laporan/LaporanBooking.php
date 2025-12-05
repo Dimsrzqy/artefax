@@ -4,13 +4,15 @@ require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/Booking.php"; // Menggunakan Class Booking
 
 $db = new Database();
-// Menggunakan koneksi mysqli
 $conn = $db->getConnection();
-// Class Booking akan otomatis menjalankan update status Selesai
-$bookingCls = new Booking($conn); 
+// Class Booking akan otomatis menjalankan update status Selesai di constructor
+$bookingCls = new Booking($conn);
 
-// Status yang akan ditampilkan: Selesai DAN Batal
-$statusFilterArr = ['Selesai', 'Batal'];
+// 🛑 PERUBAHAN UTAMA: Status yang akan ditampilkan (Diterima, Selesai, Gagal/Batal)
+$statusFilterArr = ['Diterima', 'Selesai', 'Gagal']; // <<<--- STATUS FILTER DIUBAH
+// Jika status pembatalan di database Anda adalah 'Batal', ganti 'Gagal' menjadi 'Batal'.
+
+// Menggunakan real_escape_string dan implode untuk mengamankan status list
 $statusFilterSql = "'" . implode("','", array_map([$conn, 'real_escape_string'], $statusFilterArr)) . "'";
 
 /* ============== FILTER TANGGAL ============== */
@@ -40,7 +42,6 @@ try {
 $limit = 10;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
-
 // --- Dapatkan Total Data ---
 $totalRows = 0;
 
@@ -48,34 +49,30 @@ $totalSql = "SELECT COUNT(*) as total FROM booking WHERE BkgStatus IN ($statusFi
 $totalParams = [];
 $totalTypes = '';
 
-if ($queryStartDate && $queryEndDate) {
-    $totalSql .= " AND BkgTglSelesai >= ? AND BkgTglSelesai <= ?";
+if ($queryStartDate) {
+    $totalSql .= " AND BkgTglSelesai >= ?";
     $totalParams[] = $queryStartDate;
+    $totalTypes .= 's';
+}
+if ($queryEndDate) {
+    $totalSql .= " AND BkgTglSelesai <= ?";
     $totalParams[] = $queryEndDate;
-    $totalTypes .= 'ss';
+    $totalTypes .= 's';
 }
 
 $totalQuery = $conn->prepare($totalSql);
 
 if ($totalQuery) {
-    // Solusi untuk Warning bind_param (menggunakan referensi)
     if (!empty($totalParams)) {
-        $totalBindParams = array_merge([$totalTypes], $totalParams);
-        $totalRefs = [];
-        foreach ($totalBindParams as $key => $value) {
-            $totalRefs[$key] = &$totalBindParams[$key];
-        }
-        call_user_func_array([$totalQuery, 'bind_param'], $totalRefs);
+        $totalQuery->bind_param($totalTypes, ...$totalParams);
     }
     
-
     if ($totalQuery->execute()) {
-        $result = $totalQuery->get_result();
-        $totalRows = $result->fetch_assoc()['total'];
+        $resultTotal = $totalQuery->get_result();
+        $totalRows = $resultTotal->fetch_assoc()['total'];
     }
     $totalQuery->close();
 }
-
 
 $totalPages = ceil($totalRows / $limit);
 
@@ -89,7 +86,7 @@ if ($totalRows == 0) $offset = 0;
 // --- Dapatkan Daftar Booking ---
 $dataBooking = [];
 
-$sql = "SELECT 
+$sql = "SELECT
             b.IDBooking, b.BkgTglMulai, b.BkgTglSelesai, b.BkgTotalHarga, b.BkgStatus,
             u.UserNama,
             bd.BkgDetailJenis, pj.PaketNama, a.AlatNama
@@ -98,16 +95,20 @@ $sql = "SELECT
         LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
         LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
         LEFT JOIN alat a ON bd.IDAlat = a.IDAlat
-        WHERE b.BkgStatus IN ($statusFilterSql) "; // Menggunakan operator IN
+        WHERE b.BkgStatus IN ($statusFilterSql)";
 
 $params = [];
 $types = '';
 
-if ($queryStartDate && $queryEndDate) {
-    $sql .= " AND b.BkgTglSelesai >= ? AND b.BkgTglSelesai <= ?";
+if ($queryStartDate) {
+    $sql .= " AND b.BkgTglSelesai >= ?";
     $params[] = $queryStartDate;
+    $types .= 's';
+}
+if ($queryEndDate) {
+    $sql .= " AND b.BkgTglSelesai <= ?";
     $params[] = $queryEndDate;
-    $types .= 'ss';
+    $types .= 's';
 }
 
 $sql .= " ORDER BY b.BkgTglSelesai DESC LIMIT ? OFFSET ?";
@@ -117,14 +118,8 @@ $types .= 'ii';
 
 $stmt = $conn->prepare($sql);
 if ($stmt) {
-    $bindParams = array_merge([$types], $params);
-    $refs = [];
-    foreach ($bindParams as $key => $value) {
-        $refs[$key] = &$bindParams[$key];
-    }
-    // Perbaikan binding
-    if (!empty($params) || $types === 'ii') { // Bind harus selalu dilakukan jika ada LIMIT/OFFSET
-        call_user_func_array([$stmt, 'bind_param'], $refs);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
     }
 
     $stmt->execute();
@@ -146,8 +141,8 @@ function format_tanggal($dateString)
 
 // Data User untuk Header
 $loggedInUser = [
-    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
-    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+    'UserNama' => $_SESSION['UserNama'] ?? 'Admin',
+    'UserRole' => $_SESSION['UserRole'] ?? 'Administrator',
 ];
 $defaultProfileImage = '../img/faces/face1.jpg';
 ?>
@@ -165,10 +160,12 @@ $defaultProfileImage = '../img/faces/face1.jpg';
     <link rel="stylesheet" href="../css/azia.css">
 
     <style>
+        /* CSS yang sudah ada */
         /* --- FIXED LAYOUT --- */
         .az-body {
             padding-top: 70px !important;
         }
+
         .az-header {
             position: fixed;
             top: 0;
@@ -178,33 +175,40 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             background-color: #fff;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         .az-content-left {
             position: fixed;
-            top: 70px; /* Di bawah header */
+            top: 70px;
+            /* Di bawah header */
             bottom: 0;
             z-index: 1020;
             overflow-y: auto;
             background-color: #fff;
             padding-top: 30px !important;
         }
+
         .az-content-left .component-item {
             padding-top: 10px;
         }
+
         .az-content-left .component-item label {
             margin-top: 15px;
             margin-bottom: 10px;
             display: block;
         }
+
         .az-content-left .component-item label:first-child {
             margin-top: 0;
         }
-        
+
         @media (min-width: 992px) {
             .az-content-body {
                 padding-top: 0 !important;
-                margin-left: 240px !important; /* Memberi ruang untuk sidebar */
+                margin-left: 240px !important;
+                /* Memberi ruang untuk sidebar */
             }
         }
+
         @media (max-width: 991.98px) {
             .az-content-left {
                 position: static;
@@ -212,15 +216,17 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 bottom: auto;
                 overflow-y: visible;
             }
+
             .az-content-body {
                 margin-left: 0 !important;
             }
+
             .az-body {
                 padding-top: 70px !important;
             }
         }
 
-        /* CSS yang sudah ada... */
+        /* CSS Tabel */
         .custom-table {
             width: 100%;
             border-collapse: separate;
@@ -261,7 +267,15 @@ $defaultProfileImage = '../img/faces/face1.jpg';
         }
 
         /* Badge Status */
-        .badge-sukses,
+        .status-diterima {
+            background: #fff3cd;
+            color: #856404;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .8rem;
+            display: inline-block;
+        }
         .status-selesai {
             background: #d4edda;
             color: #155724;
@@ -271,8 +285,9 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             font-size: .8rem;
             display: inline-block;
         }
-        /* Tambahan CSS untuk status Batal */
-        .status-batal { 
+        
+        .status-gagal,
+        .status-batal {
             background: #f8d7da;
             color: #721c24;
             padding: 6px 12px;
@@ -395,6 +410,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 width: 100% !important;
             }
         }
+
         .pagination .page-link {
             min-width: 40px;
             text-align: center;
@@ -443,10 +459,10 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu"> 
-                        </div>
+                    <div class="dropdown-menu">
+                    </div>
                 </div>
-                
+
                 <div class="dropdown az-profile-menu">
                     <a href="#" class="az-img-user" id="dropdownMenuProfile" data-toggle="dropdown" aria-expanded="false">
                         <img src="<?= $defaultProfileImage ?>" alt="">
@@ -469,7 +485,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
-                </div>
+            </div>
         </div>
     </div>
 
@@ -492,7 +508,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                     <span>Laporan</span>
                     <span>Booking</span>
                 </div>
-                <h2 class="az-content-title">Daftar Booking Selesai & Dibatalkan</h2>
+                <h2 class="az-content-title">Daftar Booking (Diterima, Selesai, Gagal)</h2>
 
                 <div class="filter-wrapper">
                     <form method="GET">
@@ -524,7 +540,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                 </a>
                             </div>
 
-                            <?php if ($displayStartDate || $displayEndDate): ?>
+                            <?php if ($displayStartDate || $displayEndDate) : ?>
                                 <div>
                                     <a href="LaporanBooking.php" class="btn btn-secondary">
                                         <i class="typcn typcn-refresh"></i> Reset
@@ -536,15 +552,15 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 </div>
 
                 <small class="text-muted d-block" style="margin-bottom: 5px;">
-                    Menampilkan booking dengan status **Selesai** atau **Batal**
-                    <?php if ($displayStartDate && $displayEndDate): ?>
+                    Menampilkan booking dengan status **Diterima**, **Selesai**, atau **Gagal**
+                    <?php if ($displayStartDate && $displayEndDate) : ?>
                         dari **<?= format_tanggal($displayStartDate) ?>** sampai **<?= format_tanggal($displayEndDate) ?>**
                     <?php endif; ?>
 
                 </small>
 
                 <div class="table-responsive">
-                    <?php if (!empty($dataBooking)): ?>
+                    <?php if (!empty($dataBooking)) : ?>
                         <table class="table custom-table">
                             <thead>
                                 <tr>
@@ -560,7 +576,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                             </thead>
                             <tbody>
                                 <?php $no = $offset + 1;
-                                foreach ($dataBooking as $d):
+                                foreach ($dataBooking as $d) :
                                     // Tentukan nama paket/alat
                                     $detailLayanan = '';
                                     if (!empty($d['PaketNama'])) {
@@ -573,9 +589,14 @@ $defaultProfileImage = '../img/faces/face1.jpg';
 
                                     // Ambil Jenis dari kolom yang benar (BkgDetailJenis)
                                     $jenisBooking = htmlspecialchars($d['BkgDetailJenis'] ?? '—');
-                                    
+
                                     // Tentukan class badge
-                                    $statusClass = (strtolower($d['BkgStatus']) === 'batal') ? 'status-batal' : 'status-selesai';
+                                    $statusLower = strtolower($d['BkgStatus']);
+                                    $statusClass = 'status-' . $statusLower;
+                                    // Handle 'Batal' jika Anda menggunakan 'Gagal' di filter tapi 'Batal' di database
+                                    if ($statusLower === 'batal') {
+                                        $statusClass = 'status-gagal'; // Menggunakan style 'gagal' untuk 'batal'
+                                    }
                                 ?>
                                     <tr>
                                         <td><?= $no++ ?></td>
@@ -592,10 +613,10 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         </table>
 
                         <div class="text-center text-muted small mt-3">
-                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Selesai/Batal
+                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Diterima/Selesai/Gagal
                         </div>
 
-                        <?php if ($totalPages > 1): ?>
+                        <?php if ($totalPages > 1) : ?>
                             <nav class="mt-4">
                                 <ul class="pagination justify-content-center">
                                     <?php
@@ -623,7 +644,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                         }
                                     }
 
-                                    for ($i = $start_loop; $i <= $end_loop; $i++):
+                                    for ($i = $start_loop; $i <= $end_loop; $i++) :
                                         $active = ($i == $page) ? "active" : "";
                                     ?>
                                         <li class="page-item <?= $active ?>">
@@ -650,9 +671,9 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                             </nav>
                         <?php endif; ?>
 
-                    <?php else: ?>
+                    <?php else : ?>
                         <div class="text-center py-5">
-                            <p class="text-muted">Tidak ada transaksi **Selesai** atau **Batal** pada periode ini.</p>
+                            <p class="text-muted">Tidak ada transaksi **Diterima**, **Selesai**, atau **Gagal** pada periode ini.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -668,13 +689,6 @@ $defaultProfileImage = '../img/faces/face1.jpg';
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const exportButton = document.querySelector('a.btn-success');
-            if (exportButton) {
-                exportButton.addEventListener('click', function(e) {
-                    // Biarkan browser mengunduh file secara default
-                });
-            }
-
             // Inisialisasi menu toggle untuk mobile
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
@@ -687,6 +701,9 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 $('.az-header-menu').removeClass('show');
                 $('#azMenuShow').removeClass('open');
             });
+
+            // Inisialisasi dropdown profile
+            $('.dropdown-toggle').dropdown();
         });
     </script>
 

@@ -1,5 +1,5 @@
 <?php
-// File: profil.php → FINAL CODE LENGKAP & KONSISTEN (HANYA DIPERBAIKI 2 MASALAH)
+// File: profil.php → FINAL CODE LENGKAP & KONSISTEN (DENGAN MODAL LOGOUT)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -44,9 +44,9 @@ try {
     $userData = $result->fetch_assoc();
     
     if (!$userData) {
-         session_destroy();
-         header("Location: login.php?error=user_not_found");
-         exit();
+          session_destroy();
+          header("Location: login.php?error=user_not_found");
+          exit();
     }
     
     // Update session dengan data terbaru
@@ -228,10 +228,10 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         /* PERBAIKAN UTAMA: BUTTON GROUP & MOBILE */
         .button-group {
             display: flex;
-            gap: 20px;                  /* jarak lebih lega */
+            gap: 20px;
             justify-content: flex-end;
             margin-top: 40px;
-            flex-wrap: wrap;            /* biar tidak jebol di mobile */
+            flex-wrap: wrap;
         }
 
         /* Desktop: tetap horizontal */
@@ -279,24 +279,79 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         .info-text { font-size: 12px; color: var(--light-text); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
         .phone-masked { font-family: 'Courier New', monospace; letter-spacing: 2px; }
 
-        /* NAVBAR MOBILE FIX */
+        /* 🛑 PERBAIKAN UTAMA STYLING NAVBAR MOBILE */
+        
+        /* Wrapper yang menampung Logo, Hi User, dan Toggler */
+        .navbar-brand-wrapper {
+            display: flex;
+            align-items: center;
+            /* Memisahkan Logo (kiri) dan Mobile Controls (kanan) */
+            justify-content: space-between; 
+            width: 100%;
+        }
+
+        /* Wrapper Baru untuk menampung Hi User dan Toggler (di mode mobile) */
+        .mobile-controls-wrapper {
+            display: none; /* Default: Sembunyi di desktop */
+            align-items: center;
+            gap: 15px; /* Jarak antara Hi User dan Toggler (membuat Hi User di kiri toggler) */
+        }
+
+        /* Text Hi, User di mobile */
+        .navbar-text-mobile {
+            color: white !important;
+            font-size: 0.875rem; /* small */
+            font-weight: 500;
+        }
+
+        /* Text Hi, User untuk Desktop (Di dalam Collapse) */
+        .navbar-text-desktop {
+            display: inline !important; /* Default: Tampil di desktop */
+        }
+        
+        /* 4. Aturan Khusus untuk MOBILE (Layar Lebar < 992px) */
         @media (max-width: 991.98px) {
+            /* Tampilkan wrapper mobile controls */
+            .mobile-controls-wrapper {
+                display: flex; 
+            }
+            
+            /* Sembunyikan Hi User Desktop */
+            .navbar-text-desktop {
+                display: none !important; 
+            }
+            
+            /* Perataan elemen di dalam collapse (menu yang dibuka) untuk mobile */
             .navbar .d-flex.align-items-center.gap-3 {
                 flex-direction: column;
                 width: 100%;
                 margin-top: 1rem;
                 gap: 12px !important;
+                align-items: stretch !important;
             }
-            .navbar .text-white.small {
-                text-align: center;
-                width: 100%;
-            }
+
             .navbar .btn-riwayat,
             .navbar .btn-logout-red {
                 width: 100%;
                 justify-content: center;
             }
         }
+
+        /* 5. Aturan Khusus untuk DESKTOP (Layar Lebar >= 992px) */
+        @media (min-width: 992px) {
+             /* Sembunyikan mobile controls wrapper */
+             .mobile-controls-wrapper {
+                display: none;
+            }
+             .navbar-text-desktop {
+                display: inline !important; /* Tampil di desktop */
+            }
+            /* Menghapus wrapper agar layout desktop tetap standar Bootstrap */
+            .navbar-brand-wrapper {
+                display: contents; 
+            }
+        }
+
 
         .toast {
             position: fixed; top: 20px; right: 20px; background: var(--status-diterima-bg); 
@@ -324,26 +379,55 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* STYLING MODAL LOGOUT MINIMALIS BARU */
+        .modal-header-minimal {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .modal-title-minimal {
+            font-weight: 600;
+            color: var(--heading-color);
+        }
+        .modal-body-minimal {
+            padding-top: 0;
+            padding-bottom: 2rem;
+            text-align: center;
+        }
+        .modal-icon-minimal {
+            color: #6c757d; /* Warna abu-abu netral */
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .modal-footer-minimal {
+            border-top: none;
+        }
     </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark shadow fixed-top">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="../index.php" style="font-family: 'Questrial', sans-serif;">Artefax</a>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <div class="navbar-brand-wrapper">
+            <a class="navbar-brand fw-bold" href="../index.php" style="font-family: 'Questrial', sans-serif;">Artefax</a>
+            
+            <div class="mobile-controls-wrapper">
+                <span class="navbar-text-mobile">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?></strong></span>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+        </div>
 
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-white small">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?></strong></span>
+                <span class="text-white small navbar-text-desktop">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?></strong></span>
                 
                 <a href="../RiwayatBooking.php" class="btn btn-sm btn-riwayat d-inline-flex align-items-center gap-2">
                     <i class="bi bi-clock-history"></i> Riwayat Pemesanan
                 </a>
                 
-                <a href="../logout.php" class="btn btn-sm btn-logout-red d-inline-flex align-items-center gap-2">
+                <a href="javascript:void(0);" onclick="showLogoutModal();" class="btn btn-sm btn-logout-red d-inline-flex align-items-center gap-2">
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </a>
             </div>
@@ -415,7 +499,6 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     </div>
                 </div>
 
-                <!-- BUTTON GROUP YANG SUDAH DIPERBAIKI JARAK & MOBILE -->
                 <div class="button-group">
                     <div class="view-mode-controls">
                         <a href="reset_password.php" class="btn btn-warning btn-action" style="text-decoration: none;">
@@ -439,6 +522,25 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
     </div>
 
     <div class="toast" id="toast"></div>
+    
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header modal-header-minimal">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body modal-body-minimal">
+                    <i class="bi bi-box-arrow-right modal-icon-minimal"></i>
+                    <h5 class="modal-title-minimal mb-2" id="logoutConfirmModalLabel">Konfirmasi Logout</h5>
+                    <p class="text-muted mb-0 small">Apakah Anda yakin ingin mengakhiri sesi?</p>
+                </div>
+                <div class="modal-footer modal-footer-minimal justify-content-center pt-0 pb-3">
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Batal</button>
+                    <a id="confirmLogoutButton" href="../logout.php" class="btn btn-danger">Ya, Keluar</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -456,6 +558,12 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 address: document.getElementById('userAddress').value
             };
         });
+
+        // FUNGSI BARU: Menampilkan modal konfirmasi logout
+        function showLogoutModal() {
+            const logoutModal = new bootstrap.Modal(document.getElementById('logoutConfirmModal'));
+            logoutModal.show();
+        }
 
         document.getElementById('photoInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -514,8 +622,8 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
             }
 
             if (photoChanged) {
-                 location.reload(); 
-                 return; 
+                location.reload(); 
+                return; 
             }
 
             document.getElementById('profileForm').classList.remove('edit-mode');
@@ -572,10 +680,10 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                 body: formData
             })
             .then(response => {
-                 if (!response.ok) {
+                if (!response.ok) {
                     throw new Error('Server returned ' + response.status);
-                 }
-                 return response.json();
+                }
+                return response.json();
             })
             .then(data => {
                 document.getElementById('loading').style.display = 'none';

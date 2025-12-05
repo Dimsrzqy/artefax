@@ -5,18 +5,18 @@
 class Booking
 {
     private $conn;
-    private $table_booking        = 'booking';
-    private $table_booking_detail = 'booking_detail';
-    private $table_event          = 'event'; 
-    private $table_users          = 'users'; 
+    private $table_booking          = 'booking';
+    private $table_booking_detail   = 'booking_detail';
+    private $table_event            = 'event';
+    private $table_users            = 'users';
 
     public function __construct($db)
     {
         if (!$db instanceof mysqli) {
-             throw new Exception("Koneksi database tidak valid.");
+            throw new Exception("Koneksi database tidak valid.");
         }
 
-        $this->conn = $db; 
+        $this->conn = $db;
         $this->conn->set_charset("utf8mb4");
 
         // --- FITUR BARU: Auto-update status booking jadi Selesai ---
@@ -26,39 +26,24 @@ class Booking
     /**
      * OTOMATIS UBAH STATUS BOOKING JADI "Selesai"
      * Booking berubah menjadi selesai jika waktu NOW sudah melewati BkgTglSelesai
-     * Mendukung format DATETIME, DATE, maupun string custom.
      */
     public function updateStatusSelesaiOtomatis()
     {
-        // CASE 1: Jika BkgTglSelesai adalah DATETIME → langsung dibandingkan dengan NOW()
-        $query1 = "
+        // Logika gabungan untuk menutupi berbagai format kolom BkgTglSelesai (DATE/DATETIME)
+        $query = "
             UPDATE {$this->table_booking}
             SET BkgStatus = 'Selesai'
             WHERE BkgStatus = 'Diterima'
               AND BkgTglSelesai IS NOT NULL
-              AND BkgTglSelesai < NOW()
+              -- Memastikan NOW() sudah melewati BkgTglSelesai, 
+              -- Menggunakan DATE_ADD untuk memastikan bahwa jika BkgTglSelesai hanya DATE, 
+              -- kita membandingkannya dengan akhir hari (23:59:59)
+              AND (
+                  STR_TO_DATE(BkgTglSelesai, '%Y-%m-%d %H:%i:%s') < NOW() OR 
+                  DATE_ADD(BkgTglSelesai, INTERVAL '23:59:59' HOUR_SECOND) < NOW()
+              )
         ";
-        $this->conn->query($query1);
-
-        // CASE 2: Jika BkgTglSelesai hanya DATE (YYYY-MM-DD)
-        $query2 = "
-            UPDATE {$this->table_booking}
-            SET BkgStatus = 'Selesai'
-            WHERE BkgStatus = 'Diterima'
-              AND BkgTglSelesai IS NOT NULL
-              AND LENGTH(BkgTglSelesai) = 10
-              AND CONCAT(BkgTglSelesai, ' 23:59:59') < NOW()
-        ";
-        $this->conn->query($query2);
-
-        // CASE 3: Fallback untuk format campuran
-        $query3 = "
-            UPDATE {$this->table_booking}
-            SET BkgStatus = 'Selesai'
-            WHERE BkgStatus = 'Diterima'
-              AND STR_TO_DATE(BkgTglSelesai, '%Y-%m-%d %H:%i:%s') < NOW()
-        ";
-        $this->conn->query($query3);
+        $this->conn->query($query);
     }
 
 
@@ -74,7 +59,7 @@ class Booking
         // 1. Ambil detail booking
         $stmt_bkg = $this->conn->prepare("
             SELECT BkgTglMulai, BkgTglSelesai, BkgAlamat
-            FROM {$this->table_booking} 
+            FROM {$this->table_booking}
             WHERE IDBooking = ? AND BkgStatus = 'Diterima'
         ");
         $stmt_bkg->bind_param("i", $IDBooking);
@@ -103,22 +88,22 @@ class Booking
         $EventDeskripsi = "Lokasi: " . $booking_data['BkgAlamat'];
         $EventTglMulai = $booking_data['BkgTglMulai'];
         $EventTglSelesai = $booking_data['BkgTglSelesai'];
-        
+
         $stmt = $this->conn->prepare("
-            INSERT INTO {$this->table_event} 
+            INSERT INTO {$this->table_event}
             (IDUser, IDBooking, EventJudul, EventDeskripsi, EventTglMulai, EventTglSelesai)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
-        
-        $stmt->bind_param("iissss", 
-            $IDKaryawan, 
-            $IDBooking, 
-            $EventJudul, 
-            $EventDeskripsi, 
-            $EventTglMulai, 
+
+        $stmt->bind_param("iissss",
+            $IDKaryawan,
+            $IDBooking,
+            $EventJudul,
+            $EventDeskripsi,
+            $EventTglMulai,
             $EventTglSelesai
         );
-        
+
         $success = $stmt->execute();
         $stmt->close();
 
@@ -143,7 +128,7 @@ class Booking
         $limit  = (int)$limit;
         $offset = (int)$offset;
 
-        $query = "SELECT 
+        $query = "SELECT
                       b.*,
                       u.UserNama,
                       pj.PaketNama,
