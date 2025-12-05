@@ -1,17 +1,32 @@
 <?php
 // Ganti nama file ini menjadi LaporanBooking.php
+session_start();
+
+// --- START: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+// VERIFIKASI LOGIN
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path relatif dari /adminArtefax/form-laporan/LaporanBooking.php ke /adminArtefax/view/login.php
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+
 require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/Booking.php"; // Menggunakan Class Booking
+require_once __DIR__ . "/../../class/booking.php"; // Menggunakan Class Booking
 
 $db = new Database();
 $conn = $db->getConnection();
 // Class Booking akan otomatis menjalankan update status Selesai di constructor
 $bookingCls = new Booking($conn);
 
-// 🛑 PERUBAHAN UTAMA: Status yang akan ditampilkan (Diterima, Selesai, Gagal/Batal)
-$statusFilterArr = ['Diterima', 'Selesai', 'Gagal']; // <<<--- STATUS FILTER DIUBAH
-// Jika status pembatalan di database Anda adalah 'Batal', ganti 'Gagal' menjadi 'Batal'.
-
+// 🛑 Status yang akan ditampilkan (Diterima, Selesai, Gagal/Batal)
+$statusFilterArr = ['Diterima', 'Selesai', 'Gagal', 'Batal'];
 // Menggunakan real_escape_string dan implode untuk mengamankan status list
 $statusFilterSql = "'" . implode("','", array_map([$conn, 'real_escape_string'], $statusFilterArr)) . "'";
 
@@ -428,45 +443,61 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
-                    <li class="nav-item"><a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a></li>
-                    <li class="nav-item"><a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a></li>
-                    <li class="nav-item"><a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a></li>
-                    <li class="nav-item"><a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
-                    <li class="nav-item active"><a href="LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a></li>
                     <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                 </ul>
             </div>
             <div class="az-header-right">
                 <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
                 <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
+                <div class="az-header-message">
+                    <a href="#"><i class="typcn typcn-messages"></i></a>
+                </div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
                     <div class="dropdown-menu">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <h6 class="az-notification-title">Notifications</h6>
+                        <p class="az-notification-text">You have 2 unread notification</p>
+                        <div class="az-notification-list">
+                            <div class="media new">
+                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
+                                    <span>Mar 15 12:32pm</span>
+                                </div>
+                            </div>
+                            <div class="media new">
+                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
+                                    <span>Mar 13 04:16am</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
                 </div>
-
                 <div class="dropdown az-profile-menu">
-                    <a href="#" class="az-img-user" id="dropdownMenuProfile" data-toggle="dropdown" aria-expanded="false">
-                        <img src="<?= $defaultProfileImage ?>" alt="">
-                    </a>
+                    <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header mg-b-20 d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -478,11 +509,8 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
@@ -508,7 +536,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                     <span>Laporan</span>
                     <span>Booking</span>
                 </div>
-                <h2 class="az-content-title">Daftar Booking (Diterima, Selesai, Gagal)</h2>
+                <h2 class="az-content-title">Daftar Booking</h2>
 
                 <div class="filter-wrapper">
                     <form method="GET">
@@ -536,7 +564,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                 $link = http_build_query($exportParams);
                                 ?>
                                 <a href="export_booking_excel.php?<?= $link ?>" class="btn btn-success">
-                                    <i class="fas fa-file-excel"></i> Export Excel
+                                    <i class="fas fa-file-excel"></i> Export CSV
                                 </a>
                             </div>
 
@@ -552,11 +580,10 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 </div>
 
                 <small class="text-muted d-block" style="margin-bottom: 5px;">
-                    Menampilkan booking dengan status **Diterima**, **Selesai**, atau **Gagal**
+                    Menampilkan booking dengan status **Diterima**, **Selesai**, **Gagal**, atau **Batal**
                     <?php if ($displayStartDate && $displayEndDate) : ?>
                         dari **<?= format_tanggal($displayStartDate) ?>** sampai **<?= format_tanggal($displayEndDate) ?>**
                     <?php endif; ?>
-
                 </small>
 
                 <div class="table-responsive">
@@ -570,7 +597,6 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                     <th>Detail Layanan</th>
                                     <th>Tgl Mulai</th>
                                     <th>Tgl Selesai</th>
-                                    <th>Total Harga</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -593,9 +619,9 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                     // Tentukan class badge
                                     $statusLower = strtolower($d['BkgStatus']);
                                     $statusClass = 'status-' . $statusLower;
-                                    // Handle 'Batal' jika Anda menggunakan 'Gagal' di filter tapi 'Batal' di database
-                                    if ($statusLower === 'batal') {
-                                        $statusClass = 'status-gagal'; // Menggunakan style 'gagal' untuk 'batal'
+                                    // Handle 'Batal' jika menggunakan style 'gagal'
+                                    if ($statusLower === 'batal' || $statusLower === 'gagal') {
+                                        $statusClass = 'status-gagal'; 
                                     }
                                 ?>
                                     <tr>
@@ -605,7 +631,6 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                         <td><?= $detailLayanan ?></td>
                                         <td><?= format_tanggal($d['BkgTglMulai']) ?></td>
                                         <td><?= format_tanggal($d['BkgTglSelesai']) ?></td>
-                                        <td>Rp <?= number_format($d['BkgTotalHarga'], 0, ',', '.') ?></td>
                                         <td><span class="<?= $statusClass ?>"><?= htmlspecialchars($d['BkgStatus']) ?></span></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -613,7 +638,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         </table>
 
                         <div class="text-center text-muted small mt-3">
-                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Diterima/Selesai/Gagal
+                            Halaman **<?= $page ?>** dari **<?= $totalPages ?>** | Total **<?= $totalRows ?>** transaksi Diterima/Selesai/Gagal/Batal
                         </div>
 
                         <?php if ($totalPages > 1) : ?>
@@ -673,7 +698,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
 
                     <?php else : ?>
                         <div class="text-center py-5">
-                            <p class="text-muted">Tidak ada transaksi **Diterima**, **Selesai**, atau **Gagal** pada periode ini.</p>
+                            <p class="text-muted">Tidak ada transaksi **Diterima**, **Selesai**, **Gagal**, atau **Batal** pada periode ini.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -686,24 +711,75 @@ $defaultProfileImage = '../img/faces/face1.jpg';
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/popper.js/popper.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/azia.js"></script> 
 
     <script>
+        // --- VANILLA JS TOGGLE (FUNGSI MURNI UNTUK BYPASS KONFLIK JQUERY) ---
         document.addEventListener('DOMContentLoaded', function() {
-            // Inisialisasi menu toggle untuk mobile
+            const dropdownContainer = document.querySelector('.az-profile-menu');
+            const dropdownToggle = dropdownContainer ? dropdownContainer.querySelector('.dropdown-toggle') : null;
+            const dropdownMenu = dropdownContainer ? dropdownContainer.querySelector('.dropdown-menu') : null;
+
+            if (dropdownToggle && dropdownMenu) {
+                // Hapus atribut data-toggle agar Bootstrap tidak memicu event ganda
+                dropdownToggle.removeAttribute('data-toggle'); 
+
+                // Event listener klik pada tombol/gambar profil
+                dropdownToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Toggle class 'show' pada kontainer utama
+                    dropdownContainer.classList.toggle('show');
+                    dropdownMenu.classList.toggle('show');
+
+                    // Menutup dropdown lain (Opsional, tapi penting)
+                    document.querySelectorAll('.az-profile-menu').forEach(otherContainer => {
+                        if (otherContainer !== dropdownContainer) {
+                            otherContainer.classList.remove('show');
+                            otherContainer.querySelector('.dropdown-menu').classList.remove('show');
+                        }
+                    });
+                });
+
+                // Event listener klik di luar untuk menutup dropdown
+                document.addEventListener('click', function(e) {
+                    if (!dropdownContainer.contains(e.target)) {
+                        dropdownContainer.classList.remove('show');
+                        dropdownMenu.classList.remove('show');
+                    }
+                });
+            }
+
+
+            // Mobile menu toggle (tetap menggunakan JQuery untuk konsistensi Azia)
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
                 $(this).toggleClass('open');
             });
-
+            
             $('.az-header-menu .close').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').removeClass('show');
                 $('#azMenuShow').removeClass('open');
             });
+        });
 
-            // Inisialisasi dropdown profile
-            $('.dropdown-toggle').dropdown();
+        // Event handler for Export button
+        document.getElementById('exportButton').addEventListener('click', function() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+
+            let exportUrl = 'export_booking_excel.php?';
+            if (startDate) {
+                exportUrl += 'start_date=' + encodeURIComponent(startDate) + '&';
+            }
+            if (endDate) {
+                exportUrl += 'end_date=' + encodeURIComponent(endDate);
+            }
+
+            window.open(exportUrl, 'exportFrame');
         });
     </script>
 

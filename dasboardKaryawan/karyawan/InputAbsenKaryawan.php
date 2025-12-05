@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../../config/koneksi.php';
-require_once '../../class/Absensi.php';
+require_once '../../class/absensi.php';
 
 // === CEK LOGIN ===
 if (!isset($_SESSION['user']) || $_SESSION['user']['UserRole'] !== 'Karyawan') {

@@ -10,6 +10,7 @@ if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
 
 // VERIFIKASI LOGIN
 if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path: /adminArtefax/form-laporan/view/login.php -> /view/login.php
     header("Location: ../../view/login.php"); 
     exit;
 }
@@ -261,14 +262,14 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">x</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
                         <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
                         <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
@@ -277,22 +278,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../form-laporan/LaporanAbsensiKaryawan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                 </ul>
             </div>
@@ -312,7 +298,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         <p class="az-notification-text">You have 2 unread notification</p>
                         <div class="az-notification-list">
                             <div class="media new">
-                                <div class="  az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
                                 <div class="media-body">
                                     <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
                                     <span>Mar 15 12:32pm</span>
@@ -329,10 +315,8 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                         <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
                 </div>
-
-                <!-- PROFILE DROPDOWN YANG SUDAH PASTI JALAN (sama persis seperti form-user.php) -->
                 <div class="dropdown az-profile-menu">
-                    <a href="profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <a href="#" class="az-img-user" **data-toggle="dropdown"**><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -344,21 +328,13 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../view/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-                <!-- AKHIR PROFILE DROPDOWN -->
-            </div>
-        </div>
-    </div>
-
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -383,24 +359,24 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 <div class="filter-export-container">
                     <form id="filterForm" method="GET" action="LaporanAbsensiKaryawan.php" class="filter-form">
                         <?php
+                        // Pembersihan karakter NBSP di blok PHP ini
                         $start_date_val = isset($_GET['start_date']) ? $_GET['start_date'] : '';
                         $end_date_val = isset($_GET['end_date']) ? $_GET['end_date'] : '';
                         ?>
                         <div class="form-group">
                             <label for="start_date">Dari Tanggal:</label>
-                            <input type="date" id="start_date" name="start_date" class="form-control" value="<?php echo $start_date_val; ?>">
+                            <input type="date" id="start_date" name="start_date" class="form-control" value="<?php echo htmlspecialchars($start_date_val); ?>">
                         </div>
                         <div class="form-group">
                             <label for="end_date">Sampai Tanggal:</label>
-                            <input type="date" id="end_date" name="end_date" class="form-control" value="<?php echo $end_date_val; ?>">
+                            <input type="date" id="end_date" name="end_date" class="form-control" value="<?php echo htmlspecialchars($end_date_val); ?>">
                         </div>
 
                         <button type="submit" class="btn btn-primary">
                             Filter
                         </button>
-
                         <button type="button" id="exportButton" class="btn-export-excel">
-                            Export Excel
+                            <i class="fas fa-file-excel"></i> Export CSV
                         </button>
 
                         <?php if (!empty($start_date_val) || !empty($end_date_val)): ?>
@@ -413,6 +389,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
 
                 <div class="col-lg-12 mg-t-20" style="max-width: 100%; margin-top: 5px !important;">
                     <?php
+                    // Pembersihan karakter NBSP di blok PHP ini
                     require_once __DIR__ . "/../../config/koneksi.php";
                     require_once __DIR__ . "/../../class/Absensi.php";
 
@@ -482,13 +459,13 @@ $defaultProfileImage = '../img/faces/face1.jpg';
 
                         if ($result->num_rows === 0 && $totalRows == 0) {
                             echo "<div class='text-center py-5'>
-                                        <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
-                                        <h5 class='mt-3'>Belum ada data absensi</h5>
-                                    </div>";
+                                    <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
+                                    <h5 class='mt-3'>Belum ada data absensi</h5>
+                                </div>";
                         } else if ($result->num_rows === 0 && $totalRows > 0) {
                             echo "<div class='text-center py-5'>
-                                        <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
-                                    </div>";
+                                    <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
+                                </div>";
                         } else {
                             echo "<table class='custom-table'>
                                 <thead>
@@ -524,19 +501,19 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                 }
 
                                 echo "<tr>
-                                            <td data-label='No'>$no</td>
-                                            <td data-label='Nama Karyawan'><strong>$nama</strong></td>
-                                            <td data-label='Tanggal'>$tanggal</td>
-                                            <td data-label='Jam'><strong>$jam</strong></td>
-                                            <td data-label='Lokasi'>$lokasi</td>
-                                            <td data-label='Foto'>
-                                                <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
-                                                        style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
-                                                    Lihat
-                                                </button>
-                                            </td>
-                                            <td data-label='Status' class='$statusClass'>$statusText</td>
-                                        </tr>";
+                                        <td data-label='No'>$no</td>
+                                        <td data-label='Nama Karyawan'><strong>$nama</strong></td>
+                                        <td data-label='Tanggal'>$tanggal</td>
+                                        <td data-label='Jam'><strong>$jam</strong></td>
+                                        <td data-label='Lokasi'>$lokasi</td>
+                                        <td data-label='Foto'>
+                                            <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
+                                                style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
+                                                Lihat
+                                            </button>
+                                        </td>
+                                        <td data-label='Status' class='$statusClass'>$statusText</td>
+                                    </tr>";
                                 $no++;
                             }
                             echo "</tbody></table>";
@@ -578,9 +555,12 @@ $defaultProfileImage = '../img/faces/face1.jpg';
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/popper.js/popper.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+    
+    <script src="../js/azia.js"></script>
 
     <script>
         $(document).ready(function() {
+            // Inisialisasi menu mobile (AzMenuShow)
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
@@ -593,10 +573,14 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 $('#azMenuShow').removeClass('open');
             });
 
-            // INI YANG BIKIN DROPDOWN PROFILE BISA MUNCUL (sama seperti di form-user.php)
-            $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+            // FIX DROPDOWN PROFILE: Memastikan Bootstrap menginisialisasi elemen dengan data-toggle="dropdown"
+            // Kita hapus inisialisasi manual dan biarkan Bootstrap menanganinya.
+            // Pastikan Anda memuat azia.js di atas, yang seharusnya memiliki inisialisasi global.
+            // Jika azia.js tidak ada, pastikan Anda memuat azia.js atau inisialisasi dropdown di sini:
+            // $('.az-profile-menu [data-toggle="dropdown"]').dropdown();
         });
 
+        // Event handler for 'Lihat Foto' button
         $(document).on('click', '.lihat-foto', function() {
             $('#modalFoto').attr('src', $(this).data('foto'));
             $('#fotoModal').modal('show');
@@ -606,6 +590,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             $('#modalFoto').attr('src', '');
         });
 
+        // Event handler for Export button
         document.getElementById('exportButton').addEventListener('click', function() {
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;

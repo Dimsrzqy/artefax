@@ -3,6 +3,20 @@ session_start();
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/pembayaran.php";
 
+// --- START: VERIFIKASI SESI KRITIS (Diambil dari LaporanBooking) ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path relatif dari /adminArtefax/form-laporan/LaporanKeuangan.php ke /adminArtefax/view/login.php
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI SESI KRITIS ---
+
 $db = new Database();
 $conn = $db->getConnection();
 
@@ -23,43 +37,104 @@ try {
     $_SESSION['error_message'] = "Format tanggal tidak valid.";
 }
 
-/* ============== EXPORT EXCEL ============== */
-if (isset($_GET['export']) && $_GET['export'] == 'excel') {
+/* ============== EXPORT CSV (DIPERBAIKI UNTUK MENGHINDARI WARNING) ============== */
+if (isset($_GET['export']) && $_GET['export'] == 'excel') { 
+    ob_clean(); // Bersihkan output buffer sebelum header
+
+    // >>> SOLUSI: INISIALISASI VARIABEL DISPLAY DARI $_GET DI SINI <<<
+    // Kita inisialisasi display variables langsung dari $_GET 
+    // agar selalu tersedia untuk header laporan di bawah.
+    $displayStartDate = $_GET['start_date'] ?? ''; 
+    $displayEndDate = $_GET['end_date'] ?? '';
+    // >>> END SOLUSI <<<
+
     $dataToExport = $pembayaran->readJoin(null, null, $startDate, $endDate, $statusFilter);
 
+    // Helper untuk menentukan jenis layanan
     $getJenis = fn($j) => $j == 'Paket Jasa,Alat' ? 'Paket & Alat' : ($j ?? '-');
 
-    header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment; filename="Laporan_Keuangan_ArtefaxID_' . date('Ymd_His') . '.xls"');
+    // Helper untuk membersihkan nilai numerik
+    $cleanNumber = fn($num) => is_numeric($num) ? (float)$num : 0;
+    
+    // Header untuk file CSV
+    $filename = "Laporan_Keuangan_ArtefaxID_" . date('Ymd_His') . ".csv";
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header("Pragma: no-cache");
+    header("Expires: 0");
 
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['No', 'Nama Pelanggan', 'Jenis', 'Pesanan', 'Harga Awal', 'Jumlah Refund', 'PENDAPATAN BERSIH', 'Metode', 'Status Pembayaran', 'Waktu', 'ID Pembayaran', 'ID Booking'], "\t");
+    
+    // Tulis BOM (Byte Order Mark) untuk Excel compatibility
+    fwrite($out, "\xEF\xBB\xBF");
+
+    // --- BARIS HEADER LAPORAN ---
+    // Gunakan $displayStartDate yang sudah didefinisikan di awal blok.
+    $displayStartFormatted = $displayStartDate ? date('d/m/Y', strtotime($displayStartDate)) : 'Awal';
+    $displayEndFormatted = $displayEndDate ? date('d/m/Y', strtotime($displayEndDate)) : 'Sekarang';
+
+    fputcsv($out, ["LAPORAN KEUANGAN ARTEFAX"], ';');
+    fputcsv($out, ["Periode: $displayStartFormatted s/d $displayEndFormatted"], ';');
+    fputcsv($out, [''], ';'); 
+
+    // Header Kolom Tabel
+    $header = [
+        'No', 
+        'Nama Pelanggan', 
+        'Jenis', 
+        'Pesanan', 
+        'Harga Awal (Rp)', 
+        'Jumlah Refund (Rp)', 
+        'PENDAPATAN BERSIH (Rp)', 
+        'Metode', 
+        'Status Pembayaran', 
+        'Waktu Transaksi', 
+        'ID Pembayaran', 
+        'ID Booking'
+    ];
+    fputcsv($out, $header, ';');
 
     $no = 1;
+    $grandTotalPendapatan = 0; 
+    
     foreach ($dataToExport as $p) {
-        $refundJumlah = $p['RefundJumlah'] ?? 0;
-        $pendapatanBersih = $p['PbrJumlah']; 
+        $refundJumlah = $cleanNumber($p['RefundJumlah'] ?? 0);
+        $pendapatanBersih = $cleanNumber($p['PbrJumlah']); 
         $hargaAwal = $pendapatanBersih + $refundJumlah;
         
+        $grandTotalPendapatan += $pendapatanBersih;
+
+        // Data yang siap ditulis ke CSV
         $dataRow = [
             $no++,
             $p['UserNama'],
             $getJenis($p['JenisBooking']),
             $p['DaftarPesanan'] ?? '-',
-            $hargaAwal, 
-            $refundJumlah, 
-            $pendapatanBersih, 
+            $hargaAwal,             // Nilai numerik tanpa format Rupiah
+            $refundJumlah,          // Nilai numerik tanpa format Rupiah
+            $pendapatanBersih,      // Nilai numerik tanpa format Rupiah (PENDAPATAN BERSIH)
             $p['PbrMetode'],
             $p['PbrStatus'], 
             date('d/m/Y H:i', strtotime($p['CreatedAt'])),
             $p['IDPembayaran'],
             $p['IDBooking'],
         ];
-        fputcsv($out, $dataRow, "\t");
+        
+        fputcsv($out, $dataRow, ';');
     }
+
+    // --- BARIS SUMMARY ---
+    fputcsv($out, [''], ';'); 
+    fputcsv($out, ['TOTAL TRANSAKSI', '', '', '', '', '', count($dataToExport)], ';');
+    fputcsv($out, ['TOTAL PENDAPATAN BERSIH (Periode Filter)', '', '', '', '', '', $grandTotalPendapatan], ';');
+    fputcsv($out, [''], ';'); 
+
     fclose($out);
     exit();
 }
+/* ============== AKHIR DARI EXPORT CSV (DIPERBAIKI) ============== */
+/* ============== AKHIR DARI EXPORT CSV (DIPERBARUI) ============== */
 
 /* ============== PAGINATION ============== */
 $limit = 10;
@@ -369,47 +444,63 @@ $defaultProfileImage = '../img/faces/face1.jpg';
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
-                    <li class="nav-item"><a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a></li>
-                    <li class="nav-item"><a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a></li>
-                    <li class="nav-item"><a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a></li>
-                    <li class="nav-item"><a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
-                    <li class="nav-item active"><a href="LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a></li>
                     <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                 </ul>
             </div>
             <div class="az-header-right">
                 <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
                 <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
+                <div class="az-header-message">
+                    <a href="#"><i class="typcn typcn-messages"></i></a>
+                </div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu"> 
-                        </div>
-                </div>
-                
-                <div class="dropdown az-profile-menu">
-                    <a href="#" class="az-img-user" id="dropdownMenuProfile" data-toggle="dropdown" aria-expanded="false">
-                        <img src="<?= $defaultProfileImage ?>" alt="">
-                    </a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header mg-b-20 d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <h6 class="az-notification-title">Notifications</h6>
+                        <p class="az-notification-text">You have 2 unread notification</p>
+                        <div class="az-notification-list">
+                            <div class="media new">
+                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
+                                    <span>Mar 15 12:32pm</span>
+                                </div>
+                            </div>
+                            <div class="media new">
+                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
+                                    <span>Mar 13 04:16am</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
+                    </div>
+                </div>
+                <div class="dropdown az-profile-menu">
+                    <a href="#" class="az-img-user" **data-toggle="dropdown"**><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <div class="dropdown-menu">
+                        <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
@@ -419,14 +510,11 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../view/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
-                </div>
+            </div>
         </div>
     </div>
 
@@ -477,7 +565,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                 $link = http_build_query($exportParams);
                                 ?>
                                 <a href="?<?= $link ?>" class="btn btn-success">
-                                    <i class="fas fa-file-excel"></i> Export Excel
+                                    <i class="fas fa-file-excel"></i> Export CSV
                                 </a>
                             </div>
 
@@ -550,7 +638,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                                         <td><?= htmlspecialchars($p['UserNama']) ?></td>
                                         <td><?= $p['JenisBooking'] == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($p['JenisBooking'] ?? '-') ?></td>
                                         <td><?= htmlspecialchars($p['DaftarPesanan'] ?? '-') ?></td>
-                                        <td><strong style="color: <?= $refundJumlah > 0 ? '#dc3545' : '#0f8f4f' ?>;">Rp <?= number_format($pendapatanBersih, 0, ',', '.') ?></strong></td>
+                                        <td><strong style="color: <?= $pendapatanBersih < 0 ? '#dc3545' : '#0f8f4f' ?>;">Rp <?= number_format($pendapatanBersih, 0, ',', '.') ?></strong></td>
                                         <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
                                         <td><span class="<?= $statusBadgeClass ?>"><?= htmlspecialchars($statusText) ?></span></td>
                                         <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
@@ -644,6 +732,7 @@ $defaultProfileImage = '../img/faces/face1.jpg';
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/popper.js/popper.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/azia.js"></script> 
 
     <script>
         function openDetail(data, hargaAwalBooking) {
@@ -730,6 +819,10 @@ $defaultProfileImage = '../img/faces/face1.jpg';
                 $('.az-header-menu').removeClass('show');
                 $('#azMenuShow').removeClass('open');
             });
+
+            // FIX DROPDOWN PROFILE (TERAKHIR): Inisialisasi ulang Bootstrap dropdown
+            // Solusi ini mengandalkan data-toggle yang sudah dipasang di HTML.
+            $('[data-toggle="dropdown"]').dropdown();
         });
     </script>
 </body>
