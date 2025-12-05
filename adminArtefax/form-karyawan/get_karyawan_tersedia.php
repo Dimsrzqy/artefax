@@ -1,71 +1,89 @@
 <?php
 header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
 require_once __DIR__ . "/../../config/koneksi.php";
 
 $db = new Database();
 $conn = $db->getConnection();
 
-// Ambil parameter waktu event baru
-$tanggal   = $_GET['tanggal'] ?? '';
-$jam_mulai = $_GET['jam_mulai'] ?? '';
-$durasi    = max(1, (int)($_GET['durasi'] ?? 8));
-
-if (!$tanggal || !$jam_mulai) {
-    echo json_encode([]);
+if (!$conn) {
+    echo json_encode(['error' => 'Database connection failed']);
     exit;
 }
 
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal) ||
-    !preg_match('/^\d{2}:\d{2}$/', $jam_mulai)) {
-    echo json_encode([]);
+error_log("========================================");
+error_log("GET KARYAWAN TERSEDIA (SIMPLE MODE)");
+error_log("Filter: TIDAK sedang di event status Menunggu/Berjalan");
+error_log("========================================");
+
+// STRATEGI SEDERHANA: 
+// Ambil semua karyawan KECUALI yang sedang bertugas di event berstatus Menunggu/Berjalan
+$sql = "
+    SELECT u.IDUser, u.UserNama
+    FROM users u
+    WHERE u.UserRole = 'Karyawan'
+    AND u.IDUser NOT IN (
+        SELECT DISTINCT ek.IDKaryawan
+        FROM event_karyawan ek
+        INNER JOIN event e ON ek.IDEvent = e.IDEvent
+        WHERE e.EventStatus IN ('Menunggu', 'Berjalan')
+    )
+    ORDER BY u.UserNama
+";
+
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    error_log("QUERY PREPARE FAILED: " . $conn->error);
+    echo json_encode(['error' => 'Query prepare failed']);
     exit;
 }
 
-// Hitung interval waktu event baru
-$start = new DateTime("$tanggal $jam_mulai:00");
-$end   = clone $start;
-$end->modify("+{$durasi} hours");
-
-$newStart = $start->format("Y-m-d H:i:s");
-$newEnd   = $end->format("Y-m-d H:i:s");
-
-// STEP 1: Ambil karyawan yang bentrok (tidak tersedia)
-$sqlBusy = "
-    SELECT DISTINCT ek.IDKaryawan AS IDUser
-    FROM event_karyawan ek
-    JOIN event e ON ek.IDEvent = e.IDEvent
-    WHERE e.EventStatus != 'Selesai'
-      AND CONCAT(e.EventTanggal, ' ', e.EventMulai) < ?
-      AND ADDTIME(CONCAT(e.EventTanggal, ' ', e.EventMulai), SEC_TO_TIME(e.EventDurasi*3600)) > ?
-";
-
-$stmt = $conn->prepare($sqlBusy);
-$stmt->bind_param("ss", $newEnd, $newStart);
-$stmt->execute();
-$res = $stmt->get_result();
-
-$busy = [];
-while ($r = $res->fetch_assoc()) {
-    $busy[] = (int)$r["IDUser"];
+if (!$stmt->execute()) {
+    error_log("QUERY EXECUTE FAILED: " . $stmt->error);
+    echo json_encode(['error' => 'Query execute failed']);
+    exit;
 }
 
-// Jika tidak ada busy, masukkan nilai dummy agar NOT IN () tidak error
-$busyList = $busy ? implode(",", $busy) : "0";
-
-// STEP 2: Ambil karyawan yang tersedia (tidak termasuk busy)
-$sqlKaryawan = "
-    SELECT id, nama
-    FROM karyawan
-    WHERE id NOT IN ($busyList)
-    ORDER BY nama ASC
-";
-
-$result = $conn->query($sqlKaryawan);
-
+$result = $stmt->get_result();
 $available = [];
+
+error_log("KARYAWAN TERSEDIA:");
 while ($row = $result->fetch_assoc()) {
-    $available[] = $row;
+    $idKaryawan = trim($row['IDUser']);
+    $available[] = [
+        'id' => $idKaryawan,
+        'nama' => $row['UserNama']
+    ];
+    error_log("  ✓ ID: $idKaryawan - {$row['UserNama']}");
 }
 
+// Query untuk logging: Siapa yang sibuk
+$sqlBusy = "
+    SELECT DISTINCT ek.IDKaryawan, u.UserNama, e.EventNama, e.EventStatus, e.EventTanggal
+    FROM event_karyawan ek
+    INNER JOIN event e ON ek.IDEvent = e.IDEvent
+    INNER JOIN users u ON ek.IDKaryawan = u.IDUser
+    WHERE e.EventStatus IN ('Menunggu', 'Berjalan')
+    ORDER BY u.UserNama
+";
+
+$stmtBusy = $conn->query($sqlBusy);
+if ($stmtBusy) {
+    error_log("KARYAWAN SIBUK (Event Menunggu/Berjalan):");
+    while ($row = $stmtBusy->fetch_assoc()) {
+        error_log("  ✗ ID: {$row['IDKaryawan']} - {$row['UserNama']}");
+        error_log("    Event: {$row['EventNama']} [{$row['EventStatus']}] - {$row['EventTanggal']}");
+    }
+}
+
+$stmt->close();
+$conn->close();
+
+error_log("TOTAL TERSEDIA: " . count($available));
+error_log("========================================");
+
+// Return array of available employees (yang TIDAK sedang bertugas)
 echo json_encode($available);
 ?>
