@@ -1,24 +1,24 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/paketjasa.php";
+require_once __DIR__ . "/../../../config/koneksi.php";
+require_once __DIR__ . "/../../../class/alat.php";
 
 $db = new Database();
 $conn = $db->getConnection();
 
 // Inisialisasi class
-$paket = new PaketJasa($conn);
+$alat = new Alat($conn);
 /* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
 // Pastikan method ini ADA di class User
-$totalPaket = $paket->TotalLayanan();
-$totalPages    = ceil($totalPaket / $limit);
+$totalAlat = $alat->TotalAlat();
+$totalPages    = ceil($totalAlat/ $limit);
 
 // Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
-$paketList  = $paket->readAll($limit, $offset);
+$alatList  = $alat->readAll($limit, $offset);
 /* ================================================================== */
 
 // Feedback
@@ -74,13 +74,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
   <title>Admin ArtefaxID</title>
 
   <!-- vendor css -->
-  <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
-  <link href="../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
-  <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
+  <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="../../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
+  <link href="../../lib/typicons.font/typicons.css" rel="stylesheet">
 
   <!-- azia CSS -->
-  <link rel="stylesheet" href="../css/azia.css" />
-  <link rel="stylesheet" href="css/form-layanan.css">
+  <link rel="stylesheet" href="../../css/azia.css" />
+  <link rel="stylesheet" href="../css/form-alat.css">
 
 </head>
 
@@ -88,7 +88,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
   <div class="az-header">
     <div class="container">
       <div class="az-header-left">
-        <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+        <a href="../../template/index.html" class="az-logo"><span></span> Artefax</a>
         <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
       </div>
       <!-- az-header-left -->
@@ -100,19 +100,19 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         <!-- az-header-menu-header -->
         <ul class="nav">
           <li class="nav-item">
-            <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+            <a href="../../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
           </li>
           <li class="nav-item">
-            <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+            <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
           </li>
           <li class="nav-item">
-            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+            <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
           </li>
           <li class="nav-item active">
-            <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+            <a href="../PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
           </li>
           <li class="nav-item">
-            <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+            <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
           </li>
           <li class="nav-item">
             <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -211,7 +211,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
           <label>Layanan</label>
           <nav class="nav flex-column">
-            <a href="../form-layanan/daftarlayanan.html" class="nav-link active">Daftar Paket Jasa</a>
+            <a href="../PaketJasa/form-paketjasa.php" class="nav-link">Daftar Paket Jasa</a>
+            <a href="../Alat/form-alat.php" class="nav-link active">Daftar Alat</a>
           </nav>
         </div><!-- component-item -->
 
@@ -219,12 +220,12 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <div class="az-content-body pd-lg-l-40 d-flex flex-column">
         <div class="az-content-breadcrumb">
           <span>Layanan</span>
-          <span>Daftar Paket Jasa</span>
+          <span>Daftar Alat</span>
         </div>
-        <h2 class="az-content-title">Daftar Paket Jasa</h2>
+        <h2 class="az-content-title">Daftar Alat</h2>
 
         <div class="d-flex justify-content-between align-items-center mg-b-20">
-          <p class="mg-b-0">Kelola semua paket jasa di sini.</p>
+          <p class="mg-b-0">Kelola semua alat di sini.</p>
           <button onclick="openTambahPopup()" 
           style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
         Tambah Layanan
@@ -241,45 +242,45 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
                 <!-- Tabel Layanan -->
                 <div class="table-container">
-                    <?php if ($paketList && count($paketList) > 0): ?>
+                    <?php if ($alatList && count($alatList) > 0): ?>
                         <table class="custom-table">
                             <thead>
                                 <tr>
                                     <th width="5%">No</th>
-                                    <th>Nama Paket</th>
+                                    <th>Nama Alat</th>
                                     <th>Gambar</th>
                                     <th>Kategori</th>
                                     <th>Harga</th>
-                                    <th>Durasi</th>
+                                    <th>Stok</th>
                                     <th>Status</th>
                                     <th width="18%">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php $no = $offset + 1; foreach ($paketList as $p): ?>
+                                <?php $no = $offset + 1; foreach ($alatList as $p): ?>
                                     <tr>
                                         <td><?= $no++ ?></td>
                                         <td>
-                                            <strong><?= htmlspecialchars($p['PaketNama']) ?></strong><br>
-                                            <small class="text-muted"><?= htmlspecialchars(substr($p['PaketDeskripsi'], 0, 60)) ?>...</small>
+                                            <strong><?= htmlspecialchars($p['AlatNama']) ?></strong><br>
+                                            <small class="text-muted"><?= htmlspecialchars(substr($p['AlatDeskripsi'], 0, 60)) ?>...</small>
                                         </td>
                                         <td class="text-center">
-                                          <?php if (!empty($p['PaketDirGbr'])): ?>
+                                          <?php if (!empty($p['AlatDirGbr'])): ?>
                                               <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
-                                                      data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
-                                                      data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
+                                                      data-img="<?= htmlspecialchars($p['AlatDirGbr']) ?>"
+                                                      data-nama="<?= htmlspecialchars($p['AlatNama']) ?>">
                                                   <i class="fas fa-image"></i> Detail
                                               </button>
                                           <?php else: ?>
                                               <span class="text-muted">—</span>
                                           <?php endif; ?>
                                       </td>
-                                        <td><?= htmlspecialchars($p['PaketKategori']) ?></td>
-                                        <td>Rp <?= number_format($p['PaketHarga'], 0, ',', '.') ?></td>
-                                        <td><?= htmlspecialchars($p['PaketDurasi']) ?></td>
+                                        <td><?= htmlspecialchars($p['AlatKategori']) ?></td>
+                                        <td>Rp <?= number_format($p['AlatHarga'], 0, ',', '.') ?></td>
+                                        <td><?= number_format($p['AlatStok']) ?></td>
                                         <td>
-                                            <span class="badge <?= $p['PaketStatus'] === 'Aktif' ? 'badge-active' : 'badge-inactive' ?>">
-                                                <?= htmlspecialchars($p['PaketStatus']) ?>
+                                            <span class="badge <?= $p['AlatStatus'] === 'Tersedia' ? 'badge-active' : 'badge-inactive' ?>">
+                                                <?= htmlspecialchars($p['AlatStatus']) ?>
                                             </span>
                                         </td>
                                         <td>
@@ -287,8 +288,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                                 <button class="btn btn-sm btn-warning" onclick='openEditPopup(<?= json_encode($p) ?>)'>
                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
-                                                <form action="hapus_layanan.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
-                                                    <input type="hidden" name="id" value="<?= $p['IDPaket'] ?>">
+                                                <form action="hapus_alat.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
+                                                    <input type="hidden" name="id" value="<?= $p['IDAlat'] ?>">
                                                     <button type="submit" class="btn btn-sm btn-danger">
                                                         <i class="fas fa-trash"></i> Hapus
                                                     </button>
@@ -332,7 +333,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                             </ul>
                         </nav>
                         <div class="text-center text-muted small">
-                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalAlat ?> Alat
                         </div>
                         <?php endif; ?>
 
@@ -357,7 +358,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <div class="lightbox-content">
       <span class="lightbox-close">&times;</span>
       <h5 id="lightboxJudul" class="mb-3"></h5>
-      <img id="lightboxImg" src="" alt="Gambar Paket" style="max-width:100%; max-height:80vh; border-radius:8px;">
+      <img id="lightboxImg" src="" alt="Gambar Alat" style="max-width:100%; max-height:80vh; border-radius:8px;">
     </div>
   </div>
 
@@ -369,14 +370,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <h5 id="modalTitle">Tambah Layanan</h5>
           <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
         </div>
-        <form id="formLayanan" action="tambah_layanan.php" method="POST" enctype="multipart/form-data">
+        <form id="formLayanan" action="tambah_alat.php" method="POST" enctype="multipart/form-data">
           <div class="modal-body modal-body-scroll">
-            <input type="hidden" id="idPaket" name="IDPaket">
+            <input type="hidden" id="idAlat" name="IDAlat">
             <input type="hidden" id="gambarLama" name="gambarLama">
 
             <div class="form-group">
-              <label>Nama Paket <span class="text-danger">*</span></label>
-              <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
+              <label>Nama Alat <span class="text-danger">*</span></label>
+              <input type="text" name="AlatNama" class="form-control" required minlength="3" maxlength="100">
             </div> 
             <div class="form-group">
               <label>Gambar <span class="text-danger">*</span></label> 
@@ -391,46 +392,51 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
                   <i class="fas fa-times" style="font-size:12px;"></i>
                 </button>
-                <label for="gambar_layanan" class="btn btn-primary">
+                <label for="gambar_alat" class="btn btn-primary">
                   <i class="fas fa-camera me-1"></i> Browse
                 </label>
               </div>
 
-              <input type="file" name="gambar" id="gambar_layanan" accept="image/*" style="display:none;">
-              <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG, JPEG, PNG, GIF</small>
+              <input type="file" name="gambar" id="gambar_alat" accept="image/*" style="display:none;">
+              <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG</small>
             </div>
 
             <div class="form-group">
               <label>Kategori <span class="text-danger">*</span></label>
-              <select name="PaketKategori" class="form-control" required>
+              <select name="AlatKategori" class="form-control" required>
                 <option value="">Pilih Kategori</option>
-                <option value="Graduation">Graduation</option>
-                <option value="Wedding">Wedding</option>
-                <option value="Event Organizer">Event Organizer</option>
+                <option value="Proyektor">Proyektor</option>
+                <option value="Audio">Audio</option>
+                <option value="Kamera">Kamera</option>
+                <option value="Aksesoris">Aksesoris</option>
+                <option value="Pencahayaan">Pencahayaan</option>
+                <option value="Display">Display</option>
+                <option value="Drone">Drone</option>
                 <option value="Lainnya">Lainnya</option>
               </select>
             </div>
 
             <div class="form-group">
               <label>Deskripsi</label>
-              <textarea name="PaketDeskripsi" class="form-control" rows="3" maxlength="500"></textarea>
+              <textarea name="AlatDeskripsi" class="form-control" rows="3" maxlength="500"></textarea>
             </div>
 
             <div class="form-group">
               <label>Harga (Rp) <span class="text-danger">*</span></label>
-              <input type="number" name="PaketHarga" class="form-control" required min="0" step="1000">
+              <input type="number" name="AlatHarga" class="form-control" required min="0" step="1000">
             </div>
 
             <div class="form-group">
-              <label>Durasi <span class="text-danger">*</span></label>
-              <input type="text" name="PaketDurasi" class="form-control" required placeholder="Contoh: 3 Hari" maxlength="50">
+              <label>Stok <span class="text-danger">*</span></label>
+              <input type="text" name="AlatStok" class="form-control" maxlength="50">
             </div>
 
             <div class="form-group">
               <label>Status <span class="text-danger">*</span></label>
-              <select name="PaketStatus" class="form-control" required>
-                <option value="Aktif">Aktif</option>
-                <option value="Nonaktif">Nonaktif</option>
+              <select name="AlatStatus" class="form-control" required>
+                <option value="Tersedia">Tersedia</option>
+                <option value="Rusak">Rusak</option>
+                <option value="Dipinjam">Dipinjam</option>
               </select>
             </div>
           </div>
@@ -453,9 +459,9 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         });
         function openTambahPopup() {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
-        form.action = 'tambah_layanan.php';
+        form.action = 'tambah_alat.php';
         form.reset();
-        document.getElementById('idPaket').value = '';
+        document.getElementById('idAlat').value = '';
         document.getElementById('gambarLama').value = '';
         document.getElementById('fileNameDisplay').value = '';
         document.getElementById('btnHapusGambar').style.display = 'none';
@@ -465,16 +471,16 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
     function openEditPopup(data) {
       document.getElementById('modalTitle').textContent = 'Edit Layanan';
-      form.action = 'edit_layanan.php';
-      document.getElementById('idPaket').value = data.IDPaket;
-      form.PaketNama.value = data.PaketNama;
-      form.PaketKategori.value = data.PaketKategori;
-      form.PaketDeskripsi.value = data.PaketDeskripsi;
-      form.PaketHarga.value = data.PaketHarga;
-      form.PaketDurasi.value = data.PaketDurasi;
-      form.PaketStatus.value = data.PaketStatus;
+      form.action = 'edit_alat.php';
+      document.getElementById('idAlat').value = data.IDAlat;
+      form.AlatNama.value = data.AlatNama;
+      form.AlatKategori.value = data.AlatKategori;
+      form.AlatDeskripsi.value = data.AlatDeskripsi;
+      form.AlatHarga.value = data.AlatHarga;
+      form.AlatStok.value = data.AlatStok;
+      form.AlatStatus.value = data.AlatStatus;
 
-      const imgPath = data.PaketDirGbr;
+      const imgPath = data.AlatDirGbr;
       if (imgPath && imgPath.trim() !== '') {
         document.getElementById('gambarLama').value = imgPath;
         previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
@@ -494,7 +500,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     }
 
     function resetGambarPreview() {
-      document.getElementById('gambar_layanan').value = '';
+      document.getElementById('gambar_alat').value = '';
       document.getElementById('fileNameDisplay').value = 'Belum ada file dipilih';
       document.getElementById('btnHapusGambar').style.display = 'none';
       document.getElementById('previewContainer').style.display = 'none';
@@ -502,7 +508,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     }
 
     // Preview Gambar Baru
-    document.getElementById('gambar_layanan').addEventListener('change', function() {
+    document.getElementById('gambar_alat').addEventListener('change', function() {
       const file = this.files[0];
       if (!file) {
         resetGambarPreview();
@@ -522,7 +528,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       reader.onload = function(e) {
         document.getElementById('previewImg').src = e.target.result;
         document.getElementById('previewContainer').style.display = 'block';
-        document.getElementById('previewText').textContent = 'Preview gambar baru';
+        document.getElementById('previewText').textContent = 'Preview gambar';
       };
       reader.readAsDataURL(file);
     });

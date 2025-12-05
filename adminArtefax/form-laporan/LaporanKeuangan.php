@@ -15,6 +15,7 @@ $endDate = $_GET['end_date'] ?? null;
 $statusFilter = ['Lunas', 'Pending', 'Lunas DP', 'Gagal']; 
 
 try {
+    // Note: Modify('+1 day') pada endDate sudah benar untuk mencakup seluruh hari di tanggal yang dipilih.
     if ($startDate) $startDate = (new DateTime($startDate))->format('Y-m-d');
     if ($endDate)  $endDate  = (new DateTime($endDate))->modify('+1 day')->format('Y-m-d');
 } catch (Exception $e) {
@@ -87,6 +88,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
 $displayStartDate = $_GET['start_date'] ?? '';
 $displayEndDate  = $_GET['end_date'] ?? '';
+
+// Ambil data sesi untuk header
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/face1.jpg';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -103,6 +111,59 @@ $displayEndDate  = $_GET['end_date'] ?? '';
         /* ============================================= */
         /* CSS INTERNAL YANG DIRAPIKAN */
         /* ============================================= */
+        
+        /* FIX LAYOUT CSS */
+        .az-body {
+            padding-top: 70px !important; /* Ruang untuk fixed header */
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px; /* Di bawah header */
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        /* Responsive Layout untuk body content */
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important; /* Memberi ruang untuk fixed sidebar */
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                width: 100%;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+                display: none; /* Sembunyikan sidebar di mobile, akan ditampilkan via JS jika perlu */
+            }
+        }
+        /* END FIX LAYOUT CSS */
+
         /* Tabel & Badge */
         .custom-table {
             width: 100%;
@@ -298,7 +359,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
     </style>
 </head>
 
-<body>
+<body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -314,7 +375,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                     <li class="nav-item"><a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a></li>
                     <li class="nav-item"><a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a></li>
                     <li class="nav-item"><a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a></li>
-                    <li class="nav-item"><a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
+                    <li class="nav-item"><a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
                     <li class="nav-item active"><a href="LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a></li>
                     <li class="nav-item">
                         <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
@@ -339,19 +400,39 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                 <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu"> </div>
+                    <div class="dropdown-menu"> 
+                        </div>
                 </div>
+                
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-                    <div class="dropdown-menu"> </div>
+                    <a href="#" class="az-img-user" id="dropdownMenuProfile" data-toggle="dropdown" aria-expanded="false">
+                        <img src="<?= $defaultProfileImage ?>" alt="">
+                    </a>
+                    <div class="dropdown-menu">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <div class="az-header-profile">
+                            <div class="az-img-user">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
                 </div>
-            </div>
+                </div>
         </div>
     </div>
 
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
-            <div class="az-content-left az-content-left-components">
+            <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
                     <label>Laporan</label>
                     <nav class="nav flex-column">
@@ -560,6 +641,10 @@ $displayEndDate  = $_GET['end_date'] ?? '';
         </div>
     </div>
 
+    <script src="../lib/jquery/jquery.min.js"></script>
+    <script src="../lib/popper.js/popper.min.js"></script>
+    <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+
     <script>
         function openDetail(data, hargaAwalBooking) {
             const jenis = data.JenisBooking === 'Paket Jasa,Alat' ? 'Paket & Alat' : (data.JenisBooking || '-');
@@ -576,14 +661,25 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                 if (typeof angka !== 'number' && typeof angka !== 'string') return '-';
                 const number = parseFloat(angka);
                 if (isNaN(number)) return '-';
-                return new Intl.NumberFormat('id-ID').format(number);
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number).replace('IDR', 'Rp').trim();
             }
 
+            // Tentukan badge status untuk modal
+            let statusBadgeClass = 'badge-sukses';
+            let statusText = data.PbrStatus || 'Lunas';
+            if (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal') {
+                statusBadgeClass = 'badge-gagal';
+                statusText = data.BkgStatus == 'Batal' ? 'Batal' : 'Gagal';
+            } else if (data.PbrStatus == 'Pending' || data.PbrStatus == 'Lunas DP') {
+                statusBadgeClass = 'badge-pending';
+                statusText = data.PbrStatus;
+            }
+            
             let detailHtml = `
             <div style="margin-bottom:8px;"><strong>ID Pembayaran:</strong> #${String(data.IDPembayaran).padStart(5,'0')}</div>
             <div style="margin-bottom:8px;"><strong>Nama Pelanggan:</strong> ${data.UserNama}</div>
             <div style="margin-bottom:8px;"><strong>Jenis Layanan:</strong> ${jenis}</div>
-            <div style="margin-bottom:8px;"><strong>Status Pembayaran:</strong> <span class="${(data.PbrStatus == 'Pending' || data.PbrStatus == 'Lunas DP') ? 'badge-pending' : (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal' ? 'badge-gagal' : 'badge-sukses')}">${data.PbrStatus || 'Lunas'}</span></div>
+            <div style="margin-bottom:8px;"><strong>Status Pembayaran:</strong> <span class="${statusBadgeClass}">${statusText}</span></div>
             <div style="margin-bottom:8px;"><strong>Metode:</strong> ${data.PbrMetode}</div>
             <div style="margin-bottom:15px;"><strong>Waktu:</strong> ${new Date(data.CreatedAt).toLocaleString('id-ID')}</div>
             
@@ -593,26 +689,26 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                  // Kasus Pembatalan/Refund
                  detailHtml += `
                  <div style="font-size: 14px; margin-bottom: 5px;">
-                     <strong>1. Jumlah Pembayaran Awal:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                     <strong>1. Jumlah Pembayaran Awal:</strong> <span style="float:right;">${formatRupiah(totalAwal)}</span>
                  </div>
                  <div style="font-size: 14px; margin-bottom: 5px; color: #dc3545;">
-                     <strong>2. Potongan Refund (Diajukan):</strong> <span style="float:right;">- Rp ${formatRupiah(refundJumlah)}</span>
+                     <strong>2. Potongan Refund (Diajukan):</strong> <span style="float:right;">- ${formatRupiah(refundJumlah)}</span>
                  </div>
                  <hr style="margin-top: 5px; margin-bottom: 5px;">
                  <div style="font-size: 16px; font-weight: bold; color: #0f8f4f;">
-                     <strong>3. PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                     <strong>3. PENDAPATAN BERSIH:</strong> <span style="float:right;">${formatRupiah(pendapatanBersih)}</span>
                  </div>
                  <div style="font-size: 12px; color: #6c757d; margin-top: 10px;">
-                     *Nominal PbrJumlah di database telah di-*update* menjadi pendapatan bersih.
+                     *Nominal PbrJumlah di database telah di-update menjadi pendapatan bersih.
                  </div>`;
             } else {
                  // Kasus Normal (Tidak Ada Refund)
                  detailHtml += `
                  <div style="font-size: 14px; margin-bottom: 5px;">
-                     <strong>Total Tagihan:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                     <strong>Total Tagihan:</strong> <span style="float:right;">${formatRupiah(totalAwal)}</span>
                  </div>
                  <div style="font-size: 16px; font-weight: bold; color: #0f8f4f; margin-top: 10px;">
-                     <strong>PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                     <strong>PENDAPATAN BERSIH:</strong> <span style="float:right;">${formatRupiah(pendapatanBersih)}</span>
                  </div>`;
             }
 
@@ -620,6 +716,21 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             document.getElementById('detailContent').innerHTML = detailHtml;
             document.getElementById('detailModal').style.display = 'flex';
         }
+
+        $(document).ready(function() {
+            // Menu toggle handlers
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
+        });
     </script>
 </body>
 
