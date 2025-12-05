@@ -17,7 +17,7 @@ if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
 // --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
 
 require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/Users.php";
+require_once __DIR__ . "/../../class/users.php";
 
 // Initialize database connection
 $db = new Database();
@@ -219,20 +219,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
           </li>
           <li class="nav-item">
-            <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-            <div class="az-menu-sub">
-              <div class="container">
-                <div>
-                  <nav class="nav">
-                    <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                    <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                    <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                    <a href="../template/table-basic.html" class="nav-link">Table</a>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          </li>
         </ul>
       </div>
       <div class="az-header-right">
@@ -269,7 +255,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           </div>
         </div>
         <div class="dropdown az-profile-menu">
-          <a href="profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+          <a href="../../view/profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
           <div class="dropdown-menu">
             <div class="az-dropdown-header d-sm-none">
               <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -282,11 +268,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
               <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
             </div>
 
-            <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-            <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-            <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-            <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-            <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+            <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+            <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
           </div>
         </div>
       </div>

@@ -3,6 +3,29 @@ session_start();
 require_once __DIR__ . "/../../../config/koneksi.php";
 require_once __DIR__ . "/../../../class/pembayaran.php";
 require_once __DIR__ . "/../../../class/users.php"; 
+
+// --- START: VERIFIKASI SESI KRITIS ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path relatif dari /adminArtefax/form-pembayaran/refund/pengajuan_refund.php ke /adminArtefax/view/login.php
+    header("Location: ../../../view/login.php"); 
+    exit;
+}
+
+// Data User untuk Header
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Admin',
+    'UserRole' => $_SESSION['UserRole'] ?? 'Administrator',
+];
+$defaultProfileImage = '../../img/faces/face1.jpg';
+// --- END: VERIFIKASI SESI KRITIS ---
+
+
 $db = new Database();
 $conn = $db->getConnection();
 
@@ -12,9 +35,11 @@ $user = new User($conn);
 // Ambil data user yang sedang login
 $currentUser = null;
 if (isset($_SESSION['IDUser'])) {
-    $currentUser = $user->getUserByID($_SESSION['IDUser']);
+    $currentUser = $loggedInUser; 
 }
 
+
+// Asumsi: Anda memiliki metode readPendingRefund yang mengambil data refund
 $pendingRefunds = $pembayaran->readPendingRefund();
 
 // Feedback
@@ -29,13 +54,11 @@ unset($_SESSION['success'], $_SESSION['error']);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Konfirmasi Pembayaran - Admin ArtefaxID</title>
+    <title>Pengajuan Refund - Admin ArtefaxID</title>
 
-    <!-- CSS -->
     <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../../lib/typicons.font/typicons.css" rel="stylesheet">
-    <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../../css/azia.css" rel="stylesheet">
     <style>
         /* Fixed Header */
@@ -89,6 +112,7 @@ unset($_SESSION['success'], $_SESSION['error']);
         .az-header-profile {
             padding: 15px 20px;
             border-bottom: 1px solid #e9ecef;
+            text-align: center;
         }
 
         .az-header-profile .az-img-user {
@@ -385,12 +409,19 @@ unset($_SESSION['success'], $_SESSION['error']);
                                     <span>Mar 15 12:32pm</span>
                                 </div>
                             </div>
+                            <div class="media new">
+                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
+                                    <span>Mar 13 04:16am</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
                 </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -402,21 +433,13 @@ unset($_SESSION['success'], $_SESSION['error']);
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components">
@@ -440,10 +463,10 @@ unset($_SESSION['success'], $_SESSION['error']);
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Pembayaran</span>
-                    <span>Konfirmasi Pembayaran</span>
+                    <span>Pengajuan Refund</span>
                 </div>
-                <h2 class="az-content-title">Konfirmasi Pembayaran</h2>
-                <p class="mg-b-20">Verifikasi bukti pembayaran dari pelanggan.</p>
+                <h2 class="az-content-title">Pengajuan Refund</h2>
+                <p class="mg-b-20">Verifikasi dan proses pengajuan refund dari pelanggan.</p>
 
                 <?php if ($success): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
@@ -454,12 +477,13 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                 <div class="row">
                     <?php if ($pendingRefunds && count($pendingRefunds) > 0): ?>
-                        <?php foreach ($pendingRefunds as $index => $r): 
-                            $rf = $detailRefunds[$index] ?? $r;
+                        <?php foreach ($pendingRefunds as $r): 
+                            // Asumsi $user->getUserByID mengembalikan array user data
                             $customer = $user->getUserByID($r['IDUser']);
                             $namaCustomer = $customer['UserNama'] ?? 'Unknown';
                             $tglBooking = date('d M Y', strtotime($r['BkgTglMulai']));
                             $tglPengajuan = date('d M Y, H:i', strtotime($r['RefundWaktu'])) . ' WIB';
+                            $rf = $r; // Menggunakan variabel yang sama untuk modal
                         ?>
                             <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $r['IDRefund'] ?>">
                                 <div class="card-refund shadow-sm h-100 border-warning">
@@ -504,10 +528,10 @@ unset($_SESSION['success'], $_SESSION['error']);
                                     </div>
                                     <div class="card-footer d-flex justify-content-between align-items-center">
                                         <button class="btn-action btn-detail" 
-                                                onclick='openRefundPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                                    onclick='openRefundPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                             <i class="fas fa-eye"></i> Detail
                                         </button>
-                                        <button type="button" class="btn btn-success btn-sm" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
+                                        <button type="button" class="btn btn-success btn-sm btn-setuju-refund" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
                                             Setujui Refund
                                         </button>
                                     </div>
@@ -571,11 +595,65 @@ unset($_SESSION['success'], $_SESSION['error']);
         document.getElementById('modalRefund').addEventListener('click', function(e) {
             if (e.target === this) tutupModalKu();
         });
+
+        // Function untuk menampilkan detail refund (modal terpisah, karena ini hanya modal konfirmasi)
+        function openRefundPopup(data) {
+            alert("Detail Refund:\nID: " + data.IDRefund + "\nAlasan: " + data.RefundAlasan);
+            // Anda bisa mengganti ini dengan modal detail yang lebih kompleks jika diperlukan.
+        }
     </script>
 
-    <script src="../lib/jquery/jquery.min.js"></script>
-    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../js/azia.js"></script>
+    <script src="../../lib/jquery/jquery.min.js"></script>
+    <script src="../../lib/popper.js/popper.min.js"></script> 
+    <script src="../../lib/bootstrap/js/bootstrap.min.js"></script> 
+    <script src="../../js/azia.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Toggle menu mobile
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+            });
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+            });
+
+            // FIX DROPDOWN PROFILE (FINAL AGGRESSIVE FIX)
+            var $dropdownContainer = $('.az-profile-menu');
+            var $dropdownMenu = $dropdownContainer.find('.dropdown-menu');
+
+            // 1. Memaksa elemen menu untuk berada di dalam kontainer profil (mengatasi bug Azia)
+            if ($dropdownMenu.length && !$dropdownMenu.parent().is($dropdownContainer)) {
+                $dropdownMenu.appendTo($dropdownContainer);
+            }
+            
+            // 2. Menginisialisasi Ulang dan Menangani Klik Manual (Event Delegation)
+            // Hapus semua inisialisasi Bootstrap yang mungkin gagal sebelumnya, dan tangani secara manual
+            
+            // Menghapus data-toggle untuk mencegah inisialisasi ganda yang gagal
+            $dropdownContainer.find('.dropdown-toggle').removeAttr('data-toggle');
+
+            // Mengganti fungsionalitas Bootstrap dengan JQuery Toggle Class
+            $dropdownContainer.on('click', '.dropdown-toggle', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // Menutup dropdown lain jika ada
+                $('.az-profile-menu .dropdown-menu').not($(this).siblings('.dropdown-menu')).removeClass('show');
+
+                // Toggle kelas 'show'
+                $(this).siblings('.dropdown-menu').toggleClass('show');
+            });
+
+            // Menyembunyikan menu saat mengklik di luar
+            $(document).on('click', function (e) {
+                if (!$dropdownContainer.is(e.target) && $dropdownContainer.has(e.target).length === 0) {
+                    $dropdownMenu.removeClass('show');
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

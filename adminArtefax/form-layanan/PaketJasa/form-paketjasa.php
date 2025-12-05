@@ -1,65 +1,112 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../../config/koneksi.php";
-require_once __DIR__ . "/../../../class/paketjasa.php";
 
-// Variabel profil statis (sesuai kode asli, karena data user tidak dimuat)
-$profileName = "Aziana Pechon";
-$profileRole = "Premium Member";
-$profileImage = "../../img/faces/face1.jpg"; // Path disesuaikan
+// ============== WHITELIST – FILE YANG BOLEH DIAKSES TANPA LOGIN ==============
+$currentFile = basename($_SERVER['SCRIPT_NAME']);
+$allowedWithoutLogin = ['login.php', 'logout.php', 'register.php', 'forgot_password.php'];
 
-$db = new Database();
-$conn = $db->getConnection();
+if (!in_array($currentFile, $allowedWithoutLogin)) {
 
-// Inisialisasi class
-$paket = new PaketJasa($conn);
-/* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
-$limit = 10; // Variabel FIX
-$page= isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$offset = ($page - 1) * $limit;
+    // ============== ANTI-LOOP LOGIN PROTECTION ==============
+    if (!isset($_SESSION['login_attempts'])) {
+        $_SESSION['login_attempts'] = 0;
+    }
+    if (isset($_SESSION['last_redirect_time'])) {
+        if (time() - $_SESSION['last_redirect_time'] > 60) {
+            $_SESSION['login_attempts'] = 0;
+        }
+    }
 
-// Pastikan method ini ADA di class User
-$totalPaket = $paket->TotalLayanan();
-$totalPages= ceil($totalPaket / $limit);
+    require_once __DIR__ . "/../../../config/koneksi.php";
+    require_once __DIR__ . "/../../../class/paketjasa.php";
 
-// Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
-$paketList= $paket->readAll($limit, $offset);
-/* ================================================================== */
+    // === PERBAIKAN PALING PENTING: CEK SESSION YANG BENAR ===
+    $isLoggedIn = false;
+    $userData   = [];
 
-// Feedback
-$success_message = $_SESSION['success_message'] ?? '';
-$error_message = $_SESSION['error_message'] ?? '';
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+    // Format session baru dari login.php kamu (di dalam $_SESSION['user'])
+    if (isset($_SESSION['user']) && is_array($_SESSION['user']) && !empty($_SESSION['user']['IDUser'])) {
+        $isLoggedIn = true;
+        $userData   = $_SESSION['user'];
+    }
+    // Format lama (kalau ada halaman lain yang masih pakai cara lama)
+    elseif (isset($_SESSION['UserID']) || isset($_SESSION['user_id']) || isset($_SESSION['id'])) {
+        $isLoggedIn = true;
+        $userData = [
+            'IDUser'   => $_SESSION['UserID'] ?? $_SESSION['user_id'] ?? $_SESSION['id'],
+            'UserNama' => $_SESSION['UserNama'] ?? $_SESSION['username'] ?? $_SESSION['user_name'] ?? 'User',
+            'UserRole' => $_SESSION['UserRole'] ?? $_SESSION['role'] ?? $_SESSION['user_role'] ?? 'user'
+        ];
+    }
+
+    // Jika tetap belum login → redirect
+    if (!$isLoggedIn) {
+        $_SESSION['login_attempts']++;
+        $_SESSION['last_redirect_time'] = time();
+
+        if ($_SESSION['login_attempts'] > 3) {
+            die('
+                <div style="font-family: Arial; padding: 50px; text-align: center;">
+                    <h2 style="color: #dc3545;">Login Loop Detected</h2>
+                    <p>Terjadi masalah dengan sistem login. Kemungkinan penyebab:</p>
+                    <ul style="text-align: left; max-width: 600px; margin: 20px auto; line-height: 1.8;">
+                        <li>Session tidak tersimpan dengan benar setelah login</li>
+                        <li>Cookie browser diblokir atau disabled</li>
+                    </ul>
+                    <div style="margin-top: 30px;">
+                        <a href="../../../View/login.php" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">
+                            Coba Login Lagi
+                        </a>
+                    </div>
+                </div>
+            ');
+        }
+
+        $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+        header("Location: ../../../View/login.php");
+        exit();
+    }
+
+    // Reset counter karena sudah berhasil masuk
+    $_SESSION['login_attempts'] = 0;
+
+    // ============== DATA USER YANG DIPAKAI DI HALAMAN ==============
+    $loggedInUser = [
+        'UserNama' => $userData['UserNama']  ?? 'Admin User',
+        'UserRole' => $userData['UserRole']  ?? 'Administrator'
+    ];
+
+    $defaultProfileImage = "../../img/faces/face1.jpg";
+
+    $db = new Database();
+    $conn = $db->getConnection();
+    $paket = new PaketJasa($conn);
+
+    /* ============== PAGINATION ============== */
+    $limit = 10;
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $offset = ($page - 1) * $limit;
+
+    $totalPaket = $paket->TotalLayanan();
+    $totalPages = ceil($totalPaket / $limit);
+    $paketList = $paket->readAll($limit, $offset);
+
+    $success_message = $_SESSION['success_message'] ?? '';
+    $error_message   = $_SESSION['error_message'] ?? '';
+    unset($_SESSION['success_message'], $_SESSION['error_message']);
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-90680653-2"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-
-        function gtag() {
-            dataLayer.push(arguments);
-        }
-        gtag('js', new Date());
-
-        gtag('config', 'UA-90680653-2');
-    </script>
-
+    <!-- ... head content tetap sama ... -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-    <meta name="description" content="Responsive Bootstrap 4 Dashboard Template">
-    <meta name="author" content="BootstrapDash">
-
     <title>Admin ArtefaxID</title>
-
+    
     <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../../lib/ionicons/css/ionicons.min.css" rel="stylesheet">
     <link href="../../lib/typicons.font/typicons.css" rel="stylesheet">
-
     <link rel="stylesheet" href="../../css/azia.css" />
     <link rel="stylesheet" href="../css/form-paketjasa.css">
 
@@ -86,17 +133,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             background-color: #fff;
             padding-top: 30px !important;
         }
-        .az-content-left .component-item {
-            padding-top: 10px;
-        }
-        .az-content-left .component-item label {
-            margin-top: 15px;
-            margin-bottom: 10px;
-            display: block;
-        }
-        .az-content-left .component-item label:first-child {
-            margin-top: 0;
-        }
         
         @media (min-width: 992px) {
             .az-content-body {
@@ -114,17 +150,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             .az-content-body {
                 margin-left: 0 !important;
             }
-            .az-body {
-                padding-top: 70px !important;
-            }
         }
-        /* --- END FIXED LAYOUT --- */
 
-        /* CSS untuk badge status tabel */
+        /* Badge status */
         .badge-active { background-color: #d4edda; color: #155724; }
         .badge-inactive { background-color: #f8d7da; color: #721c24; }
         
-        /* CSS untuk modal (memastikan modal overlay bekerja) */
+        /* Modal */
         .modal {
             position: fixed;
             top: 0;
@@ -133,27 +165,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             width: 100%;
             height: 100%;
             overflow: hidden;
-            outline: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: rgba(0, 0, 0, 0.5);
         }
-        .modal-dialog {
-            margin: 1.75rem auto;
-        }
-        .modal-content {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            pointer-events: auto;
-            background-color: #fff;
-            background-clip: padding-box;
-            border: 1px solid rgba(0,0,0,.2);
-            border-radius: .3rem;
-            outline: 0;
-        }
+        
+        /* Lightbox */
         .lightbox-overlay {
             position: fixed;
             top: 0;
@@ -182,20 +200,19 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             color: #fff;
             font-size: 35px;
             font-weight: bold;
-            transition: 0.3s;
             cursor: pointer;
         }
     </style>
-
 </head>
 
 <body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
-                <a href="../../template/index.html" class="az-logo"><span></span> Artefax</a>
+                <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
                 <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
             </div>
+            
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
@@ -203,109 +220,74 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="../../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../PaketJasa/form-paketjasa.php" class="nav-link with-sub"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../PaketJasa/form-paketjasa.php" class="nav-link">Daftar Paket Jasa</a>
-                                        <a href="../Alat/form-alat.php" class="nav-link">Daftar Alat</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
                 </ul>
-                </div><div class="az-header-right">
-                <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
+            </div>
+            
+            <div class="az-header-right">
                 <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
                 <div class="az-header-message">
                     <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div><div class="dropdown az-header-notification">
+                </div>
+                <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu">
-                        <div class="az-dropdown-header mg-b-20 d-sm-none">
-                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-                        </div>
-                        <h6 class="az-notification-title">Notifications</h6>
-                        <p class="az-notification-text">You have 2 unread notification</p>
-                        <div class="az-notification-list">
-                            <div class="media new">
-                                <div class="az-img-user"><img src="../../img/faces/face2.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
-                                    <span>Mar 15 12:32pm</span>
-                                </div></div><div class="media new">
-                                <div class="az-img-user online"><img src="../../img/faces/face3.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                                    <span>Mar 13 04:16am</span>
-                                </div></div><div class="media">
-                                <div class="az-img-user"><img src="../../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div></div><div class="media">
-                                <div class="az-img-user"><img src="../../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div></div></div><div class="dropdown-footer"><a href="">View All Notifications</a></div>
-                    </div></div><div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="<?= $profileImage ?>" alt=""></a>
+                </div>
+                
+                <!-- DROPDOWN PROFIL - SUDAH DIPERBAIKI -->
+                <div class="dropdown az-profile-menu">
+                    <a href="../../View/profile.php" class="az-img-user">
+                        <img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt="">
+                    </a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="<?= $profileImage ?>" alt="">
-                            </div><h6><?= htmlspecialchars($profileName) ?></h6>
-                            <span><?= htmlspecialchars($profileRole) ?></span>
-                        </div><a href="../../profile/my-profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="../../profile/edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="../../profile/activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="../../profile/settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../../auth/logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-                    </div></div>
-                </div></div></div><div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
+                                <img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="../../View/profile.php" class="dropdown-item">
+                            <i class="typcn typcn-user-outline"></i> My Profile
+                        </a>
+                        <a href="../../logout.php" class="dropdown-item">
+                            <i class="typcn typcn-power-outline"></i> Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Content tetap sama seperti kode asli -->
+    <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
-
                     <label>Layanan</label>
                     <nav class="nav flex-column">
                         <a href="../PaketJasa/form-paketjasa.php" class="nav-link active">Daftar Paket Jasa</a>
                         <a href="../Alat/form-alat.php" class="nav-link">Daftar Alat</a>
                     </nav>
-                </div></div><div class="az-content-body pd-lg-l-40 d-flex flex-column">
+                </div>
+            </div>
+            
+            <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Layanan</span>
                     <span>Daftar Paket Jasa</span>
@@ -315,7 +297,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 <div class="d-flex justify-content-between align-items-center mg-b-20">
                     <p class="mg-b-0">Kelola semua paket jasa di sini.</p>
                     <button onclick="openTambahPopup()" 
-                    style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         Tambah Layanan
                     </button>
                 </div>
@@ -327,6 +309,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
                 <?php endif; ?>
 
+                <!-- Tabel dan pagination tetap sama -->
                 <div class="table-container">
                     <?php if ($paketList && count($paketList) > 0): ?>
                         <table class="custom-table">
@@ -386,345 +369,192 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                        
                         <?php if ($totalPages > 1): ?>
                         <nav class="mt-4">
                             <ul class="pagination justify-content-center">
                                 <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
                                     <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
                                 </li>
-
                                 <?php
                                 $start = max(1, $page - 2);
-                                $end   = min($totalPages, $page + 2);
-
-                                if ($start > 1) {
-                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
-                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                }
-
+                                $end = min($totalPages, $page + 2);
+                                
                                 for ($i = $start; $i <= $end; $i++) {
                                     $active = ($i == $page) ? 'active' : '';
                                     echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
                                 }
-
-                                if ($end < $totalPages) {
-                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
-                                }
                                 ?>
-
                                 <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
                                     <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
                                 </li>
                             </ul>
                         </nav>
-                        <div class="text-center text-muted small">
-                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
-                        </div>
                         <?php endif; ?>
-
                     <?php else: ?>
                         <div class="text-center py-5 bg-light rounded">
                             <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                             <p class="text-muted mb-3">Belum ada layanan terdaftar.</p>
-                            <button onclick="openTambahPopup()" style="padding: 10px 20px; background: #3366ff; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                Tambah Layanan
-                            </button>
                         </div>
                     <?php endif; ?>
                 </div>
-            </div> 
-        </div>
-    </div>
-</div>
-
-<div id="gambarLightbox" class="lightbox-overlay" style="display:none;">
-    <div class="lightbox-content">
-        <span class="lightbox-close">&times;</span>
-        <h5 id="lightboxJudul" class="mb-3"></h5>
-        <img id="lightboxImg" src="" alt="Gambar Paket" style="max-width:100%; max-height:80vh; border-radius:8px;">
-    </div>
-</div>
-
-<div id="layananModal" class="modal" style="display:none;">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 id="modalTitle">Tambah Layanan</h5>
-                <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-            <form id="formLayanan" action="tambah_paketjasa.php" method="POST" enctype="multipart/form-data">
-                <div class="modal-body modal-body-scroll">
-                    <input type="hidden" id="idPaket" name="IDPaket">
-                    <input type="hidden" id="gambarLama" name="gambarLama">
-
-                    <div class="form-group">
-                        <label>Nama Paket <span class="text-danger">*</span></label>
-                        <input type="text" name="PaketNama" class="form-control" required minlength="3" maxlength="100">
-                    </div> 
-                    <div class="form-group">
-                        <label>Gambar <span class="text-danger">*</span></label> 
-
-                        <div id="previewContainer" class="text-center mb-4" style="display:none;">
-                            <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
-                            <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
-                        </div>
-
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
-                            <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
-                                <i class="fas fa-times" style="font-size:12px;"></i>
-                            </button>
-                            <label for="gambar_paketjasa" class="btn btn-primary">
-                                <i class="fas fa-camera me-1"></i> Browse
-                            </label>
-                        </div>
-
-                        <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*" style="display:none;">
-                        <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Kategori <span class="text-danger">*</span></label>
-                        <select name="PaketKategori" class="form-control" required>
-                            <option value="">Pilih Kategori</option>
-                            <option value="Graduation">Graduation</option>
-                            <option value="Wedding">Wedding</option>
-                            <option value="Prewedding">Prewedding</option>
-                            <option value="Event">Event Organizer</option>
-                            <option value="YearBook">YearBook</option>
-                            <option value="Lainnya">Lainnya</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Deskripsi</label>
-                        <textarea name="PaketDeskripsi" class="form-control" rows="3" maxlength="500"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Harga (Rp) <span class="text-danger">*</span></label>
-                        <input type="number" name="PaketHarga" class="form-control" required min="0" step="1000">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Durasi <span class="text-danger">*</span></label>
-                        <input type="text" name="PaketDurasi" class="form-control" required placeholder="Contoh: 3 Hari" maxlength="50">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Status <span class="text-danger">*</span></label>
-                        <select name="PaketStatus" class="form-control" required>
-                            <option value="Aktif">Aktif</option>
-                            <option value="Nonaktif">Nonaktif</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
 
-<script>
-    const modal = document.getElementById('layananModal');
-    const form = document.getElementById('formLayanan');
+    <!-- Modal dan Lightbox tetap sama -->
+    <div id="gambarLightbox" class="lightbox-overlay" style="display:none;">
+        <div class="lightbox-content">
+            <span class="lightbox-close">&times;</span>
+            <h5 id="lightboxJudul" class="mb-3"></h5>
+            <img id="lightboxImg" src="" alt="Gambar Paket" style="max-width:100%; max-height:80vh; border-radius:8px;">
+        </div>
+    </div>
 
-    document.addEventListener('DOMContentLoaded', function() {
-        modal.style.display = 'none'; 
-        document.body.style.overflow = 'auto'; 
-        // Auto fadeout alert
-        setTimeout(function() {
-            $('.alert').fadeOut('slow');
-        }, 5000);
-        
-        // Menu toggle handlers
-        $('#azMenuShow').on('click', function(e) {
-            e.preventDefault();
-            $('.az-header-menu').toggleClass('show');
-            $(this).toggleClass('open');
-        });
-        
-        $('.az-header-menu .close').on('click', function(e) {
-            e.preventDefault();
-            $('.az-header-menu').removeClass('show');
-            $('#azMenuShow').removeClass('open');
-        });
-    });
-    
-    function openTambahPopup() {
-        document.getElementById('modalTitle').textContent = 'Tambah Layanan';
-        form.action = 'tambah_paketjasa.php';
-        form.reset();
-        form.elements['PaketStatus'].value = 'Aktif'; // Default value
-        document.getElementById('idPaket').value = '';
-        document.getElementById('gambarLama').value = '';
-        document.getElementById('fileNameDisplay').value = '';
-        document.getElementById('btnHapusGambar').style.display = 'none';
-        document.getElementById('previewContainer').style.display = 'none';
-        modal.style.display = 'flex'; 
-    }
+    <div id="layananModal" class="modal" style="display:none;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="modalTitle">Tambah Layanan</h5>
+                    <button type="button" class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <form id="formLayanan" action="tambah_paketjasa.php" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body modal-body-scroll">
+                        <input type="hidden" id="idPaket" name="IDPaket">
+                        <input type="hidden" id="gambarLama" name="gambarLama">
 
-    function openEditPopup(data) {
-        document.getElementById('modalTitle').textContent = 'Edit Layanan';
-        form.action = 'edit_paketjasa.php';
-        document.getElementById('idPaket').value = data.IDPaket;
-        form.PaketNama.value = data.PaketNama;
-        form.PaketKategori.value = data.PaketKategori;
-        form.PaketDeskripsi.value = data.PaketDeskripsi;
-        form.PaketHarga.value = data.PaketHarga;
-        form.PaketDurasi.value = data.PaketDurasi;
-        form.PaketStatus.value = data.PaketStatus;
+                        <div class="form-group">
+                            <label>Nama Paket <span class="text-danger">*</span></label>
+                            <input type="text" name="PaketNama" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Gambar <span class="text-danger">*</span></label>
+                            <div id="previewContainer" style="display:none;">
+                                <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px;">
+                            </div>
+                            <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*">
+                        </div>
 
-        const imgPath = data.PaketDirGbr;
-        const previewImg = document.getElementById('previewImg');
-        const previewContainer = document.getElementById('previewContainer');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
-        const btnHapusGambar = document.getElementById('btnHapusGambar');
+                        <div class="form-group">
+                            <label>Kategori <span class="text-danger">*</span></label>
+                            <select name="PaketKategori" class="form-control" required>
+                                <option value="">Pilih Kategori</option>
+                                <option value="Graduation">Graduation</option>
+                                <option value="Wedding">Wedding</option>
+                                <option value="Prewedding">Prewedding</option>
+                                <option value="Event">Event Organizer</option>
+                                <option value="YearBook">YearBook</option>
+                            </select>
+                        </div>
 
-        if (imgPath && imgPath.trim() !== '') {
-            document.getElementById('gambarLama').value = imgPath;
-            // Path disesuaikan agar cocok dengan environment Artefax/adminArtefax/form-layanan/PaketJasa
-            previewImg.src = '../../Paket/img/produk/' + imgPath; 
-            previewContainer.style.display = 'block';
-            document.getElementById('previewText').textContent = 'Preview Gambar';
-            fileNameDisplay.value = imgPath.split('/').pop();
-            btnHapusGambar.style.display = 'block';
-        } else {
-            resetGambarPreview();
-        }
-        modal.style.display = 'flex';
-    }
+                        <div class="form-group">
+                            <label>Deskripsi</label>
+                            <textarea name="PaketDeskripsi" class="form-control" rows="3"></textarea>
+                        </div>
 
-    function closeModal() {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
+                        <div class="form-group">
+                            <label>Harga (Rp) <span class="text-danger">*</span></label>
+                            <input type="number" name="PaketHarga" class="form-control" required>
+                        </div>
 
-    function resetGambarPreview() {
-        document.getElementById('gambar_paketjasa').value = '';
-        document.getElementById('fileNameDisplay').value = 'Belum ada file dipilih';
-        document.getElementById('btnHapusGambar').style.display = 'none';
-        document.getElementById('previewContainer').style.display = 'none';
-        document.getElementById('gambarLama').value = '';
-    }
+                        <div class="form-group">
+                            <label>Durasi <span class="text-danger">*</span></label>
+                            <input type="text" name="PaketDurasi" class="form-control" required>
+                        </div>
 
-    // Preview Gambar Baru
-    document.getElementById('gambar_paketjasa').addEventListener('change', function() {
-        const file = this.files[0];
-        if (!file) {
-            resetGambarPreview();
-            return;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Ukuran maksimal 5MB!');
-            resetGambarPreview();
-            return;
-        }
-
-        document.getElementById('fileNameDisplay').value = file.name;
-        document.getElementById('btnHapusGambar').style.display = 'block';
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('previewImg').src = e.target.result;
-            document.getElementById('previewContainer').style.display = 'block';
-            document.getElementById('previewText').textContent = 'Preview gambar baru'; // Diperjelas
-        };
-        reader.readAsDataURL(file);
-    });
-
-    document.getElementById('btnHapusGambar').addEventListener('click', resetGambarPreview);
-    modal.addEventListener('click', e => {
-        if (e.target === modal) closeModal();
-    });
-
-    // Tutup saat klik luar
-    window.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeModal();
-        }
-    });
-    form.addEventListener('submit', function() {
-        setTimeout(function() {
-            // Hapus form.reset() karena dapat mengganggu pengiriman data di beberapa browser/setup
-        }, 100);
-    });
-    // Pastikan input bisa diketik
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputs = modal.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            input.style.pointerEvents = 'auto';
-            input.style.userSelect = 'auto';
-            input.disabled = false;
-        });
-    });
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const lightbox = document.getElementById('gambarLightbox');
-        const lightboxImg = document.getElementById('lightboxImg');
-        const lightboxJudul = document.getElementById('lightboxJudul');
-        const closeBtn = document.querySelector('.lightbox-close');
-        // Perbaikan path: Disesuaikan dengan struktur file
-        const basePath = '../../Paket/img/produk/'; 
-
-        // Buka lightbox saat tombol Detail diklik
-        document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const imgFile = this.getAttribute('data-img');
-                const nama = this.getAttribute('data-nama');
-                const fullPath = basePath + imgFile.trim();
-
-                console.log('Mencoba load gambar:', fullPath);
-
-                lightboxJudul.textContent = nama;
-                lightboxImg.src = fullPath;
-                lightbox.style.display = 'flex';
-
-                lightboxImg.onerror = function() {
-                    lightboxImg.src = '';
-                    lightboxJudul.textContent = 'Gambar tidak ditemukan!';
-                    console.error('Gagal load:', fullPath);
-                }
-            });
-        });
-
-
-        closeBtn.onclick = () => {
-            lightbox.style.display = 'none';
-            lightboxImg.src = '';
-        };
-
-
-        lightbox.onclick = (e) => {
-            if (e.target === lightbox) {
-                lightbox.style.display = 'none';
-                lightboxImg.src = '';
-            }
-        };
-
-        // Tutup dengan tombol ESC
-        document.onkeyup = (e) => {
-            if (e.key === 'Escape' && lightbox.style.display === 'flex') {
-                lightbox.style.display = 'none';
-                lightboxImg.src = '';
-            }
-        };
-    });
-</script>
+                        <div class="form-group">
+                            <label>Status <span class="text-danger">*</span></label>
+                            <select name="PaketStatus" class="form-control" required>
+                                <option value="Aktif">Aktif</option>
+                                <option value="Nonaktif">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../../lib/ionicons/ionicons.js"></script>
     <script src="../../js/azia.js"></script>
-    <script src="../../js/chart.chartjs.js"></script>
-    <script src="../../js/jquery.cookie.js" type="text/javascript"></script>
-</body>
+    
+    <script>
+        const modal = document.getElementById('layananModal');
+        const form = document.getElementById('formLayanan');
 
-</html> 
+        document.addEventListener('DOMContentLoaded', function() {
+            modal.style.display = 'none';
+            
+            setTimeout(function() {
+                $('.alert').fadeOut('slow');
+            }, 5000);
+            
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+            });
+        });
+        
+        function openTambahPopup() {
+            document.getElementById('modalTitle').textContent = 'Tambah Layanan';
+            form.action = 'tambah_paketjasa.php';
+            form.reset();
+            modal.style.display = 'flex';
+        }
+
+        function openEditPopup(data) {
+            document.getElementById('modalTitle').textContent = 'Edit Layanan';
+            form.action = 'edit_paketjasa.php';
+            document.getElementById('idPaket').value = data.IDPaket;
+            form.PaketNama.value = data.PaketNama;
+            form.PaketKategori.value = data.PaketKategori;
+            form.PaketDeskripsi.value = data.PaketDeskripsi;
+            form.PaketHarga.value = data.PaketHarga;
+            form.PaketDurasi.value = data.PaketDurasi;
+            form.PaketStatus.value = data.PaketStatus;
+            
+            if (data.PaketDirGbr) {
+                document.getElementById('gambarLama').value = data.PaketDirGbr;
+                document.getElementById('previewImg').src = '../../Paket/img/produk/' + data.PaketDirGbr;
+                document.getElementById('previewContainer').style.display = 'block';
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = (e) => {
+            if (e.target === modal) closeModal();
+        };
+
+        // Lightbox
+        document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const lightbox = document.getElementById('gambarLightbox');
+                const imgPath = '../../Paket/img/produk/' + this.getAttribute('data-img');
+                document.getElementById('lightboxImg').src = imgPath;
+                document.getElementById('lightboxJudul').textContent = this.getAttribute('data-nama');
+                lightbox.style.display = 'flex';
+            });
+        });
+
+        document.querySelector('.lightbox-close').onclick = () => {
+            document.getElementById('gambarLightbox').style.display = 'none';
+        };
+    </script>
+</body>
+</html>

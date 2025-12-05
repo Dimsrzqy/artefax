@@ -1,11 +1,12 @@
 <?php
+// File: export_penugasan_csv.php (Diubah menjadi CSV/Excel-friendly)
 require_once __DIR__ . "/../../config/koneksi.php";
+
+// Pastikan tidak ada output sebelum header
+ob_clean();
 
 $db = new Database();
 $conn = $db->getConnection();
-
-// HINDARI OUTPUT APAPUN SEBELUM HEADER !!!
-ob_clean();
 
 // Query event + karyawan
 $sql = "
@@ -20,54 +21,67 @@ $sql = "
 
 $res = $conn->query($sql);
 
-// Nama file
-$filename = "Laporan_Penugasan_" . date("Y-m-d") . ".xls";
+/* ========================================================== */
+/* PENGATURAN HEADER DAN OUTPUT CSV                 */
+/* ========================================================== */
 
-// Header Excel supaya browser tidak error
-header("Content-Type: application/vnd.ms-excel");
-header("Content-Disposition: attachment; filename=\"$filename\"");
+// Header untuk file CSV
+$filename = "Laporan_Penugasan_" . date("Ymd_His") . ".csv";
+
+header('Content-Type: text/csv; charset=utf-8');
+header('Content-Disposition: attachment; filename="' . $filename . '"');
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// TABEL EXCEL
-echo "<table border='1'>
-        <thead>
-            <tr style='font-weight:bold; background:#d9e1f2;'>
-                <th>No</th>
-                <th>Nama Event</th>
-                <th>Lokasi</th>
-                <th>Tanggal</th>
-                <th>Waktu</th>
-                <th>Karyawan</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-";
+$output = fopen('php://output', 'w');
 
+// Menulis BOM (Byte Order Mark) untuk memastikan Excel membaca UTF-8 dengan benar
+fwrite($output, "\xEF\xBB\xBF");
+
+// --- BARIS HEADER LAPORAN ---
+fputcsv($output, ["LAPORAN PENUGASAN EVENT"], ';');
+fputcsv($output, ["Dicetak pada: " . date('d F Y - H:i')], ';');
+fputcsv($output, [''], ';'); // Baris kosong
+
+// --- HEADER TABEL (Kolom) ---
+$header = [
+    'No',
+    'Nama Event',
+    'Lokasi',
+    'Tanggal',
+    'Waktu',
+    'Karyawan Ditugaskan',
+    'Status'
+];
+// Menggunakan ';' sebagai delimiter (Pemisah)
+fputcsv($output, $header, ';'); 
+
+// --- DATA PENUGASAN ---
 $no = 1;
 
-if ($res->num_rows > 0) {
+if ($res && $res->num_rows > 0) {
     while ($row = $res->fetch_assoc()) {
-
         $tanggal = (new DateTime($row['EventTanggal']))->format("d/m/Y");
         $waktu   = $row['EventMulai'] . " - " . $row['EventSelesai'];
+        
+        $data_row = [
+            $no++,
+            $row['EventNama'],
+            $row['EventLokasi'],
+            $tanggal,
+            $waktu,
+            $row['Karyawan'],
+            $row['EventStatus']
+        ];
 
-        echo "
-        <tr>
-            <td>{$no}</td>
-            <td>{$row['EventNama']}</td>
-            <td>{$row['EventLokasi']}</td>
-            <td>{$tanggal}</td>
-            <td>{$waktu}</td>
-            <td>{$row['Karyawan']}</td>
-            <td>{$row['EventStatus']}</td>
-        </tr>";
-        $no++;
+        // Tulis baris data
+        fputcsv($output, $data_row, ';');
     }
 } else {
-    echo "<tr><td colspan='7'>Tidak ada data</td></tr>";
+    // Jika tidak ada data
+    fputcsv($output, ['Tidak ada data penugasan yang ditemukan.'], ';');
 }
 
-echo "</tbody></table>";
+// Menutup stream output
+fclose($output);
 exit;

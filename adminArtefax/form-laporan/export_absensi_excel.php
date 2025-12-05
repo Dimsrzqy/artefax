@@ -1,56 +1,93 @@
 <?php
-// export_absensi_excel.php → HASIL .XLS ASLI (BUKA EXCEL 100% TANPA ERROR & CORRUPTED)
+// File: export_absensi_excel.php (Diubah menjadi CSV/Excel-friendly)
+session_start();
+
+// --- VERIFIKASI LOGIN (Opsional, asumsikan sudah ada di file LaporanAbsensiKaryawan.php)
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Sesuaikan path jika diperlukan
+    // header("Location: ../../view/login.php"); 
+    // exit;
+}
+// --- END VERIFIKASI LOGIN
+
 require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/Absensi.php";
+require_once __DIR__ . "/../../class/absensi.php";
 
 $db = new Database();
 $conn = $db->getConnection();
 $absensi = new Absensi($conn);
-$result = $absensi->tampilSemua();
 
-// Header untuk file Excel asli (.xls)
-header("Content-Type: application/vnd.ms-excel; charset=utf-8");
-header("Content-Disposition: attachment; filename=Laporan_Absensi_Karyawan_" . date('d-m-Y') . ".xls");
+// 🛑 Asumsi: Jika fungsi tampilSemua() tidak menerima parameter filter, 
+// data yang diekspor adalah semua data yang ada.
+// Jika ingin memfilter, Anda harus menambahkan logika filter tanggal di file ini.
+$result = $absensi->tampilSemua(); 
+
+
+/* ========================================================== */
+/* PENGATURAN HEADER DAN OUTPUT CSV                 */
+/* ========================================================== */
+
+// Header untuk file CSV (Lebih modern dan kompatibel)
+$filename = "Laporan_Absensi_Karyawan_" . date('Ymd_His') . ".csv";
+
+header('Content-Type: text/csv; charset=utf-8');
+header('Content-Disposition: attachment; filename="' . $filename . '"');
 header("Pragma: no-cache");
 header("Expires: 0");
 
-echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head>
-<body>
-<h2 style="text-align:center; color:#1e7e34;">LAPORAN ABSENSI KARYAWAN ARTEFAX</h2>
-<p style="text-align:center;">Dicetak pada: ' . date('d F Y - H:i') . '</p>
-<table border="1" style="width:100%; border-collapse:collapse;">
-    <thead>
-        <tr style="background:#1e7e34; color:white; font-weight:bold; text-align:center;">
-            <th>No</th>
-            <th>Nama Karyawan</th>
-            <th>Tanggal</th>
-            <th>Jam</th>
-            <th>Lokasi</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody>';
+$output = fopen('php://output', 'w');
 
+// Menulis BOM (Byte Order Mark) untuk memastikan Excel membaca UTF-8 dengan benar
+// Ini penting untuk karakter khusus dan mencegah korupsi data.
+fwrite($output, "\xEF\xBB\xBF");
+
+// --- BARIS HEADER LAPORAN ---
+fputcsv($output, ["LAPORAN ABSENSI KARYAWAN ARTEFAX"], ';');
+fputcsv($output, ["Dicetak pada: " . date('d F Y - H:i')], ';');
+fputcsv($output, [''], ';'); // Baris kosong
+
+// --- HEADER TABEL (Kolom) ---
+$header = [
+    'No',
+    'Nama Karyawan',
+    'Tanggal',
+    'Jam',
+    'Lokasi',
+    'Status'
+];
+// Menggunakan ';' sebagai delimiter (Pemisah) agar lebih kompatibel dengan Excel Indonesia/Eropa
+fputcsv($output, $header, ';'); 
+
+
+// --- DATA ABSENSI ---
 $no = 1;
-while ($r = $result->fetch_assoc()) {
-    $waktu = $r['PsnWaktu'] ? new DateTime($r['PsnWaktu']) : null;
-    $tanggal = $waktu ? $waktu->format('d/m/Y') : '-';
-    $jam     = $waktu ? $waktu->format('H:i')     : '-';
-    $nama    = htmlspecialchars($r['UserNama'] ?? 'Tidak Diketahui');
-    $lokasi  = htmlspecialchars($r['PsnLokasi'] ?? '-');
-    $status  = ucfirst(strtolower($r['PsnStatus'] ?? 'Alpha'));
+if ($result && $result->num_rows > 0) {
+    while ($r = $result->fetch_assoc()) {
+        $waktu = $r['PsnWaktu'] ? new DateTime($r['PsnWaktu']) : null;
+        $tanggal = $waktu ? $waktu->format('d/m/Y') : '-';
+        $jam     = $waktu ? $waktu->format('H:i')     : '-';
+        $nama    = $r['UserNama'] ?? 'Tidak Diketahui';
+        $lokasi  = $r['PsnLokasi'] ?? '-';
+        $status  = ucfirst(strtolower($r['PsnStatus'] ?? 'Alpha'));
+        
+        $row = [
+            $no,
+            $nama,
+            $tanggal,
+            $jam,
+            $lokasi,
+            $status
+        ];
 
-    echo "<tr align='center'>
-            <td>$no</td>
-            <td align='left'>$nama</td>
-            <td>$tanggal</td>
-            <td>$jam</td>
-            <td align='left'>$lokasi</td>
-            <td>$status</td>
-          </tr>";
-    $no++;
+        fputcsv($output, $row, ';');
+        $no++;
+    }
+} else {
+    // Jika tidak ada data
+    fputcsv($output, ['Tidak ada data absensi yang ditemukan.'], ';');
 }
 
-echo '</tbody></table></body></html>';
+// Menutup stream output
+fclose($output);
 exit;
+?>

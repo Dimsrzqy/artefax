@@ -2,6 +2,29 @@
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/EventAssignment.php";
 
+// --- START: VERIFIKASI SESI KRITIS ---
+session_start();
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path relatif dari /adminArtefax/form-laporan/LaporanPenugasan.php ke /adminArtefax/view/login.php
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+
+// Data User untuk Header
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Admin',
+    'UserRole' => $_SESSION['UserRole'] ?? 'Administrator',
+];
+$defaultProfileImage = '../img/faces/face1.jpg';
+// --- END: VERIFIKASI SESI KRITIS ---
+
+
 $db = new Database();
 $conn = $db->getConnection();
 $event = new EventAssignment($conn);
@@ -362,8 +385,7 @@ $displayEndDate = $_GET['end_date'] ?? '';
     </style>
 </head>
 
-<body>
-
+<body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -373,14 +395,14 @@ $displayEndDate = $_GET['end_date'] ?? '';
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
                         <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
                         <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
@@ -389,22 +411,7 @@ $displayEndDate = $_GET['end_date'] ?? '';
                         <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="LaporanPenugasan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
                 </ul>
             </div>
@@ -417,34 +424,52 @@ $displayEndDate = $_GET['end_date'] ?? '';
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
                     <div class="dropdown-menu">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <h6 class="az-notification-title">Notifications</h6>
+                        <p class="az-notification-text">You have 2 unread notification</p>
+                        <div class="az-notification-list">
+                            <div class="media new">
+                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
+                                    <span>Mar 15 12:32pm</span>
+                                </div>
+                            </div>
+                            <div class="media new">
+                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
+                                <div class="media-body">
+                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
+                                    <span>Mar 13 04:16am</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
                 </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown">
-                        <img src="../img/faces/face1.jpg" alt="">
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right">
+                    <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
-
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
                             </div>
-                            <h6>Hello, User</h6>
-                            <span>Role Karyawan</span>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-
-                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
+
+
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components">
@@ -492,7 +517,7 @@ $displayEndDate = $_GET['end_date'] ?? '';
                                 $link = http_build_query($exportParams);
                                 ?>
                                 <a href="export_penugasan_excel.php?<?= $link ?>" class="btn btn-success">
-                                    <i class="fas fa-file-excel"></i> Export Excel
+                                    <i class="fas fa-file-excel"></i> Export CSV
                                 </a>
                             </div>
 
@@ -583,20 +608,39 @@ $displayEndDate = $_GET['end_date'] ?? '';
 <script src="../lib/jquery/jquery.min.js"></script>
 <script src="../lib/popper.js/popper.min.js"></script>
 <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+<script src="../js/azia.js"></script>
 
 <script>
-    // Toggle menu mobile
-    $('#azMenuShow').on('click', function(e) {
-        e.preventDefault();
-        $('.az-header-menu').toggleClass('show');
-    });
-    $('.az-header-menu .close').on('click', function(e) {
-        e.preventDefault();
-        $('.az-header-menu').removeClass('show');
-    });
+    $(document).ready(function() {
+        // Toggle menu mobile
+        $('#azMenuShow').on('click', function(e) {
+            e.preventDefault();
+            $('.az-header-menu').toggleClass('show');
+        });
+        $('.az-header-menu .close').on('click', function(e) {
+            e.preventDefault();
+            $('.az-header-menu').removeClass('show');
+        });
 
-    // Inisialisasi dropdown profile
-    $('.dropdown-toggle').dropdown();
+        // FIX DROPDOWN PROFILE (AGRESIF)
+        // Solusi kustom untuk template Azia/AdminLTE yang merusak DOM Bootstrap
+        var $dropdown = $('.az-profile-menu');
+        var $toggle = $dropdown.find('.dropdown-toggle');
+        var $menu = $dropdown.find('.dropdown-menu');
+
+        // 1. Pastikan tombol adalah pemicu yang tepat
+        if ($toggle.length) {
+            $toggle.attr('data-toggle', 'dropdown');
+        }
+
+        // 2. Jika menu terpisah (body), pindahkan ke dalam pemicu untuk Bootstrap 4
+        if ($menu.length && !$menu.parent().is($dropdown)) {
+            $menu.appendTo($dropdown);
+        }
+        
+        // 3. Inisialisasi eksplisit
+        $dropdown.dropdown(); 
+    });
 </script>
 
 </html>

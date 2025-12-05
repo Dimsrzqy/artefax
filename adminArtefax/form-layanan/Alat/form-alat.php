@@ -1,35 +1,99 @@
 <?php
 session_start();
-require_once __DIR__ . "/../../../config/koneksi.php";
-require_once __DIR__ . "/../../../class/alat.php";
 
-$db = new Database();
-$conn = $db->getConnection();
+// ============== WHITELIST – FILE YANG BOLEH DIAKSES TANPA LOGIN ==============
+$currentFile = basename($_SERVER['SCRIPT_NAME']);
+$allowedWithoutLogin = ['login.php', 'logout.php', 'register.php', 'forgot_password.php', 'index.php'];
 
-// Inisialisasi class
-$alat = new Alat($conn);
-/* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
-$limit  = 10;
-$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$offset = ($page - 1) * $limit;
+if (!in_array($currentFile, $allowedWithoutLogin)) {
 
-// Pastikan method ini ADA di class User
-$totalAlat = $alat->TotalAlat();
-$totalPages    = ceil($totalAlat/ $limit);
+    // ============== ANTI-LOOP LOGIN PROTECTION ==============
+    if (!isset($_SESSION['login_attempts'])) {
+        $_SESSION['login_attempts'] = 0;
+    }
+    if (isset($_SESSION['last_redirect_time'])) {
+        if (time() - $_SESSION['last_redirect_time'] > 60) {
+            $_SESSION['login_attempts'] = 0;
+        }
+    }
 
-// Method getKaryawan dengan parameter $limit & $offset (WAJIB ADA!)
-$alatList  = $alat->readAll($limit, $offset);
-/* ================================================================== */
+    // === CEK SESSION YANG BENAR (SESUAI DENGAN login.php KAMU) ===
+    $isLoggedIn = false;
+    $userData   = [];
 
-// Feedback
-$success_message = $_SESSION['success_message'] ?? '';
-$error_message = $_SESSION['error_message'] ?? '';
-unset($_SESSION['success_message'], $_SESSION['error_message']);
+    // Format session dari login.php: $_SESSION['user']
+    if (isset($_SESSION['user']) && is_array($_SESSION['user']) && !empty($_SESSION['user']['IDUser'])) {
+        $isLoggedIn = true;
+        $userData   = $_SESSION['user'];
+    }
+    // Format lama (biar tetap kompatibel kalau ada halaman lain pakai cara lama)
+    elseif (isset($_SESSION['UserID']) || isset($_SESSION['user_id']) || isset($_SESSION['id'])) {
+        $isLoggedIn = true;
+        $userData = [
+            'IDUser'    => $_SESSION['UserID'] ?? $_SESSION['user_id'] ?? $_SESSION['id'],
+            'UserNama'  => $_SESSION['UserNama'] ?? $_SESSION['username'] ?? $_SESSION['user_name'] ?? 'User',
+            'UserRole'  => $_SESSION['UserRole'] ?? $_SESSION['role'] ?? $_SESSION['user_role'] ?? 'user'
+        ];
+    }
 
-// Variabel profil statis (sesuai kode asli, karena data user tidak dimuat)
-$profileName = "Aziana Pechon";
-$profileRole = "Premium Member";
-$profileImage = "../img/faces/face1.jpg";
+    if (!$isLoggedIn) {
+        $_SESSION['login_attempts']++;
+        $_SESSION['last_redirect_time'] = time();
+
+        if ($_SESSION['login_attempts'] > 3) {
+            die('
+                <div style="font-family: Arial; padding: 50px; text-align: center;">
+                    <h2 style="color: #dc3545;">Login Loop Detected</h2>
+                    <p>Terjadi masalah dengan sistem login. Kemungkinan penyebab:</p>
+                    <ul style="text-align: left; max-width: 600px; margin: 20px auto; line-height: 1.8;">
+                        <li>Session tidak tersimpan dengan benar setelah login</li>
+                        <li>Cookie browser diblokir atau disabled</li>
+                    </ul>
+                    <div style="margin-top: 30px;">
+                        <a href="../../../View/login.php" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">
+                            Coba Login Lagi
+                        </a>
+                    </div>
+                </div>
+            ');
+        }
+
+        $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+        header("Location: ../../../View/login.php");
+        exit();
+    }
+
+    // Reset counter karena sudah login
+    $_SESSION['login_attempts'] = 0;
+
+    // ============== DATA USER UNTUK TAMPILAN ==============
+    $loggedInUser = [
+        'UserNama' => $userData['UserNama'] ?? 'Aziana Pechon',
+        'UserRole' => $userData['UserRole'] ?? 'Premium Member'
+    ];
+    $defaultProfileImage = "../../img/faces/face1.jpg";
+
+    // ============== PROSES DATA ALAT ==============
+    require_once __DIR__ . "/../../../config/koneksi.php";
+    require_once __DIR__ . "/../../../class/alat.php";
+
+    $db = new Database();
+    $conn = $db->getConnection();
+
+    $alat = new Alat($conn);
+
+    $limit  = 10;
+    $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $offset = ($page - 1) * $limit;
+
+    $totalAlat = $alat->TotalAlat();
+    $totalPages    = ceil($totalAlat / $limit);
+    $alatList   = $alat->readAll($limit, $offset);
+
+    $success_message = $_SESSION['success_message'] ?? '';
+    $error_message = $_SESSION['error_message'] ?? '';
+    unset($_SESSION['success_message'], $_SESSION['error_message']);
+}
 ?>
 
 <!DOCTYPE html>
@@ -186,10 +250,11 @@ $profileImage = "../img/faces/face1.jpg";
 
 </head>
 
-<body class="az-body"> <div class="az-header">
+<body class="az-body">
+    <div class="az-header">
         <div class="container">
             <div class="az-header-left">
-                <a href="../../template/index.html" class="az-logo"><span></span> Artefax</a>
+                <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
                 <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
             </div>
             <div class="az-header-menu">
@@ -199,51 +264,29 @@ $profileImage = "../img/faces/face1.jpg";
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="../../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
                     </li>
-                    <li class="nav-item active"> <a href="../PaketJasa/form-paketjasa.php" class="nav-link with-sub"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../PaketJasa/form-paketjasa.php" class="nav-link">Daftar Paket Jasa</a>
-                                        <a href="../Alat/form-alat.php" class="nav-link">Daftar Alat</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                    <li class="nav-item active">
+                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
                 </ul>
-            </div><div class="az-header-right">
+            </div>
+            <div class="az-header-right">
                 <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
                 <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
                 <div class="az-header-message">
                     <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div><div class="dropdown az-header-notification">
+                </div>
+                <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header mg-b-20 d-sm-none">
@@ -257,40 +300,41 @@ $profileImage = "../img/faces/face1.jpg";
                                 <div class="media-body">
                                     <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
                                     <span>Mar 15 12:32pm</span>
-                                </div></div><div class="media new">
+                                </div>
+                            </div>
+                            <div class="media new">
                                 <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
                                 <div class="media-body">
                                     <p><strong>Joyce Chua</strong> just created a new blog post</p>
                                     <span>Mar 13 04:16am</span>
-                                </div></div><div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div></div><div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div></div></div><div class="dropdown-footer"><a href="">View All Notifications</a></div>
-                    </div></div><div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="<?= $profileImage ?>" alt=""></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
+                    </div>
+                </div>
+                <div class="dropdown az-profile-menu">
+                    <a href="#" class="az-img-user" data-toggle="dropdown"><img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="<?= $profileImage ?>" alt="">
-                            </div><h6><?= htmlspecialchars($profileName) ?></h6>
-                            <span><?= htmlspecialchars($profileRole) ?></span>
-                        </div><a href="../../profile/my-profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="../../profile/edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="../../profile/activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="../../profile/settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="../../auth/logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-                    </div></div>
-            </div></div></div><div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
+                                <img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="../../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+            
+    <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
@@ -348,9 +392,9 @@ $profileImage = "../img/faces/face1.jpg";
                                         <td class="text-center">
                                             <?php if (!empty($p['AlatDirGbr'])): ?>
                                                 <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
-                                                        data-img="<?= htmlspecialchars($p['AlatDirGbr']) ?>"
-                                                        data-nama="<?= htmlspecialchars($p['AlatNama']) ?>">
-                                                    <i class="fas fa-image"></i> Detail
+                                                         data-img="<?= htmlspecialchars($p['AlatDirGbr']) ?>"
+                                                         data-nama="<?= htmlspecialchars($p['AlatNama']) ?>">
+                                                     <i class="fas fa-image"></i> Detail
                                                 </button>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
@@ -367,13 +411,13 @@ $profileImage = "../img/faces/face1.jpg";
                                         <td>
                                             <div class="tombol-aksi">
                                                 <button class="btn btn-sm btn-warning" onclick='openEditPopup(<?= json_encode($p) ?>)'>
-                                                    <i class="fas fa-edit"></i> Edit
+                                                     <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <form action="hapus_alat.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
-                                                    <input type="hidden" name="id" value="<?= $p['IDAlat'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-danger">
-                                                        <i class="fas fa-trash"></i> Hapus
-                                                    </button>
+                                                     <input type="hidden" name="id" value="<?= $p['IDAlat'] ?>">
+                                                     <button type="submit" class="btn btn-sm btn-danger">
+                                                         <i class="fas fa-trash"></i> Hapus
+                                                     </button>
                                                 </form>
                                             </div>
                                         </td>
@@ -439,6 +483,7 @@ $profileImage = "../img/faces/face1.jpg";
         <h5 id="lightboxJudul" class="mb-3"></h5>
         <img id="lightboxImg" src="" alt="Gambar Alat" style="max-width:100%; max-height:80vh; border-radius:8px;">
     </div>
+    <span class="lightbox-close-icon" onclick="document.getElementById('gambarLightbox').style.display='none'">&times;</span>
 </div>
 
 <div id="layananModal" class="modal" style="display:none;">
@@ -527,6 +572,13 @@ $profileImage = "../img/faces/face1.jpg";
     </div>
 </div>
 
+<script src="../../lib/jquery/jquery.min.js"></script>
+<script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="../../lib/ionicons/ionicons.js"></script>
+<script src="../../js/azia.js"></script>
+<script src="../../js/chart.chartjs.js"></script>
+<script src="../../js/jquery.cookie.js" type="text/javascript"></script>
+
 <script>
     const modal = document.getElementById('layananModal');
     const form = document.getElementById('formLayanan');
@@ -534,11 +586,9 @@ $profileImage = "../img/faces/face1.jpg";
     document.addEventListener('DOMContentLoaded', function() {
         modal.style.display = 'none'; 
         document.body.style.overflow = 'auto'; 
-        // Auto fadeout alert
         setTimeout(function() {
             $('.alert').fadeOut('slow');
         }, 5000);
-        // Menu toggle handlers
         $('#azMenuShow').on('click', function(e) {
             e.preventDefault();
             $('.az-header-menu').toggleClass('show');
@@ -550,6 +600,9 @@ $profileImage = "../img/faces/face1.jpg";
             $('.az-header-menu').removeClass('show');
             $('#azMenuShow').removeClass('open');
         });
+        
+        // Memastikan Bootstrap Dropdown diinisialisasi
+        $('.dropdown-toggle').dropdown(); 
     });
     function openTambahPopup() {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
@@ -575,6 +628,8 @@ $profileImage = "../img/faces/face1.jpg";
         form.AlatStatus.value = data.AlatStatus;
 
         const imgPath = data.AlatDirGbr;
+        const previewImg = document.getElementById('previewImg');
+        const previewContainer = document.getElementById('previewContainer');
         if (imgPath && imgPath.trim() !== '') {
             document.getElementById('gambarLama').value = imgPath;
             previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
@@ -601,7 +656,6 @@ $profileImage = "../img/faces/face1.jpg";
         document.getElementById('gambarLama').value = '';
     }
 
-    // Preview Gambar Baru
     document.getElementById('gambar_alat').addEventListener('change', function() {
         const file = this.files[0];
         if (!file) {
@@ -632,7 +686,6 @@ $profileImage = "../img/faces/face1.jpg";
         if (e.target === modal) closeModal();
     });
 
-    // Tutup saat klik luar
     window.addEventListener('click', function(e) {
         if (e.target === modal) {
             closeModal();
@@ -643,7 +696,6 @@ $profileImage = "../img/faces/face1.jpg";
             closeModal();
         }, 100);
     });
-    // Pastikan input bisa diketik
     document.addEventListener('DOMContentLoaded', function() {
         const inputs = modal.querySelectorAll('input, select, textarea, button');
         inputs.forEach(input => {
@@ -662,7 +714,6 @@ $profileImage = "../img/faces/face1.jpg";
         const closeBtn = document.querySelector('.lightbox-close');
         const basePath = '/artefax/Paket/img/produk/';
 
-        // Buka lightbox saat tombol Detail diklik
         document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
             btn.addEventListener('click', function() {
                 const imgFile = this.getAttribute('data-img');
@@ -683,12 +734,10 @@ $profileImage = "../img/faces/face1.jpg";
             });
         });
 
-
         closeBtn.onclick = () => {
             lightbox.style.display = 'none';
             lightboxImg.src = '';
         };
-
 
         lightbox.onclick = (e) => {
             if (e.target === lightbox) {
@@ -697,7 +746,6 @@ $profileImage = "../img/faces/face1.jpg";
             }
         };
 
-        // Tutup dengan tombol ESC
         document.onkeyup = (e) => {
             if (e.key === 'Escape' && lightbox.style.display === 'flex') {
                 lightbox.style.display = 'none';
@@ -706,13 +754,6 @@ $profileImage = "../img/faces/face1.jpg";
         };
     });
 </script>
-
-    <script src="../lib/jquery/jquery.min.js"></script>
-    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../lib/ionicons/ionicons.js"></script>
-    <script src="../js/azia.js"></script>
-    <script src="../js/chart.chartjs.js"></script>
-    <script src="../js/jquery.cookie.js" type="text/javascript"></script>
 </body>
 
 </html>
