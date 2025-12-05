@@ -23,7 +23,7 @@ $booking = new Booking($conn);
 // OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL SUDAH LEWAT
 $booking->updateStatusSelesaiOtomatis();
 
-// --- START: DATA USER LOGIN (Ambil dari $_SESSION yang sudah diadaptasi) ---
+// --- START: DATA USER LOGIN ---
 $loggedInUser = [
     'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
     'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
@@ -99,37 +99,46 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
     <style>
-        /* --- START: Perbaikan untuk Fixed Layout --- */
+        /* --- FIXED LAYOUT --- */
         .az-body {
-            padding-top: 70px !important; /* Memberi ruang di atas untuk header */
+            padding-top: 70px !important;
         }
         .az-header {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1040; /* Pastikan di atas semua konten, termasuk dropdown */
+            z-index: 1040;
             background-color: #fff;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .az-content-left {
             position: fixed;
-            top: 70px; /* Tepat di bawah header */
+            top: 70px;
             bottom: 0;
             z-index: 1020;
             overflow-y: auto;
             background-color: #fff;
+            padding-top: 30px !important; /* Space dari navbar */
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
         }
         
         @media (min-width: 992px) {
-            /* Mengkompensasi lebar sidebar di konten utama */
             .az-content-body {
                 padding-top: 0 !important;
-                margin-left: 240px !important; 
+                margin-left: 240px !important;
             }
         }
         @media (max-width: 991.98px) {
-            /* Non-aktifkan fixed layout pada mobile/tablet */
             .az-content-left {
                 position: static;
                 top: auto;
@@ -140,12 +149,11 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 margin-left: 0 !important;
             }
             .az-body {
-                padding-top: 0 !important; 
+                padding-top: 70px !important;
             }
         }
-        /* --- END: Perbaikan untuk Fixed Layout --- */
         
-        /* CSS Badge Paket Jasa yang Sudah Diperbaiki */
+        /* --- BADGE PAKET JASA --- */
         .badge-paket{
             background:#28a745;
             color:#fff;
@@ -158,15 +166,49 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             white-space: nowrap; 
         }
 
-        /* CSS Lainnya */
-        .table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin-bottom:0;}
-        .table thead th{background:#3366ff !important;color:#fff !important;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:0.8px;border:none;padding:16px 20px;}
-        .table tbody td{padding:18px 20px;vertical-align:middle;border-top:1px solid #eef2f7;font-size:14px;color:#2d3748;}
-        .table tbody tr:hover{background:#f8faff;transition:all .2s;}
-        .az-content-title{font-weight:700;color:#1a202c;margin-bottom:25px;}
-        .alert{border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-        .text-durasi{font-size:13px;color:#4a5568;font-weight:500;}
-        .btn-assign{padding: 6px 14px; font-size: 13px;}
+        /* --- TABLE STYLE --- */
+        .table{
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom:0;
+        }
+        .table thead th{
+            background:#3366ff !important;
+            color:#fff !important;
+            font-weight:600;
+            text-transform:uppercase;
+            font-size:13px;
+            letter-spacing:0.8px;
+            border:none;
+            padding:16px 20px;
+        }
+        .table tbody td{
+            padding:18px 20px;
+            vertical-align:middle;
+            border-top:1px solid #eef2f7;
+            font-size:14px;
+            color:#2d3748;
+        }
+        .table tbody tr:hover{
+            background:#f8faff;
+            transition:all .2s;
+        }
+        .az-content-title{
+            font-weight:700;
+            color:#1a202c;
+            margin-bottom:25px;
+        }
+        .alert{
+            border-radius:10px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.1);
+        }
+        .text-durasi{
+            font-size:13px;
+            color:#4a5568;
+            font-weight:500;
+        }
     </style>
 </head>
 <body class="az-body">
@@ -179,7 +221,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
@@ -243,20 +285,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                     <span>Mar 13 04:16am</span>
                                 </div>
                             </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div>
-                            </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div>
-                            </div>
                         </div>
                         <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
@@ -284,6 +312,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
+    
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -295,8 +324,10 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <label>Menu Karyawan</label>
                     <a href="form-karyawan.php" class="nav-link">Daftar Karyawan</a>
                     <a href="form-booking-active.php" class="nav-link active">Booking Paket</a>
-                    <a href="form-penugasan.php" class="nav-link">Penugasan</a> </div>
+                    <a href="form-penugasan.php" class="nav-link">Penugasan</a>
+                </div>
             </div>
+            
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Data</span>
@@ -306,12 +337,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
                 <?php if ($success): ?>
                     <div class="alert alert-success alert-dismissible fade show">
-                        <?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <?= htmlspecialchars($success) ?>
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
                 <?php if ($error): ?>
                     <div class="alert alert-danger alert-dismissible fade show">
-                        <?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <?= htmlspecialchars($error) ?>
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
 
@@ -326,7 +359,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <table class="table table-hover mg-b-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>No</th><th>Pelanggan</th><th>Paket Jasa</th><th>Mulai</th><th>Selesai</th><th>Durasi</th><th>Total</th>
+                                    <th>No</th>
+                                    <th>Pelanggan</th>
+                                    <th>Paket Jasa</th>
+                                    <th>Mulai</th>
+                                    <th>Selesai</th>
+                                    <th>Durasi</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -378,11 +417,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <?php if ($totalPages > 1): ?>
                             <nav class="mt-4">
                                 <ul class="pagination justify-content-center">
-                                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page-1 ?>">Previous</a></li>
+                                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                                        <a class="page-link" href="?page=<?= $page-1 ?>">Previous</a>
+                                    </li>
                                     <?php for($i = 1; $i <= $totalPages; $i++): ?>
-                                        <li class="page-item <?= $i == $page ? 'active' : '' ?>"><a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a></li>
+                                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                        </li>
                                     <?php endfor; ?>
-                                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page+1 ?>">Next</a></li>
+                                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                                        <a class="page-link" href="?page=<?= $page+1 ?>">Next</a>
+                                    </li>
                                 </ul>
                             </nav>
                         <?php endif; ?>
@@ -396,13 +441,27 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
+    
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
     <script>
         $(document).ready(function() {
-            // Fix for dropdown menu initialization in fixed header
+            // Fix dropdown menu in fixed header
             $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+            
+            // Menu toggle handlers
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
             
             // Auto fadeout alert
             setTimeout(() => $('.alert').fadeOut('slow'), 5000);

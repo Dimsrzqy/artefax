@@ -300,6 +300,61 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                 color: #555;
             }
         }
+
+        /* ====================================================== */
+        /* TAMBAHAN: FIXED NAVBAR & SIDEBAR (TIDAK MENGHAPUS APA2) */
+        /* ====================================================== */
+
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+
+        body {
+            padding-top: 70px !important;
+        }
+
+        .az-content-left {
+            position: fixed;
+            top: 70px; /* Di bawah header */
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+
+        @media (min-width: 992px) {
+            .az-content-body {
+                margin-left: 240px !important;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .az-content-left.az-content-left-components {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+                border-right: none;
+            }
+        }
     </style>
 </head>
 
@@ -360,11 +415,29 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                     <div class="dropdown-menu">
                     </div>
                 </div>
-                <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-                    <div class="dropdown-menu">
-                    </div>
-                </div>
+                        <div class="dropdown az-profile-menu">
+                            <a href="#" class="az-img-user dropdown-toggle" data-toggle="dropdown">
+                                <img src="../img/faces/face1.jpg" alt="">
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <div class="az-dropdown-header d-sm-none">
+                                    <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                                </div>
+
+                                <div class="az-header-profile">
+                                    <div class="az-img-user">
+                                        <img src="../img/faces/face1.jpg" alt="">
+                                    </div>
+                                    <h6>Hello, User</h6>
+                                    <span>Role Karyawan</span>
+                                </div>
+
+                                <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                                <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                                <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                            </div>
+                        </div>
+
             </div>
         </div>
     </div>
@@ -505,5 +578,20 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 <script src="../lib/jquery/jquery.min.js"></script>
 <script src="../lib/popper.js/popper.min.js"></script>
 <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+
+<script>
+    // Toggle menu mobile
+    $('#azMenuShow').on('click', function(e) {
+        e.preventDefault();
+        $('.az-header-menu').toggleClass('show');
+    });
+    $('.az-header-menu .close').on('click', function(e) {
+        e.preventDefault();
+        $('.az-header-menu').removeClass('show');
+    });
+
+    // Inisialisasi dropdown profile
+    $('.dropdown-toggle').dropdown();
+</script>
 
 </html>

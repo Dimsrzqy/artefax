@@ -144,6 +144,12 @@ function format_tanggal($dateString)
     return date('d/m/Y', strtotime($dateString));
 }
 
+// Data User untuk Header
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/face1.jpg';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -159,6 +165,61 @@ function format_tanggal($dateString)
     <link rel="stylesheet" href="../css/azia.css">
 
     <style>
+        /* --- FIXED LAYOUT --- */
+        .az-body {
+            padding-top: 70px !important;
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px; /* Di bawah header */
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important; /* Memberi ruang untuk sidebar */
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+            }
+            .az-content-body {
+                margin-left: 0 !important;
+            }
+            .az-body {
+                padding-top: 70px !important;
+            }
+        }
+
         /* CSS yang sudah ada... */
         .custom-table {
             width: 100%;
@@ -341,7 +402,7 @@ function format_tanggal($dateString)
     </style>
 </head>
 
-<body>
+<body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -382,19 +443,39 @@ function format_tanggal($dateString)
                 <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu"> </div>
+                    <div class="dropdown-menu"> 
+                        </div>
                 </div>
+                
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-                    <div class="dropdown-menu"> </div>
+                    <a href="#" class="az-img-user" id="dropdownMenuProfile" data-toggle="dropdown" aria-expanded="false">
+                        <img src="<?= $defaultProfileImage ?>" alt="">
+                    </a>
+                    <div class="dropdown-menu">
+                        <div class="az-dropdown-header mg-b-20 d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <div class="az-header-profile">
+                            <div class="az-img-user">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
                 </div>
-            </div>
+                </div>
         </div>
     </div>
 
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
-            <div class="az-content-left az-content-left-components">
+            <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
                     <label>Laporan</label>
                     <nav class="nav flex-column">
@@ -593,6 +674,19 @@ function format_tanggal($dateString)
                     // Biarkan browser mengunduh file secara default
                 });
             }
+
+            // Inisialisasi menu toggle untuk mobile
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
         });
     </script>
 

@@ -166,6 +166,11 @@ unset($_SESSION['success_message']);
             overflow-y: auto;
             background-color: #fff;
         }
+        .az-content-left .component-item label {
+            margin-top: 40px;
+            margin-bottom: 10px;
+            display: block; /* ← DITAMBAHKAN INI */
+        }
         
         @media (min-width: 992px) {
             .az-content-body {
@@ -485,35 +490,37 @@ unset($_SESSION['success_message']);
 <script src="../lib/select2/js/select2.min.js"></script>
 <script src="../js/azia.js"></script>
 <script>
-    // Data Karyawan dimuat dari PHP
+    // Data Karyawan dari PHP (semua karyawan di sistem)
     const semuaKaryawan = [
         <?php foreach ($karyawans as $k): ?>
-            {id: <?= $k['IDUser'] ?>, nama: "<?= addslashes(htmlspecialchars($k['UserNama'])) ?>"},
+            {id: "<?= trim($k['IDUser']) ?>", nama: "<?= addslashes(htmlspecialchars($k['UserNama'])) ?>"},
         <?php endforeach; ?>
     ];
+
+    console.log('%c═══════════════════════════════════', 'color: blue; font-weight: bold');
+    console.log('%c SEMUA KARYAWAN DI SISTEM', 'color: blue; font-weight: bold');
+    console.log('%c═══════════════════════════════════', 'color: blue; font-weight: bold');
+    console.table(semuaKaryawan);
 
     let select2Instance = null;
 
     $(document).ready(function() {
-        // Fix for dropdown menu initialization in fixed header
         $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
         
-        // Ensure Azia menu handlers are active if Azia JS is not complete
         $('#azMenuShow').on('click', function(e) {
             e.preventDefault();
             $('.az-header-menu').toggleClass('show');
             $(this).toggleClass('open');
         });
+        
         $('.az-header-menu .close').on('click', function(e) {
             e.preventDefault();
             $('.az-header-menu').removeClass('show');
             $('#azMenuShow').removeClass('open');
         });
 
-        // Auto fadeout alert
         setTimeout(() => $('.alert').fadeOut('slow'), 5000);
 
-        // Initialize Select2 on page load (hidden, for reference)
         $('#selectKaryawan').select2({
             dropdownParent: $('#popupForm'),
             placeholder: "Pilih karyawan...",
@@ -522,9 +529,12 @@ unset($_SESSION['success_message']);
         select2Instance = $('#selectKaryawan');
     });
 
-
     function openPopup(id, namaPaket, alamat, tgl) {
-        if (select2Instance.hasClass('select2-hidden-accessible')) {
+        console.log('%c═══════════════════════════════════', 'color: green; font-weight: bold');
+        console.log('%c OPENING PENUGASAN FORM', 'color: green; font-weight: bold');
+        console.log('%c═══════════════════════════════════', 'color: green; font-weight: bold');
+        
+        if (select2Instance && select2Instance.hasClass('select2-hidden-accessible')) {
             select2Instance.select2('destroy');
         }
 
@@ -543,84 +553,137 @@ unset($_SESSION['success_message']);
         
         $("#popupForm").fadeIn(200);
 
-        select2Instance.select2({
+        select2Instance = $('#selectKaryawan').select2({
             dropdownParent: $('#popupForm'),
             placeholder: "Pilih karyawan...",
             width: '100%'
-        }).val(null).trigger('change');
-
-        updateKaryawanList();
+        });
+        
+        select2Instance.val(null).trigger('change');
+        
+        // LANGSUNG load karyawan tersedia saat popup dibuka
+        loadKaryawanTersedia();
     }
 
-    function updateKaryawanList() {
-        const tanggal = $('#event_tanggal').val();
-        const jam     = $('#event_mulai').val();
-        const durasi  = $('#event_durasi').val() || 8;
+    function loadKaryawanTersedia() {
+        console.log('%c═══════════════════════════════════', 'color: orange; font-weight: bold');
+        console.log('%c LOADING KARYAWAN TERSEDIA', 'color: orange; font-weight: bold');
+        console.log('%c Filter: TIDAK di event Menunggu/Berjalan', 'color: orange; font-weight: bold');
+        console.log('%c═══════════════════════════════════', 'color: orange; font-weight: bold');
 
-        if (!tanggal || !jam || durasi < 1) {
-            rebuildKaryawanList([]);
-            return;
+        if (select2Instance && select2Instance.hasClass('select2-hidden-accessible')) {
+            select2Instance.select2('destroy');
         }
-        
-        const previouslySelected = select2Instance ? select2Instance.val() : [];
-        if (select2Instance) select2Instance.select2('destroy');
 
-        // Panggil AJAX untuk mendapatkan ID karyawan yang sedang bentrok
-        // Asumsi file get_karyawan_tersedia.php ada di direktori yang sama
-        $.get('get_karyawan_tersedia.php', {
-            tanggal: tanggal,
-            jam_mulai: jam,
-            durasi: durasi
-        }, function(busyIds) {
-            rebuildKaryawanList(busyIds || [], previouslySelected);
-        }, 'json').fail(function() {
-            rebuildKaryawanList([], previouslySelected);
-            $('#infoBentrok').text('Gagal memuat data ketersediaan karyawan.').show();
+        console.log('🌐 Mengirim request ke server...');
+        
+        $.ajax({
+            url: 'get_karyawan_tersedia.php',
+            method: 'GET',
+            dataType: 'json',
+            cache: false,
+            success: function(response) {
+                console.log('%c═══════════════════════════════════', 'color: purple; font-weight: bold');
+                console.log('%c SERVER RESPONSE', 'color: purple; font-weight: bold');
+                console.log('%c═══════════════════════════════════', 'color: purple; font-weight: bold');
+                console.log('Raw response:', response);
+                
+                if (response.error) {
+                    console.error('❌ Server error:', response.error);
+                    $('#infoBentrok').html('<i class="fas fa-exclamation-circle"></i> ' + response.error).show();
+                    buildKaryawanList([]);
+                    return;
+                }
+                
+                if (!Array.isArray(response)) {
+                    console.error('❌ Response bukan array!');
+                    buildKaryawanList([]);
+                    return;
+                }
+                
+                console.log('✅ Karyawan tersedia dari server:');
+                console.table(response);
+                
+                buildKaryawanList(response);
+            },
+            error: function(xhr, status, error) {
+                console.log('%c═══════════════════════════════════', 'color: red; font-weight: bold');
+                console.log('%c AJAX ERROR', 'color: red; font-weight: bold');
+                console.log('%c═══════════════════════════════════', 'color: red; font-weight: bold');
+                console.error('Status:', status);
+                console.error('Error:', error);
+                console.error('Response:', xhr.responseText);
+                
+                buildKaryawanList([]);
+                $('#infoBentrok').html('<i class="fas fa-exclamation-circle"></i> Gagal memuat data. Cek console atau error log.').show();
+            }
         });
     }
 
-    function rebuildKaryawanList(busyIds, previouslySelected = []) {
+    function buildKaryawanList(availableEmployees) {
+        console.log('%c═══════════════════════════════════', 'color: teal; font-weight: bold');
+        console.log('%c BUILDING DROPDOWN', 'color: teal; font-weight: bold');
+        console.log('%c═══════════════════════════════════', 'color: teal; font-weight: bold');
+        
         const $select = $('#selectKaryawan');
         $select.empty();
 
-        let tersedia = 0;
-        let availableOptions = [];
-        let availableIds = [];
+        const availableOptions = [];
+        const availableIds = [];
 
-        semuaKaryawan.forEach(k => {
-            const isBusy = busyIds.includes(k.id.toString()); 
+        // Server mengirim HANYA karyawan yang TERSEDIA
+        availableEmployees.forEach(emp => {
+            const empId = String(emp.id).trim();
+            const empNama = emp.nama;
             
-            // Logika: HANYA tampilkan yang TIDAK bentrok
-            if (!isBusy) {
-                const option = new Option(k.nama, k.id, false, false);
-                availableOptions.push(option);
-                availableIds.push(k.id.toString());
-                tersedia++;
+            console.log(`✅ TERSEDIA - ID: "${empId}" - Nama: ${empNama}`);
+            
+            const option = new Option(empNama, empId, false, false);
+            availableOptions.push(option);
+            availableIds.push(empId);
+        });
+
+        // Log karyawan yang SIBUK (untuk debugging)
+        const availableIdSet = new Set(availableIds.map(id => String(id).trim()));
+        const busyEmployees = [];
+        
+        semuaKaryawan.forEach(k => {
+            const kId = String(k.id).trim();
+            if (!availableIdSet.has(kId)) {
+                console.log(`❌ SIBUK - ID: "${kId}" - Nama: ${k.nama} (Event Menunggu/Berjalan)`);
+                busyEmployees.push(k.nama);
             }
         });
 
+        console.log('%c═══════════════════════════════════', 'color: blue; font-weight: bold');
+        console.log(`%c📊 HASIL: ${availableOptions.length} tersedia, ${busyEmployees.length} sibuk`, 'color: blue; font-weight: bold');
+        if (busyEmployees.length > 0) {
+            console.log('%cKaryawan Sibuk:', 'color: red; font-weight: bold', busyEmployees.join(', '));
+        }
+        console.log('%c═══════════════════════════════════', 'color: blue; font-weight: bold');
+
+        // Tambahkan ke dropdown
         $select.append(availableOptions);
 
-        if (tersedia === 0 && semuaKaryawan.length > 0) {
-            $('#infoBentrok').text('Semua karyawan sedang bertugas pada waktu ini!').show();
-            $select.prop('disabled', true); 
+        if (availableOptions.length === 0) {
+            $('#infoBentrok').html('<i class="fas fa-exclamation-circle"></i> Semua karyawan sedang bertugas (Event Menunggu/Berjalan)!').show();
+            $select.prop('disabled', true);
+            console.warn('⚠️  SEMUA KARYAWAN SIBUK!');
         } else {
             $('#infoBentrok').hide();
-            $select.prop('disabled', false); 
+            $select.prop('disabled', false);
         }
 
+        // Reinitialize Select2
         select2Instance = $select.select2({
             dropdownParent: $('#popupForm'),
             placeholder: "Pilih karyawan...",
             width: '100%'
         });
-        
-        // Pilih kembali opsi yang sebelumnya dipilih dan masih tersedia
-        const filteredSelected = previouslySelected.filter(id => availableIds.includes(id.toString()));
-        select2Instance.val(filteredSelected).trigger('change');
     }
 
     function closePopup() {
+        console.log('Closing popup');
         $("#popupForm").fadeOut(200);
         if (select2Instance) {
             select2Instance.val(null).trigger('change');
@@ -628,7 +691,8 @@ unset($_SESSION['success_message']);
         $('#infoBentrok').hide();
     }
 
-    $(document).on('change', '#event_tanggal, #event_mulai, #event_durasi', updateKaryawanList);
+    // TIDAK PERLU event listener untuk tanggal/jam karena filter berdasarkan status saja
+    // Jika Anda ingin reload saat ganti tanggal/jam, bisa tetap panggil loadKaryawanTersedia()
 </script>
 </body>
 </html>

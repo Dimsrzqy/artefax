@@ -1,6 +1,29 @@
+<?php
+session_start();
+
+// --- START: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+// VERIFIKASI LOGIN
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+
+// --- DATA USER LOGIN ---
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/face1.jpg';
+?>
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -12,48 +35,79 @@
     <link rel="stylesheet" href="../css/azia.css">
 
     <style>
-        /* ============================================= */
-        /* absensi-karyawan.css – UI Modern & Clean */
-        /* ============================================= */
-
-        /* Header Export + Total (di atas tabel) */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 28px;
+        /* --- FIXED LAYOUT --- */
+        .az-body {
+            padding-top: 70px !important;
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important;
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+            }
+            .az-content-body {
+                margin-left: 0 !important;
+            }
+            .az-body {
+                padding-top: 70px !important;
+            }
         }
 
-        /* Container untuk Filter dan Export */
+        /* --- FILTER & EXPORT --- */
         .filter-export-container {
             margin-bottom: 20px;
         }
-
-        /* PERBAIKAN: Hapus tampilan card/kotak pada filter */
         .filter-form {
             display: flex;
             gap: 15px;
             align-items: flex-end;
             flex-wrap: wrap;
             padding: 0;
-            /* Hapus padding */
             background: none;
-            /* Hapus background */
-            border-radius: 0;
-            /* Hapus border-radius */
             border: none;
-            /* Hapus border */
             box-shadow: none;
-            /* Hapus shadow */
             justify-content: flex-start;
         }
-
         .filter-form .form-group {
             margin-bottom: 0;
         }
-
         .filter-form .btn-export-excel {
             background: #0f8f4f;
             color: white !important;
@@ -65,26 +119,21 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
             transition: all 0.25s ease;
             text-decoration: none;
             height: 40px;
         }
-
         .filter-form .btn-export-excel:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(30, 126, 52, 0.4);
+            box-shadow: 0 6px 15px rgba(30,126,52,0.4);
             background: #0e6b36;
         }
-
-        /* Style tombol filter */
         .filter-form .btn-primary {
             padding: 10px 20px;
             border-radius: 8px;
             height: 40px;
         }
-
-        /* Menyesuaikan input tanggal agar terlihat lebih rapi */
         .filter-form input[type="date"] {
             padding: 8px 12px;
             border: 1px solid #ccc;
@@ -93,30 +142,21 @@
             font-size: 14px;
         }
 
-        .export-container {
-            display: none;
-        }
-
-        /* PERBAIKAN: Samakan Tampilan Tabel dengan Laporan Keuangan */
+        /* --- TABLE STYLE --- */
         .custom-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            /* Perubahan: Hilangkan jarak antar baris */
             font-size: .93rem;
             background: #fff;
-            /* Perubahan: Gunakan shadow yang lebih umum */
-            box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
             border-radius: 8px;
             overflow: hidden;
-            /* Penting untuk border-radius */
             margin-top: 10px;
         }
-
         .custom-table thead th {
             background: #3366ff;
             color: #ffffff;
-            /* Padding dan font disesuaikan agar mirip Keuangan */
             padding: 14px 12px;
             text-align: center;
             font-weight: 600;
@@ -126,63 +166,35 @@
             letter-spacing: .5px;
             vertical-align: middle;
         }
-
         .custom-table tbody tr {
             background: #ffffff;
             box-shadow: none;
-            /* Hilangkan shadow per baris */
             border-bottom: 1px solid #eef2f7;
-            /* Tambahkan border bawah per baris */
             transition: background-color .2s;
         }
-
         .custom-table tbody tr:last-child {
             border-bottom: none;
         }
-
         .custom-table tbody tr:hover {
             transform: none;
-            /* Hilangkan efek hover translasi */
             box-shadow: none;
             background: #f8f9ff !important;
-            /* Warna hover Keuangan */
         }
-
         .custom-table td {
             padding: 14px 12px;
-            /* Disesuaikan dengan Keuangan */
             vertical-align: middle;
             border: none;
             font-size: 14.5px;
         }
 
-        /* Status Badge */
-        .status-hadir {
-            color: #0a8f1f;
-            font-weight: 700;
-        }
+        /* --- STATUS BADGES --- */
+        .status-hadir { color: #0a8f1f; font-weight: 700; }
+        .status-izin { color: #ff9100; font-weight: 700; }
+        .status-sakit { color: #9c27b0; font-weight: 700; }
+        .status-alpha { color: #d00000; font-weight: 700; }
+        .status-telat { color: #ff5722; font-weight: 700; }
 
-        .status-izin {
-            color: #ff9100;
-            font-weight: 700;
-        }
-
-        .status-sakit {
-            color: #9c27b0;
-            font-weight: 700;
-        }
-
-        .status-alpha {
-            color: #d00000;
-            font-weight: 700;
-        }
-
-        .status-telat {
-            color: #ff5722;
-            font-weight: 700;
-        }
-
-        /* Tombol Lihat Foto */
+        /* --- BUTTON LIHAT FOTO --- */
         .lihat-foto {
             background: #5d5dfb;
             color: white;
@@ -194,47 +206,40 @@
             transition: all 0.25s ease;
             cursor: pointer;
         }
-
         .lihat-foto:hover {
             background: #4a4ae8;
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(93, 93, 251, 0.4);
+            box-shadow: 0 6px 15px rgba(93,93,251,0.4);
         }
 
-        /* Responsive */
+        /* --- RESPONSIVE --- */
         @media (max-width: 768px) {
             .filter-form {
                 flex-direction: column;
                 align-items: stretch;
             }
-
             .filter-form .form-group,
             .filter-form button,
             .filter-form a {
                 width: 100%;
             }
-
             .custom-table thead {
                 display: none;
             }
-
             .custom-table tbody tr {
                 display: block;
                 margin-bottom: 15px;
                 border-radius: 12px;
                 padding: 10px;
-                box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
-                /* Tambahkan shadow untuk mode mobile */
+                box-shadow: 0 3px 12px rgba(0,0,0,0.07);
                 border: none;
             }
-
             .custom-table td {
                 display: block;
                 text-align: right;
                 padding: 8px 0;
                 position: relative;
             }
-
             .custom-table td::before {
                 content: attr(data-label);
                 position: absolute;
@@ -246,7 +251,7 @@
     </style>
 </head>
 
-<body>
+<body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -256,7 +261,7 @@
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">x</a>
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
@@ -307,7 +312,7 @@
                         <p class="az-notification-text">You have 2 unread notification</p>
                         <div class="az-notification-list">
                             <div class="media new">
-                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
+                                <div class="  az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
                                 <div class="media-body">
                                     <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
                                     <span>Mar 15 12:32pm</span>
@@ -320,50 +325,43 @@
                                     <span>Mar 13 04:16am</span>
                                 </div>
                             </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div>
-                            </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div>
-                            </div>
                         </div>
                         <div class="dropdown-footer"><a href="">View All Notifications</a></div>
                     </div>
                 </div>
+
+                <!-- PROFILE DROPDOWN YANG SUDAH PASTI JALAN (sama persis seperti form-user.php) -->
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <a href="profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
                             </div>
-                            <h6>Aziana Pechon</h6>
-                            <span>Premium Member</span>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="edit-profile.php" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
+                        <a href="activity-logs.php" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
+                        <a href="account-settings.php" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
+                        <a href="../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+                <!-- AKHIR PROFILE DROPDOWN -->
+            </div>
+        </div>
+    </div>
+
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
-            <div class="az-content-left az-content-left-components">
+            <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
                     <label>Laporan</label>
                     <nav class="nav flex-column">
@@ -398,21 +396,21 @@
                         </div>
 
                         <button type="submit" class="btn btn-primary">
-                            <i class="typcn typcn-filter"></i> Filter
+                            Filter
                         </button>
 
                         <button type="button" id="exportButton" class="btn-export-excel">
-                            <i class='fas fa-file-excel'></i>
                             Export Excel
                         </button>
 
                         <?php if (!empty($start_date_val) || !empty($end_date_val)): ?>
                             <a href="LaporanAbsensiKaryawan.php" class="btn btn-secondary" style="height: 40px; padding: 10px 20px; border-radius: 8px;">
-                                <i class="typcn typcn-refresh"></i> Reset
+                                Reset
                             </a>
                         <?php endif; ?>
                     </form>
                 </div>
+
                 <div class="col-lg-12 mg-t-20" style="max-width: 100%; margin-top: 5px !important;">
                     <?php
                     require_once __DIR__ . "/../../config/koneksi.php";
@@ -421,16 +419,13 @@
                     $db = new Database();
                     $conn = $db->getConnection();
 
-                    // Ambil filter dari URL
                     $start_date = isset($_GET['start_date']) && $_GET['start_date'] !== '' ? $_GET['start_date'] . ' 00:00:00' : null;
                     $end_date = isset($_GET['end_date']) && $_GET['end_date'] !== '' ? $_GET['end_date'] . ' 23:59:59' : null;
 
-                    // Query Dasar
                     $base_sql = "SELECT p.IDPresensi, p.PsnWaktu, p.PsnLokasi, p.PsnFoto, p.PsnStatus, u.UserNama
-                             FROM presensi p
-                             LEFT JOIN users u ON p.IDUser = u.IDUser";
+                                 FROM presensi p
+                                 LEFT JOIN users u ON p.IDUser = u.IDUser";
 
-                    // Tambahkan WHERE clause jika ada filter tanggal
                     $where_clauses = [];
                     if ($start_date) {
                         $where_clauses[] = "p.PsnWaktu >= ?";
@@ -441,7 +436,6 @@
 
                     $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-                    // Parameter untuk binding
                     $params = [];
                     $types = '';
                     if ($start_date) {
@@ -453,8 +447,6 @@
                         $types .= 's';
                     }
 
-
-                    // PAGINASI
                     $limit = 10;
                     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
                     $offset = ($page - 1) * $limit;
@@ -464,7 +456,6 @@
                     } else {
                         $absensi = new Absensi($conn);
 
-                        // 1. Hitung Total data (untuk paginasi)
                         $total_sql = "SELECT COUNT(*) as total FROM presensi p" . $where_sql;
                         $total_stmt = $conn->prepare($total_sql);
                         if ($types) {
@@ -476,32 +467,28 @@
                         $totalPages = ceil($totalRows / $limit);
                         $total_stmt->close();
 
-                        // 2. Data untuk halaman ini
                         $sql = $base_sql . $where_sql . " ORDER BY p.PsnWaktu DESC LIMIT ? OFFSET ?";
                         $stmt = $conn->prepare($sql);
 
-                        // Gabungkan parameter filter dan paginasi
                         $types .= 'ii';
                         $params[] = $limit;
                         $params[] = $offset;
 
-                        // Lakukan binding
                         if ($types) {
                             $stmt->bind_param($types, ...$params);
                         }
                         $stmt->execute();
                         $result = $stmt->get_result();
 
-
                         if ($result->num_rows === 0 && $totalRows == 0) {
                             echo "<div class='text-center py-5'>
-                                    <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
-                                    <h5 class='mt-3'>Belum ada data absensi</h5>
-                                  </div>";
+                                        <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
+                                        <h5 class='mt-3'>Belum ada data absensi</h5>
+                                    </div>";
                         } else if ($result->num_rows === 0 && $totalRows > 0) {
                             echo "<div class='text-center py-5'>
-                                    <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
-                                  </div>";
+                                        <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
+                                    </div>";
                         } else {
                             echo "<table class='custom-table'>
                                 <thead>
@@ -528,7 +515,6 @@
                                 $statusText = ucfirst($status);
                                 $statusClass = 'status-' . $status;
 
-                                // Foto
                                 if (!empty($row['PsnFoto'])) {
                                     $fotoPath = strlen($row['PsnFoto']) > 200
                                         ? "data:image/jpeg;base64," . base64_encode($row['PsnFoto'])
@@ -538,28 +524,26 @@
                                 }
 
                                 echo "<tr>
-                                        <td data-label='No'>$no</td>
-                                        <td data-label='Nama Karyawan'><strong>$nama</strong></td>
-                                        <td data-label='Tanggal'>$tanggal</td>
-                                        <td data-label='Jam'><strong>$jam</strong></td>
-                                        <td data-label='Lokasi'>$lokasi</td>
-                                        <td data-label='Foto'>
-                                            <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
+                                            <td data-label='No'>$no</td>
+                                            <td data-label='Nama Karyawan'><strong>$nama</strong></td>
+                                            <td data-label='Tanggal'>$tanggal</td>
+                                            <td data-label='Jam'><strong>$jam</strong></td>
+                                            <td data-label='Lokasi'>$lokasi</td>
+                                            <td data-label='Foto'>
+                                                <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
                                                         style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
-                                                Lihat
-                                            </button>
-                                        </td>
-                                        <td data-label='Status' class='$statusClass'>$statusText</td>
-                                    </tr>";
+                                                    Lihat
+                                                </button>
+                                            </td>
+                                            <td data-label='Status' class='$statusClass'>$statusText</td>
+                                        </tr>";
                                 $no++;
                             }
                             echo "</tbody></table>";
 
-                            // PAGINASI
                             if ($totalPages > 1) {
                                 echo "<nav class='mt-4'><ul class='pagination justify-content-center'>";
 
-                                // Siapkan query string untuk paginasi (mempertahankan filter tanggal)
                                 $pagination_query = '';
                                 if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
                                 if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
@@ -596,20 +580,36 @@
     <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
 
     <script>
+        $(document).ready(function() {
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
+
+            // INI YANG BIKIN DROPDOWN PROFILE BISA MUNCUL (sama seperti di form-user.php)
+            $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+        });
+
         $(document).on('click', '.lihat-foto', function() {
             $('#modalFoto').attr('src', $(this).data('foto'));
             $('#fotoModal').modal('show');
         });
+        
         $('#fotoModal').on('hidden.bs.modal', function() {
             $('#modalFoto').attr('src', '');
         });
 
-        // Logika JavaScript untuk tombol Export Excel
         document.getElementById('exportButton').addEventListener('click', function() {
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
 
-            // Buat URL export dengan filter tanggal yang saat ini dipilih
             let exportUrl = 'export_absensi_excel.php?';
             if (startDate) {
                 exportUrl += 'start_date=' + encodeURIComponent(startDate) + '&';
@@ -618,11 +618,8 @@
                 exportUrl += 'end_date=' + encodeURIComponent(endDate);
             }
 
-            // Arahkan ke URL export menggunakan iframe tersembunyi
             window.open(exportUrl, 'exportFrame');
         });
     </script>
-
 </body>
-
 </html>
