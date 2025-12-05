@@ -9,8 +9,13 @@ $conn = $db->getConnection();
 $pembayaran = new Pembayaran($conn);
 $user = new User($conn);
 
+// Ambil data user yang sedang login
+$currentUser = null;
+if (isset($_SESSION['IDUser'])) {
+    $currentUser = $user->getUserByID($_SESSION['IDUser']);
+}
+
 $pendingRefunds = $pembayaran->readPendingRefund();
-//$detailPembayaran = $pembayaran->readJoinFull();
 
 // Feedback
 $success = $_SESSION['success'] ?? '';
@@ -33,6 +38,85 @@ unset($_SESSION['success'], $_SESSION['error']);
     <link href="../../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../../css/azia.css" rel="stylesheet">
     <style>
+        /* Fixed Header */
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Fixed Sidebar */
+        .az-content-left {
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        /* Content Body Adjustment */
+        .az-content {
+            margin-top: 70px; /* Sesuaikan dengan tinggi header */
+        }
+
+        .az-content-body {
+            margin-left: 0;
+        }
+
+        @media (min-width: 992px) {
+            .az-content-body {
+                margin-left: 250px; /* Sesuaikan dengan lebar sidebar */
+            }
+        }
+
+        /* Profile Dropdown Enhancement */
+        .az-header-profile {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .az-header-profile .az-img-user {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+        }
+
+        .az-header-profile .az-img-user img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #f0f0f0;
+        }
+
+        .az-header-profile h6 {
+            margin: 8px 0 4px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1c273c;
+        }
+
+        .az-header-profile span {
+            font-size: 13px;
+            color: #97a3b9;
+        }
+
         .card-payment {
             background: white;
             border-radius: 12px;
@@ -48,15 +132,16 @@ unset($_SESSION['success'], $_SESSION['error']);
         }
 
         .card-refund .card-header {
-        background: linear-gradient(135deg, #ffc107, #ffb300) !important;
-        color: #000 !important;
-        font-weight: 600;
-        font-size: 1.1em;
+            background: linear-gradient(135deg, #ffc107, #ffb300) !important;
+            color: #000 !important;
+            font-weight: 600;
+            font-size: 1.1em;
         }
 
         .card-body {
             padding: 16px;
         }
+
         .status-refund-badge {
             white-space: nowrap !important;
             display: inline-block !important;
@@ -65,6 +150,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             text-overflow: ellipsis;
             font-size: 0.85rem;
         }
+
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -101,7 +187,6 @@ unset($_SESSION['success'], $_SESSION['error']);
             border-top: 1px solid #eee;
         }
 
-        /* Tombol Aksi Seragam */
         .btn-action {
             padding: 6px 12px;
             font-size: 13px;
@@ -158,7 +243,6 @@ unset($_SESSION['success'], $_SESSION['error']);
             margin-bottom: 16px;
         }
 
-        /* Modal Konfirmasi - Fixed & Lebih Jelas */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -170,18 +254,19 @@ unset($_SESSION['success'], $_SESSION['error']);
         }
 
         .modal-content {
-        background: white;
-        border-radius: 12px;
-        width: 90%;
-        max-width: 500px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        animation: muncul 0.3s ease-out;
-    }
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: muncul 0.3s ease-out;
+        }
 
         @keyframes muncul {
-        from { opacity: 0; transform: translateY(-50px) scale(0.9); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
+            from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         .modal-header {
             padding: 15px 20px;
             color: white;
@@ -228,16 +313,22 @@ unset($_SESSION['success'], $_SESSION['error']);
             opacity: 0.8;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
+        /* Smooth Scrollbar untuk Sidebar */
+        .az-content-left::-webkit-scrollbar {
+            width: 6px;
+        }
 
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+        .az-content-left::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .az-content-left::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .az-content-left::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
@@ -249,13 +340,11 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
                 <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
             </div>
-            <!-- az-header-left -->
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> azia</a>
                     <a href="" class="close">&times;</a>
                 </div>
-                <!-- az-header-menu-header -->
                 <ul class="nav">
                     <li class="nav-item">
                         <a href="../../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
@@ -272,30 +361,14 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <li class="nav-item">
                         <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                            <!-- container -->
-                        </div>
-                    </li>
                 </ul>
-            </div><!-- az-header-menu -->
+            </div>
             <div class="az-header-right">
                 <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
                 <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
                 <div class="az-header-message">
                     <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div><!-- az-header-message -->
+                </div>
                 <div class="dropdown az-header-notification">
                     <a href="" class="new"><i class="typcn typcn-bell"></i></a>
                     <div class="dropdown-menu">
@@ -310,88 +383,68 @@ unset($_SESSION['success'], $_SESSION['error']);
                                 <div class="media-body">
                                     <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
                                     <span>Mar 15 12:32pm</span>
-                                </div><!-- media-body -->
-                            </div><!-- media -->
-                            <div class="media new">
-                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                                    <span>Mar 13 04:16am</span>
-                                </div><!-- media-body -->
-                            </div><!-- media -->
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div><!-- media-body -->
-                            </div><!-- media -->
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div><!-- media-body -->
-                            </div><!-- media -->
-                        </div><!-- az-notification-list -->
+                                </div>
+                            </div>
+                        </div>
                         <div class="dropdown-footer"><a href="">View All Notifications</a></div>
-                    </div><!-- dropdown-menu -->
-                </div><!-- az-header-notification -->
+                    </div>
+                </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <a href="" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
-                            </div><!-- az-img-user -->
-                            <h6>Aziana Pechon</h6>
-                            <span>Premium Member</span>
-                        </div><!-- az-header-profile -->
-
+                                <img src="<?= $defaultProfileImage ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
                         <a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
                         <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
                         <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
                         <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-                    </div><!-- dropdown-menu -->
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
                 </div>
-            </div><!-- az-header-right -->
-        </div><!-- container -->
-    </div><!-- az-header -->
+            </div>
+        </div>
+    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components">
                 <div class="component-item">
-
                     <label>Pembayaran</label>
                     <nav class="nav flex-column">
                         <a href="../daftar_pembayaran.php" class="nav-link">Daftar Pembayaran</a>
                         <a href="../pembayaran/konfirmasi_pembayaran.php" class="nav-link">Konfirmasi Pembayaran</a>
                     </nav>
                     <label>Pelunasan DP</label>
-                        <nav class="nav flex-column">
-                                <a href="../dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
-                                </nav>
+                    <nav class="nav flex-column">
+                        <a href="../dp/pelunasan_pembayaran.php" class="nav-link">Pelunasan Pembayaran</a>
+                    </nav>
                     <label>Refund</label>
-                                <nav class="nav flex-column">
-                                    <a href="../refund/pengajuan_refund.php" class="nav-link active">Pengajuan Refund</a>
-                                </nav>
-                </div><!-- component-item -->
+                    <nav class="nav flex-column">
+                        <a href="../refund/pengajuan_refund.php" class="nav-link active">Pengajuan Refund</a>
+                    </nav>
+                </div>
+            </div>
 
-            </div><!-- az-content-left -->
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Pembayaran</span>
-                    <span>Konfrmasi Pembayaran</span>
+                    <span>Konfirmasi Pembayaran</span>
                 </div>
                 <h2 class="az-content-title">Konfirmasi Pembayaran</h2>
                 <p class="mg-b-20">Verifikasi bukti pembayaran dari pelanggan.</p>
 
-                <!-- Feedback -->
                 <?php if ($success): ?>
                     <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
                 <?php endif; ?>
@@ -399,15 +452,12 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
 
-                <!-- Daftar Kartu -->
                 <div class="row">
                     <?php if ($pendingRefunds && count($pendingRefunds) > 0): ?>
                         <?php foreach ($pendingRefunds as $index => $r): 
-                            $rf = $detailRefunds[$index] ?? $r; // untuk detail popup
-
+                            $rf = $detailRefunds[$index] ?? $r;
                             $customer = $user->getUserByID($r['IDUser']);
                             $namaCustomer = $customer['UserNama'] ?? 'Unknown';
-
                             $tglBooking = date('d M Y', strtotime($r['BkgTglMulai']));
                             $tglPengajuan = date('d M Y, H:i', strtotime($r['RefundWaktu'])) . ' WIB';
                         ?>
@@ -457,7 +507,6 @@ unset($_SESSION['success'], $_SESSION['error']);
                                                 onclick='openRefundPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                             <i class="fas fa-eye"></i> Detail
                                         </button>
-
                                         <button type="button" class="btn btn-success btn-sm" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
                                             Setujui Refund
                                         </button>
@@ -476,59 +525,57 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <?php endif; ?>
                 </div>
 
-<!-- Modal Konfirmasi Refund (mirip yang lama, tapi khusus refund) -->
-<div id="modalRefund" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
-    <div style="background:white; width:90%; max-width:480px; margin:100px auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); overflow:hidden;">
-        <div style="background:#28a745; color:white; padding:15px 20px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
-            <span>Konfirmasi Refund</span>
-            <span style="cursor:pointer; font-size:24px;" onclick="tutupModalKu()">×</span>
-        </div>
-        <div style="padding:25px; text-align:center;">
-            <p style="margin:0 0 15px 0; font-size:16px;">Apakah Anda yakin ingin <strong>menyetujui pengajuan refund</strong> ini?</p>
-            <small style="color:#666;">
-                • Status Refund → <b>Diterima</b><br>
-                • Booking → <b>Batal</b><br>
-                • Pembayaran → <b>Batal</b>
-            </small>
-        </div>
-        <div style="padding:15px 20px; text-align:right; background:#f8f9fa;">
-            <button type="button" onclick="tutupModalKu()" style="margin-right:10px; padding:8px 16px; border:none; background:#6c757d; color:white; border-radius:6px; cursor:pointer;">Batal</button>
-            <button type="button" id="btnSetujuRefund" style="padding:8px 20px; border:none; background:#28a745; color:white; border-radius:6px; cursor:pointer;">Ya, Setujui Refund</button>
+                <div id="modalRefund" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+                    <div style="background:white; width:90%; max-width:480px; margin:100px auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); overflow:hidden;">
+                        <div style="background:#28a745; color:white; padding:15px 20px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Konfirmasi Refund</span>
+                            <span style="cursor:pointer; font-size:24px;" onclick="tutupModalKu()">×</span>
+                        </div>
+                        <div style="padding:25px; text-align:center;">
+                            <p style="margin:0 0 15px 0; font-size:16px;">Apakah Anda yakin ingin <strong>menyetujui pengajuan refund</strong> ini?</p>
+                            <small style="color:#666;">
+                                • Status Refund → <b>Diterima</b><br>
+                                • Booking → <b>Batal</b><br>
+                                • Pembayaran → <b>Batal</b>
+                            </small>
+                        </div>
+                        <div style="padding:15px 20px; text-align:right; background:#f8f9fa;">
+                            <button type="button" onclick="tutupModalKu()" style="margin-right:10px; padding:8px 16px; border:none; background:#6c757d; color:white; border-radius:6px; cursor:pointer;">Batal</button>
+                            <button type="button" id="btnSetujuRefund" style="padding:8px 20px; border:none; background:#28a745; color:white; border-radius:6px; cursor:pointer;">Ya, Setujui Refund</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
-<?php require_once __DIR__ . "/detail_refund.php"; ?>
-<script>
-let idYangDipilih = 0;
 
-function konfirmasiRefund(id) {
-    idYangDipilih = id;
-    document.getElementById('modalRefund').style.display = 'flex';
-}
+    <script>
+        let idYangDipilih = 0;
 
-function tutupModalKu() {
-    document.getElementById('modalRefund').style.display = 'none';
-    idYangDipilih = 0;
-}
+        function konfirmasiRefund(id) {
+            idYangDipilih = id;
+            document.getElementById('modalRefund').style.display = 'flex';
+        }
 
-// Tombol YA – langsung proses
-document.getElementById('btnSetujuRefund').onclick = function() {
-    if (idYangDipilih > 0) {
-        location.href = 'proses_refund.php?id=' + idYangDipilih + '&aksi=setuju';
-    }
-};
+        function tutupModalKu() {
+            document.getElementById('modalRefund').style.display = 'none';
+            idYangDipilih = 0;
+        }
 
-// Tutup kalau klik di luar
-document.getElementById('modalRefund').addEventListener('click', function(e) {
-    if (e.target === this) tutupModalKu();
-});
+        document.getElementById('btnSetujuRefund').onclick = function() {
+            if (idYangDipilih > 0) {
+                location.href = 'proses_refund.php?id=' + idYangDipilih + '&aksi=setuju';
+            }
+        };
+
+        document.getElementById('modalRefund').addEventListener('click', function(e) {
+            if (e.target === this) tutupModalKu();
+        });
     </script>
 
-    <!-- Scripts -->
     <script src="../lib/jquery/jquery.min.js"></script>
-    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js">
-        </script>
-        <script src="../js/azia.js"></script>
+    <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/azia.js"></script>
 </body>
 
 </html>
