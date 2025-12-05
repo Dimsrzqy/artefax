@@ -1,37 +1,44 @@
 <?php
-// File: RiwayatBooking.php → FINAL CODE (Dengan Perbaikan SQL Error, Status Warna Kuning, dan Redirect Pembatalan)
+// File: RiwayatBooking.php → FINAL CODE (Bersih dari NBSP dan Status Otomatis + Modal Logout Minimalis)
 session_start();
 date_default_timezone_set('Asia/Jakarta');
+
+// Pastikan class Booking tersedia (asumsi: terletak di './class/Booking.php')
+require_once __DIR__ . '/config/koneksi.php';
+require_once __DIR__ . '/class/Booking.php'; 
 
 if (!isset($_SESSION['user'])) {
     header("Location: view/login.php");
     exit;
 }
 
-require_once __DIR__ . '/config/koneksi.php';
-
 $database = new Database();
 $conn = $database->getConnection();
 if (!$conn) die("Database error");
 
-$role   = $_SESSION['user']['UserRole'] ?? '';
+// Inisiasi class Booking. Ini akan memicu updateStatusSelesaiOtomatis()
+$bookingCls = new Booking($conn);
+
+$role = $_SESSION['user']['UserRole'] ?? '';
 $idUser = $_SESSION['user']['IDUser'] ?? 0;
 
-$statusFilter = ['Pending', 'Menunggu Konfirmasi','Diterima', 'Selesai', 'Batal'];
+// Daftar semua status yang relevan untuk riwayat
+$statusFilter = ['Pending', 'Menunggu Konfirmasi', 'Diterima', 'Selesai', 'Batal'];
 $bookings = [];
 
+// Menggunakan implode dan real_escape_string untuk daftar status SQL
 $statuses = implode("','", array_map([$conn, 'real_escape_string'], $statusFilter));
 $result = false;
 
 if (strtolower($role) === 'customer') {
     $query = "SELECT 
-                 b.IDBooking,
-                 b.BkgTglMulai,
-                 b.BkgTotalHarga,
-                 b.BkgStatus,
-                 u.UserNama,
-                 u.UserNoHP,
-                 COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
+                b.IDBooking,
+                b.BkgTglMulai,
+                b.BkgTotalHarga,
+                b.BkgStatus,
+                u.UserNama,
+                u.UserNoHP,
+                COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
               FROM booking b
               LEFT JOIN users u ON b.IDUser = u.IDUser
               LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
@@ -49,13 +56,13 @@ if (strtolower($role) === 'customer') {
     
 } else {
     $query = "SELECT 
-                 b.IDBooking,
-                 b.BkgTglMulai,
-                 b.BkgTotalHarga,
-                 b.BkgStatus,
-                 u.UserNama,
-                 u.UserNoHP,
-                 COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
+                b.IDBooking,
+                b.BkgTglMulai,
+                b.BkgTotalHarga,
+                b.BkgStatus,
+                u.UserNama,
+                u.UserNoHP,
+                COALESCE(GROUP_CONCAT(DISTINCT COALESCE(pj.PaketNama, a.AlatNama) SEPARATOR ' + '), 'Item Tidak Diketahui') AS ItemNama
               FROM booking b
               LEFT JOIN users u ON b.IDUser = u.IDUser
               LEFT JOIN booking_detail bd ON b.IDBooking = bd.IDBooking
@@ -101,6 +108,7 @@ if ($result) {
             --status-selesai-bg: var(--accent-color);
             --status-batal-bg: #dc3545;
             --status-pending-bg: #ffc107;
+            --status-menunggu-konfirmasi-bg: #ffc107;
         }
         
         body { 
@@ -168,7 +176,11 @@ if ($result) {
         .status-diterima { background-color: var(--status-diterima-bg); }
         .status-selesai   { background-color: var(--status-selesai-bg); }
         .status-batal     { background-color: var(--status-batal-bg); }
-        .status-pending   { background-color: var(--status-pending-bg); color: #212529 !important; }
+        .status-pending,
+        .status-menunggu-konfirmasi { 
+            background-color: var(--status-pending-bg); 
+            color: #212529 !important; 
+        }
         .detail-area {
             background-color: var(--soft-blue); 
             border-left: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
@@ -192,29 +204,50 @@ if ($result) {
              background-color: color-mix(in srgb, var(--status-batal-bg), black 10%);
              transform: none;
         }
+        
+        /* 🛑 STYLING MODAL LOGOUT MINIMALIS BARU */
+        .modal-header-minimal {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .modal-title-minimal {
+            font-weight: 600;
+            color: var(--heading-color);
+        }
+        .modal-body-minimal {
+            padding-top: 0;
+            padding-bottom: 2rem;
+            text-align: center;
+        }
+        .modal-icon-minimal {
+            color: #6c757d; /* Warna abu-abu netral */
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .modal-footer-minimal {
+            border-top: none;
+        }
     </style>
 </head>
 <body>
 
-<!-- HANYA BAGIAN NAVBAR YANG DITAMBAH TOMBOL PROFIL -->
 <nav class="navbar navbar-expand-lg navbar-dark shadow fixed-top">
     <div class="container">
         <a class="navbar-brand fw-bold" href="index.php" style="font-family: 'Questrial', sans-serif;">Artefax</a>
         <div class="d-flex align-items-center gap-3">
-            <!-- TOMBOL PROFIL DENGAN LOGO AVATAR -->
             <a href="View/profil.php" class="btn-profile" title="Profil Saya">
                 <i class="bi bi-person-circle"></i>
             </a>
 
             <span class="text-white small">Hi, **<?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User') ?>**</span>
-            <a href="logout.php" class="btn btn-outline-light btn-sm">
+            
+            <a href="javascript:void(0);" onclick="showLogoutModal();" class="btn btn-outline-light btn-sm">
                 <i class="bi bi-box-arrow-right"></i> Logout
             </a>
         </div>
     </div>
 </nav>
 
-<!-- SEMUA KONTEN DI BAWAH INI TETAP 100% SAMA DENGAN KODE ASLI -->
 <div class="container py-5">
     <h2 class="text-center mb-5 fw-bolder" style="color: var(--heading-color); font-family: 'Questrial', sans-serif;">
         <i class="bi bi-clock-history me-2"></i> Riwayat Booking
@@ -286,7 +319,7 @@ if ($result) {
                                         if ($b['BkgStatus'] === 'Diterima' || $b['BkgStatus'] === 'Menunggu Konfirmasi'): 
                                     ?>
                                     <button class="btn btn-cancel" 
-                                             onclick="requestCancellation(<?= $b['IDBooking'] ?>); return false;">
+                                            onclick="requestCancellation(<?= $b['IDBooking'] ?>); return false;">
                                         <i class="bi bi-x-circle-fill me-1"></i> Ajukan Pembatalan
                                     </button>
                                     <?php endif; ?>
@@ -330,8 +363,33 @@ if ($result) {
     </div>
 </div>
 
+<div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header modal-header-minimal">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body modal-body-minimal">
+                <i class="bi bi-box-arrow-right modal-icon-minimal"></i>
+                <h5 class="modal-title-minimal mb-2" id="logoutConfirmModalLabel">Konfirmasi Logout</h5>
+                <p class="text-muted mb-0 small">Apakah Anda yakin ingin mengakhiri sesi?</p>
+            </div>
+            <div class="modal-footer modal-footer-minimal justify-content-center pt-0 pb-3">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Batal</button>
+                <a id="confirmLogoutButton" href="logout.php" class="btn btn-danger">Ya, Keluar</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // FUNGSI: Menampilkan modal konfirmasi logout
+    function showLogoutModal() {
+        const logoutModal = new bootstrap.Modal(document.getElementById('logoutConfirmModal'));
+        logoutModal.show();
+    }
+
     function showBookingDetail(id) {
         const modalBody = document.getElementById('modalContentPlaceholder');
         const modalTitle = document.getElementById('bookingDetailModalLabel');

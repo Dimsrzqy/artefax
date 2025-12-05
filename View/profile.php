@@ -1,5 +1,5 @@
 <?php
-// File: profil.php → FINAL CODE LENGKAP & KONSISTEN
+// File: profil.php → FINAL CODE LENGKAP & KONSISTEN (DENGAN MODAL LOGOUT)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -44,9 +44,9 @@ try {
     $userData = $result->fetch_assoc();
     
     if (!$userData) {
-          session_destroy();
-          header("Location: login.php?error=user_not_found");
-          exit();
+         session_destroy();
+         header("Location: login.php?error=user_not_found");
+         exit();
     }
     
     // Update session dengan data terbaru
@@ -115,6 +115,10 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         .navbar {
             background-color: var(--accent-color) !important; 
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-riwayat {
+            display: none !important; 
         }
         
         .btn-logout-red {
@@ -268,21 +272,100 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
 
         /* NAVBAR MOBILE FIX */
         @media (max-width: 991.98px) {
-            .navbar .d-flex.align-items-center.gap-3 {
+            /* Resetting the main d-flex on mobile for full control */
+            .navbar .collapse .ms-auto.d-lg-flex {
                 flex-direction: column;
                 width: 100%;
                 margin-top: 1rem;
                 gap: 12px !important;
+                align-items: stretch !important; /* Ensure items stretch for full width */
             }
-            .navbar .text-white.small {
-                text-align: center;
-                width: 100%;
-            }
+            
+            /* Ensuring buttons stretch fully in the collapse menu on mobile */
             .navbar .btn-logout-red {
                 width: 100%;
                 justify-content: center;
             }
+            
+            /* 🛑 PERBAIKAN SEJAJAR VERTIKAL */
+            .navbar .container {
+                 /* Menggunakan d-flex dan align-items-center di container untuk kontrol vertikal */
+                 display: flex; 
+                 align-items: center; 
+                 justify-content: space-between;
+                 padding-top: var(--bs-navbar-padding-y, 0.5rem); /* Default BS padding */
+                 padding-bottom: var(--bs-navbar-padding-y, 0.5rem); /* Default BS padding */
+            }
+            
+            .navbar-mobile-header {
+                /* Gunakan align-items: center di sini juga */
+                align-items: center;
+                /* Hapus padding yang diinjeksi sebelumnya */
+                padding-left: 0; 
+                flex-grow: 0; /* Penting: tidak perlu mengambil semua ruang, agar Brand di kiri punya ruang */
+            }
+            
+            .navbar-mobile-header .nav-user-mobile {
+                 /* Menghapus margin vertikal yang mungkin menekan */
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                /* Mengatur line-height untuk alignment optilam */
+                line-height: 1.2; 
+            }
+            
+            .navbar-brand {
+                 /* Memastikan brand sejajar */
+                 padding-top: 0;
+                 padding-bottom: 0;
+                 line-height: 1.2;
+            }
         }
+
+        /* 🛑 NEW MOBILE NAVBAR STRUCTURE */
+        .navbar-mobile-header {
+            display: flex;
+            justify-content: flex-end; /* Group content to the right */
+            align-items: center; /* Vertically center children */
+            /* Menggantikan d-lg-none untuk struktur mobile */
+        }
+        
+        .navbar-mobile-header .nav-user-mobile {
+            font-size: 1rem;
+            color: white;
+            font-weight: 500;
+            margin-right: 15px; 
+            order: 1; 
+        }
+        
+        .navbar-toggler-custom {
+            order: 2; 
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            line-height: 1; 
+        }
+
+        /* Menyembunyikan elemen untuk kontrol yang lebih baik */
+        .navbar .navbar-toggler,
+        .navbar .d-flex.d-lg-none:not(.navbar-mobile-header) {
+            display: none !important;
+        }
+        
+        /* Memastikan hanya navbar-mobile-header yang terlihat di mobile */
+        @media (min-width: 992px) {
+            .navbar-mobile-header {
+                display: none !important;
+            }
+        }
+        
+        .navbar-toggler-custom .navbar-toggler-icon {
+            width: 1em;
+            height: 1em;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
 
         .toast {
             position: fixed; top: 20px; right: 20px; background: var(--status-diterima-bg); 
@@ -310,6 +393,29 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 🛑 STYLING MODAL LOGOUT MINIMALIS BARU */
+        .modal-header-minimal {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .modal-title-minimal {
+            font-weight: 600;
+            color: var(--heading-color);
+        }
+        .modal-body-minimal {
+            padding-top: 0;
+            padding-bottom: 2rem;
+            text-align: center;
+        }
+        .modal-icon-minimal {
+            color: #6c757d; /* Warna abu-abu netral */
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .modal-footer-minimal {
+            border-top: none;
+        }
     </style>
 </head>
 <body>
@@ -317,16 +423,24 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
     <div class="container">
         <a class="navbar-brand fw-bold" href="../index.php" style="font-family: 'Questrial', sans-serif;">Artefax</a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <div class="d-flex d-lg-none navbar-mobile-header">
+            
+            <span class="text-white small nav-user-mobile">
+                Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></strong>
+            </span>
+            
+            <button class="navbar-toggler-custom" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-            <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="text-white small">Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></strong></span>
+            <div class="ms-auto d-lg-flex align-items-center gap-3">
+                <span class="text-white small d-none d-lg-inline">
+                    Hi, <strong><?= htmlspecialchars($_SESSION['user']['nama'] ?? $_SESSION['user']['UserNama'] ?? 'User', ENT_QUOTES, 'UTF-8') ?></strong>
+                </span>
                 
-                
-                <a href="../logout.php" class="btn btn-sm btn-logout-red d-inline-flex align-items-center gap-2">
+                <a href="javascript:void(0);" onclick="showLogoutModal();" class="btn btn-sm btn-logout-red d-inline-flex align-items-center gap-2">
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </a>
             </div>
@@ -423,6 +537,24 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
 
     <div class="toast" id="toast"></div>
 
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header modal-header-minimal">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body modal-body-minimal">
+                    <i class="bi bi-box-arrow-right modal-icon-minimal"></i>
+                    <h5 class="modal-title-minimal mb-2" id="logoutConfirmModalLabel">Konfirmasi Logout</h5>
+                    <p class="text-muted mb-0 small">Apakah Anda yakin ingin mengakhiri sesi?</p>
+                </div>
+                <div class="modal-footer modal-footer-minimal justify-content-center pt-0 pb-3">
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Batal</button>
+                    <a id="confirmLogoutButton" href="../logout.php" class="btn btn-danger">Ya, Keluar</a>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let originalData = {};
@@ -435,6 +567,12 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
             const length = phone.length;
             if (length <= 4) return phone;
             return "*".repeat(length - 4) + phone.slice(-4);
+        }
+
+        // FUNGSI: Menampilkan modal konfirmasi logout
+        function showLogoutModal() {
+            const logoutModal = new bootstrap.Modal(document.getElementById('logoutConfirmModal'));
+            logoutModal.show();
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -584,7 +722,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                         return;
                     }
                     
-                    // Update data di client tanpa reload (karena hanya nama/alamat/nohp yang berubah)
+                    // Update data di client tanpa reload (hanya nama/alamat/nohp)
                     document.getElementById('userNoHp').dataset.original = data.userNoHp;
                     
                     const noHpInput = document.getElementById('userNoHp');
