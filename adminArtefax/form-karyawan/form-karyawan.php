@@ -34,7 +34,7 @@ $loggedInUser = [
     'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
     'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
 ];
-$defaultProfileImage = '../img/faces/face1.jpg'; 
+$defaultProfileImage = '../img/faces/artefax.jpg'; 
 // --- END: DATA USER LOGIN ---
 
 /* ============== PAGINATION (SUDAH AMAN & TIDAK ERROR) ============== */
@@ -191,90 +191,60 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 </head>
 
 <body class="az-body">
-  <div class="az-header">
-    <div class="container">
-      <div class="az-header-left">
-        <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
-        <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
-      </div>
-      <div class="az-header-menu">
-        <div class="az-header-menu-header">
-          <a href="index.html" class="az-logo"><span></span> Artefax</a>
-          <a href="" class="close">&times;</a>
-        </div>
-        <ul class="nav">
-          <li class="nav-item">
-            <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
-          </li>
-          <li class="nav-item active">
-            <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-          </li>
-          <li class="nav-item">
-            <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-          </li>
-          <li class="nav-item">
-        </ul>
-      </div>
-      <div class="az-header-right">
-        <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
-        <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-        <div class="az-header-message">
-          <a href="#"><i class="typcn typcn-messages"></i></a>
-        </div>
-        <div class="dropdown az-header-notification">
-          <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-          <div class="dropdown-menu">
-            <div class="az-dropdown-header mg-b-20 d-sm-none">
-              <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+    <div class="az-header">
+        <div class="container">
+            <div class="az-header-left">
+                <a href="../template/index.html" class="az-logo"><span></span> Artefax</a>
+                <a href="" id="azMenuShow" class="az-header-menu-icon d-lg-none"><span></span></a>
             </div>
-            <h6 class="az-notification-title">Notifications</h6>
-            <p class="az-notification-text">You have 2 unread notification</p>
-            <div class="az-notification-list">
-              <div class="media new">
-                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
-                <div class="media-body">
-                  <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
-                  <span>Mar 15 12:32pm</span>
+            <div class="az-header-menu">
+                <div class="az-header-menu-header">
+                    <a href="index.html" class="az-logo"><span></span> Artefax</a>
+                    <a href="" class="close">&times;</a>
                 </div>
-              </div>
-              <div class="media new">
-                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
-                <div class="media-body">
-                  <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                  <span>Mar 13 04:16am</span>
+                <ul class="nav">
+                    <li class="nav-item">
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link">
+                            <i class="fas fa-money-bill-alt" style="margin-right: 8px;"></i> Pembayaran
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link">
+                            <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="az-header-right">
+                <div class="dropdown az-profile-menu">
+                    <a href="../../View/profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <div class="dropdown-menu">
+                        <div class="az-dropdown-header d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <div class="az-header-profile">
+                            <div class="az-img-user">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
                 </div>
-              </div>
             </div>
-            <div class="dropdown-footer"><a href="">View All Notifications</a></div>
-          </div>
         </div>
-        <div class="dropdown az-profile-menu">
-          <a href="../../view/profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
-          <div class="dropdown-menu">
-            <div class="az-dropdown-header d-sm-none">
-              <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-            </div>
-            <div class="az-header-profile">
-              <div class="az-img-user">
-                <img src="<?= $defaultProfileImage ?>" alt="">
-              </div>
-              <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
-              <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
-            </div>
-
-            <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-            <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
   <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
     <div class="container">
@@ -296,7 +266,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <span>Data</span>
           <span>Karyawan</span>
         </div>
-        <h2 class="az-content-title">Daftar Karyawan</h2>
+        <h2 class="az-content-title"><i class="fas fa-users"></i> Daftar Karyawan</h2>
         <div class="d-flex justify-content-end align-items-center mg-b-20">
           <button class="btn btn-primary btn-with-icon" onclick="openTambahPopup()">
             <i class="fas fa-plus"></i> Tambah Karyawan

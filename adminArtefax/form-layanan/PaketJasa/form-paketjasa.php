@@ -76,7 +76,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         'UserRole' => $userData['UserRole']  ?? 'Administrator'
     ];
 
-    $defaultProfileImage = "../../img/faces/face1.jpg";
+    $defaultProfileImage = "../../img/faces/artefax.jpg";
 
     $db = new Database();
     $conn = $db->getConnection();
@@ -220,32 +220,28 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                        <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link">
+                            <i class="fas fa-money-bill-alt" style="margin-right: 8px;"></i> Pembayaran
+                        </a>
                     </li>
                     <li class="nav-item active">
                         <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+                        <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link">
+                            <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
+                        </a>
                     </li>
                 </ul>
             </div>
             
             <div class="az-header-right">
-                <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message">
-                    <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div>
-                <div class="dropdown az-header-notification">
-                    <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                </div>
-                
                 <!-- DROPDOWN PROFIL - SUDAH DIPERBAIKI -->
                 <div class="dropdown az-profile-menu">
                     <a href="../../View/profile.php" class="az-img-user">
@@ -292,7 +288,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                     <span>Layanan</span>
                     <span>Daftar Paket Jasa</span>
                 </div>
-                <h2 class="az-content-title">Daftar Paket Jasa</h2>
+                <h2 class="az-content-title"><i class="fas fa-box-open"></i> Daftar Paket Jasa</h2>
 
                 <div class="d-flex justify-content-between align-items-center mg-b-20">
                     <p class="mg-b-0">Kelola semua paket jasa di sini.</p>
