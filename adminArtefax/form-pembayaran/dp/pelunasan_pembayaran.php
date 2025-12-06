@@ -123,7 +123,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
         .card-header {
-            background: #3366ff;
+            background: #1DA1F2;
             color: white;
             padding: 12px 16px;
             font-weight: 600;

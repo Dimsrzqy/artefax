@@ -220,10 +220,10 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
-                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                        <a href="../../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                        <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
@@ -376,21 +376,37 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                                 <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
                                     <a class="page-link" href="?page=<?= $page-1 ?>">« Sebelumnya</a>
                                 </li>
+
                                 <?php
                                 $start = max(1, $page - 2);
-                                $end = min($totalPages, $page + 2);
-                                
+                                $end   = min($totalPages, $page + 2);
+
+                                if ($start > 1) {
+                                    echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                    if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+
                                 for ($i = $start; $i <= $end; $i++) {
                                     $active = ($i == $page) ? 'active' : '';
                                     echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
                                 }
+
+                                if ($end < $totalPages) {
+                                    if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                                }
                                 ?>
+
                                 <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
                                     <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya »</a>
                                 </li>
                             </ul>
                         </nav>
+                        <div class="text-center text-muted small">
+                            Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalPaket ?> Paket
+                        </div>
                         <?php endif; ?>
+
                     <?php else: ?>
                         <div class="text-center py-5 bg-light rounded">
                             <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
@@ -429,12 +445,26 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                         </div>
                         
                         <div class="form-group">
-                            <label>Gambar <span class="text-danger">*</span></label>
-                            <div id="previewContainer" style="display:none;">
-                                <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px;">
-                            </div>
-                            <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*">
+                        <label>Gambar <span class="text-danger">*</span></label> 
+
+                        <div id="previewContainer" class="text-center mb-4" style="display:none;">
+                            <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
+                            <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
                         </div>
+
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
+                            <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
+                                <i class="fas fa-times" style="font-size:12px;"></i>
+                            </button>
+                            <label for="gambar_paketjasa" class="btn btn-primary">
+                                <i class="fas fa-camera me-1"></i> Browse
+                            </label>
+                        </div>
+
+                        <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*" style="display:none;">
+                        <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG</small>
+                    </div>
 
                         <div class="form-group">
                             <label>Kategori <span class="text-danger">*</span></label>
@@ -483,78 +513,172 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../js/azia.js"></script>
-    
-    <script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('layananModal');
-        const form = document.getElementById('formLayanan');
+        const form = document.getElementById('formLayanan'); 
 
-        document.addEventListener('DOMContentLoaded', function() {
-            modal.style.display = 'none';
-            
-            setTimeout(function() {
-                $('.alert').fadeOut('slow');
-            }, 5000);
-            
-            $('#azMenuShow').on('click', function(e) {
-                e.preventDefault();
-                $('.az-header-menu').toggleClass('show');
-            });
-            
-            $('.az-header-menu .close').on('click', function(e) {
-                e.preventDefault();
-                $('.az-header-menu').removeClass('show');
-            });
-        });
-        
-        function openTambahPopup() {
+        // Semua fungsi di bawah ini
+        window.openTambahPopup = function () {
             document.getElementById('modalTitle').textContent = 'Tambah Layanan';
             form.action = 'tambah_paketjasa.php';
             form.reset();
-            modal.style.display = 'flex';
-        }
+            document.getElementById('idPaket').value = '';
+            document.getElementById('gambarLama').value = '';
+            document.getElementById('fileNameDisplay').value = '';
+            document.getElementById('btnHapusGambar').style.display = 'none';
+            document.getElementById('previewContainer').style.display = 'none';
 
-        function openEditPopup(data) {
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.getElementById('modalBackdrop').style.display = 'block';
+        };
+
+        window.openEditPopup = function (data) {
             document.getElementById('modalTitle').textContent = 'Edit Layanan';
             form.action = 'edit_paketjasa.php';
+
             document.getElementById('idPaket').value = data.IDPaket;
-            form.PaketNama.value = data.PaketNama;
-            form.PaketKategori.value = data.PaketKategori;
-            form.PaketDeskripsi.value = data.PaketDeskripsi;
-            form.PaketHarga.value = data.PaketHarga;
-            form.PaketDurasi.value = data.PaketDurasi;
-            form.PaketStatus.value = data.PaketStatus;
-            
-            if (data.PaketDirGbr) {
-                document.getElementById('gambarLama').value = data.PaketDirGbr;
-                document.getElementById('previewImg').src = '../../Paket/img/produk/' + data.PaketDirGbr;
-                document.getElementById('previewContainer').style.display = 'block';
+            form.PaketNama.value = data.PaketNama || '';
+            form.PaketKategori.value = data.PaketKategori || '';
+            form.PaketDeskripsi.value = data.PaketDeskripsi || '';
+            form.PaketHarga.value = data.PaketHarga || '';
+            form.PaketDurasi.value = data.PaketDurasi || '';
+            form.PaketStatus.value = data.PaketStatus || 'Aktif';
+
+            const imgPath = data.PaketDirGbr;
+            const previewImg = document.getElementById('previewImg');
+            const previewContainer = document.getElementById('previewContainer');
+
+            if (imgPath && imgPath.trim() !== '') {
+                document.getElementById('gambarLama').value = imgPath;
+                previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
+                previewContainer.style.display = 'block';
+                document.getElementById('previewText').textContent = 'Preview Gambar';
+                document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();
+                document.getElementById('btnHapusGambar').style.display = 'block';
+            } else {
+               resetGambarPreview();
             }
-            
-            modal.style.display = 'flex';
-        }
 
-        function closeModal() {
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            document.getElementById('modalBackdrop').style.display = 'block';
+        };
+
+        window.closeModal = function () {
             modal.style.display = 'none';
+            modal.classList.remove('show');
+            document.getElementById('modalBackdrop').style.display = 'none';
+        };
+
+        function resetGambarPreview() {
+        document.getElementById('gambar_paketjasa').value = '';
+        document.getElementById('fileNameDisplay').value = 'Belum ada file dipilih';
+        document.getElementById('btnHapusGambar').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('gambarLama').value = '';
+    }
+        // Preview gambar
+document.getElementById('gambar_paketjasa').addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) {
+            resetGambarPreview();
+            return;
         }
 
-        window.onclick = (e) => {
-            if (e.target === modal) closeModal();
-        };
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Ukuran maksimal 5MB!');
+            resetGambarPreview();
+            return;
+        }
 
-        // Lightbox
-        document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const lightbox = document.getElementById('gambarLightbox');
-                const imgPath = '../../Paket/img/produk/' + this.getAttribute('data-img');
-                document.getElementById('lightboxImg').src = imgPath;
-                document.getElementById('lightboxJudul').textContent = this.getAttribute('data-nama');
-                lightbox.style.display = 'flex';
-            });
+        document.getElementById('fileNameDisplay').value = file.name;
+        document.getElementById('btnHapusGambar').style.display = 'block';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('previewContainer').style.display = 'block';
+            document.getElementById('previewText').textContent = 'Preview gambar';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('btnHapusGambar').addEventListener('click', resetGambarPreview);
+    modal.addEventListener('click', e => {
+        if (e.target === modal) closeModal();
+    });
+
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+    form.addEventListener('submit', function() {
+        setTimeout(function() {
+            closeModal();
+        }, 100);
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = modal.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            input.style.pointerEvents = 'auto';
+            input.style.userSelect = 'auto';
+            input.disabled = false;
         });
+    });
+});
+</script>
 
-        document.querySelector('.lightbox-close').onclick = () => {
-            document.getElementById('gambarLightbox').style.display = 'none';
-        };
-    </script>
+<script>
+           document.addEventListener('DOMContentLoaded', function() {
+            const lightbox = document.getElementById('gambarLightbox');
+            const lightboxImg = document.getElementById('lightboxImg');
+            const lightboxJudul = document.getElementById('lightboxJudul');
+            const closeBtn = document.querySelector('.lightbox-close');
+            const basePath = '/artefax/Paket/img/produk/';
+
+            document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const imgFile = this.getAttribute('data-img');
+                    const nama = this.getAttribute('data-nama');
+                    const fullPath = basePath + imgFile.trim();
+
+                    console.log('Mencoba load gambar:', fullPath);
+
+                    lightboxJudul.textContent = nama;
+                    lightboxImg.src = fullPath;
+                    lightbox.style.display = 'flex';
+
+                    lightboxImg.onerror = function() {
+                        lightboxImg.src = '';
+                        lightboxJudul.textContent = 'Gambar tidak ditemukan!';
+                        console.error('Gagal load:', fullPath);
+                    }
+                });
+            });
+
+            closeBtn.onclick = () => {
+                lightbox.style.display = 'none';
+                lightboxImg.src = '';
+            };
+
+            lightbox.onclick = (e) => {
+                if (e.target === lightbox) {
+                    lightbox.style.display = 'none';
+                    lightboxImg.src = '';
+                }
+            };
+
+            document.onkeyup = (e) => {
+                if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+                    lightbox.style.display = 'none';
+                    lightboxImg.src = '';
+                }
+            };
+        });
+</script>
 </body>
+
 </html>

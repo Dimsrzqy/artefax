@@ -143,27 +143,34 @@ unset($_SESSION['success'], $_SESSION['error']);
 
         .card-payment {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border-radius: 16px !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 25px;
             overflow: hidden;
             transition: transform 0.2s;
             margin-bottom: 20px;
         }
 
         .card-payment:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.20);
         }
 
         .card-refund .card-header {
-            background: linear-gradient(135deg, #ffc107, #ffb300) !important;
-            color: #000 !important;
+            background: linear-gradient(135deg, #1DA1F2, #00BCD4) !important;
+            color: #ffffffff !important;
             font-weight: 600;
             font-size: 1.1em;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
         }
 
-        .card-body {
+        .card-refund .card-body {
             padding: 16px;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+
         }
 
         .status-refund-badge {
@@ -202,13 +209,15 @@ unset($_SESSION['success'], $_SESSION['error']);
             font-size: 11px;
         }
 
-        .card-footer {
+        .card-refund .card-footer {
             padding: 12px 16px;
             background: #f8f9fa;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-top: 1px solid #eee;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
         }
 
         .btn-action {
@@ -522,7 +531,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <div class="info-row">
                                             <span class="info-label">Status</span>
                                             <span class="info-value">
-                                                <span class="badge bg-warning text-dark status-refund-badge">Pending</span>
+                                                <span class="badge-pending">Pending</span>
                                             </span>
                                         </div>
                                     </div>
@@ -572,7 +581,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             </div>
         </div>
     </div>
-
+    
     <script>
         let idYangDipilih = 0;
 
@@ -602,7 +611,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             // Anda bisa mengganti ini dengan modal detail yang lebih kompleks jika diperlukan.
         }
     </script>
-
+    <?php require_once __DIR__ . "/detail_refund.php"; ?>
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/popper.js/popper.min.js"></script> 
     <script src="../../lib/bootstrap/js/bootstrap.min.js"></script> 

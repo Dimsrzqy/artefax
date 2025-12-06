@@ -165,11 +165,43 @@ function openDetailPopup(data) {
         ? data.DaftarPesanan.map(i => `<li>${i}</li>`).join('')
         : '<li style="color:#888"><em>Tidak ada item dipesan</em></li>';
 
-    const bukti = data.PbrBukti
-        ? `<button class="btn-bukti" onclick="window.open('${data.PbrBukti}', '_blank')">
-               Lihat Bukti Pembayaran
-           </button>`
-        : '<em style="color:#888">Tidak ada bukti pembayaran</em>';
+    const buktiPath = data.PbrBukti?.trim();
+let bukti = '<em style="color:#888">Tidak ada bukti pembayaran</em>';
+
+if (buktiPath && buktiPath !== '') {
+    
+    const basePath = window.location.origin + '/artefax/uploads/';
+    let imgUrl = '';
+
+    if (buktiPath.startsWith('http')) {
+        imgUrl = buktiPath;
+    } else {
+        // Kalau di DB hanya simpan: bukti_pembayaran/nama_file.jpg
+        // atau uploads/bukti_pembayaran/nama_file.jpg
+        if (buktiPath.includes('uploads/') || buktiPath.includes('bukti_pembayaran/')) {
+            imgUrl = basePath + buktiPath.replace(/^(\.\/|\/)+/, '');
+        } else {
+            imgUrl = basePath + 'uploads/' + buktiPath;
+        }
+    }
+
+    bukti = `
+        <div style="text-align: center; margin: 25px 0; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #4361ee;">
+            <p style="margin: 0 0 15px 0; color: #4361ee; font-weight: 600;">Bukti Transfer dari Pelanggan</p>
+            <img src="${imgUrl}" 
+                 alt="Bukti Pembayaran" 
+                 style="max-width: 100%; max-height: 550px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); cursor: zoom-in; border: 4px solid white;"
+                 onclick="window.open('${imgUrl}', '_blank')"
+                 onerror="this.onerror=null; this.src='https://via.placeholder.com/600x400/eeeeee/999999?text=Bukti+Tidak+Ditemukan'; this.style.border='4px solid #fcc'; this.onclick=null; this.style.cursor='not-allowed';"
+                 onload="this.style.opacity=1"
+                 style="opacity: 0; transition: opacity 0.5s;">
+            <br><br>
+            <button class="btn-bukti" onclick="window.open('${imgUrl}', '_blank')">
+                Buka Gambar di Tab Baru
+            </button>
+        </div>
+    `;
+}
 
     const tglMulai = data.BkgTglMulai ? new Date(data.BkgTglMulai).toLocaleDateString('id-ID') : '-';
     const tglSelesai = data.BkgTglSelesai ? new Date(data.BkgTglSelesai).toLocaleDateString('id-ID') : '-';

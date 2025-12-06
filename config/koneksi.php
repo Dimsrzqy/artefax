@@ -2,7 +2,7 @@
 // File: config/koneksi.php
 class Database {
     private $host = "localhost";
-    private $db_name = "artefax";
+    private $db_name = "artefaxdummy";
     private $username = "root";
     private $password = "";
     public $conn;

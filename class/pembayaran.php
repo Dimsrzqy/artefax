@@ -43,11 +43,58 @@ class Pembayaran
 
 
     // =============================
-    // Total DATA (Halaman)
+    // Total DATA (Halaman Daftar Pembayaran)
     // =============================
     public function TotalBooking($startDate = null, $endDate = null, $statusFilter = null)
     {
         $query = "SELECT COUNT(*) AS total FROM {$this->table} p";
+        $conditions = [];
+        $bindTypes = '';
+        $bindParams = [];
+        $statusWhere = '';
+
+        // Filter Status Pembayaran (Mencegah Array to string conversion)
+        if ($statusFilter) {
+            $statusWhere = $this->getStatusCondition($statusFilter);
+            $conditions[] = "p.PbrStatus {$statusWhere}";
+        }
+
+        // Filter Tanggal
+        if ($startDate) {
+            $conditions[] = "p.CreatedAt >= ?";
+            $bindTypes .= 's';
+            $bindParams[] = $startDate;
+        }
+        if ($endDate) {
+            $conditions[] = "p.CreatedAt < ?";
+            $bindTypes .= 's';
+            $bindParams[] = $endDate;
+        }
+
+        if (!empty($conditions)) {
+            $query .= " WHERE " . implode(" AND ", $conditions);
+        }
+
+        $stmt = $this->conn->prepare($query);
+        if (!$stmt) return 0;
+
+        if (!empty($bindParams)) {
+            $stmt->bind_param($bindTypes, ...$bindParams);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        return $row ? (int)$row['total'] : 0;
+    }
+    // =============================
+    // Total DATA (Halaman Konfirmasi)
+    // =============================
+    public function TotalBookingPending($startDate = null, $endDate = null, $statusFilter = null)
+    {
+        $query = "SELECT COUNT(*) AS total FROM {$this->table} p WHERE PbrStatus= 'Pending'";
         $conditions = [];
         $bindTypes = '';
         $bindParams = [];
@@ -186,70 +233,101 @@ class Pembayaran
     // =============================
     // READ Status Pending (Konfirmasi Pembayaran)
     // =============================
-    public function readPending()
-    {
-        $query = "
-            SELECT
-                p.IDPembayaran, 
-                p.IDBooking,     
-                p.PbrJumlah,
-                p.PbrMetode,
-                p.PbrKeterangan,
-                p.PbrStatus,
-                p.PbrConfirmed,
-                p.PbrBukti,
-                p.CreatedAt,
-                
-                COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
-                b.IDUser,
-                b.BkgTotalHarga,
-                b.BkgTglMulai,
-                
-                GROUP_CONCAT(
-                    DISTINCT
-                    CASE 
-                        WHEN g.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(j.PaketNama, 'Paket Dihapus')
-                        WHEN g.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
-                        ELSE g.BkgDetailJenis 
-                    END
-                    ORDER BY g.BkgDetailJenis
-                    SEPARATOR ', '
-                ) AS DaftarPesanan,
-                
-                GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
+    public function readPending($limit = null, $offset = null, $startDate = null, $endDate = null, $statusFilter = null)
+{
+    $query = "
+        SELECT
+            p.IDPembayaran, 
+            p.IDBooking,     
+            p.PbrJumlah,
+            p.PbrMetode,
+            p.PbrKeterangan,
+            p.PbrStatus,
+            p.PbrConfirmed,
+            p.PbrBukti,
+            p.CreatedAt,
+            
+            COALESCE(u.UserNama, 'Pengguna Tidak Ditemukan') AS UserNama,
+            b.IDUser,
+            b.BkgTotalHarga,
+            b.BkgTglMulai,
+            
+            GROUP_CONCAT(
+                DISTINCT
+                CASE 
+                    WHEN g.BkgDetailJenis = 'Paket Jasa' THEN COALESCE(j.PaketNama, 'Paket Dihapus')
+                    WHEN g.BkgDetailJenis = 'Alat' THEN COALESCE(a.AlatNama, 'Alat Dihapus')
+                    ELSE g.BkgDetailJenis 
+                END
+                ORDER BY g.BkgDetailJenis
+                SEPARATOR ', '
+            ) AS DaftarPesanan,
+            
+            GROUP_CONCAT(DISTINCT g.BkgDetailJenis ORDER BY g.BkgDetailJenis SEPARATOR ', ') AS JenisBooking
 
-            FROM pembayaran p
-            LEFT JOIN booking b ON p.IDBooking = b.IDBooking
-            LEFT JOIN users u ON b.IDUser = u.IDUser
-            LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
-            LEFT JOIN alat a ON g.IDAlat = a.IDAlat
-            LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
+        FROM pembayaran p
+        LEFT JOIN booking b ON p.IDBooking = b.IDBooking
+        LEFT JOIN users u ON b.IDUser = u.IDUser
+        LEFT JOIN booking_detail g ON b.IDBooking = g.IDBooking
+        LEFT JOIN alat a ON g.IDAlat = a.IDAlat
+        LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
 
-            WHERE 
-                p.PbrStatus = 'Pending' 
+        WHERE p.PbrStatus = 'Pending'
+    ";
 
-            GROUP BY 
-                p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
-                u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
-            ORDER BY 
-                p.CreatedAt ASC
-        ";
+    // === Tambahkan filter tanggal & status (sama seperti di TotalBookingPending) ===
+    $conditions = [];
+    $bindTypes = '';
+    $bindParams = [];
 
-        $stmt = $this->conn->prepare($query);
-
-        if (!$stmt) {
-            error_log("SQL Error in readPending: " . $this->conn->error);
-            return [];
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $data = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $data;
+    if ($startDate) {
+        $conditions[] = "p.CreatedAt >= ?";
+        $bindTypes .= 's';
+        $bindParams[] = $startDate;
+    }
+    if ($endDate) {
+        $conditions[] = "p.CreatedAt < ?";
+        $bindTypes .= 's';
+        $bindParams[] = $endDate;
+    }
+    if ($statusFilter) {
+        $statusWhere = $this->getStatusCondition($statusFilter);
+        $conditions[] = "p.PbrStatus {$statusWhere}";
     }
 
+    if (!empty($conditions)) {
+        $query .= " AND " . implode(" AND ", $conditions);
+    }
+
+    // === ORDER BY dan LIMIT ===
+    $query .= " GROUP BY p.IDPembayaran
+                ORDER BY p.CreatedAt DESC";
+
+    // Tambahkan LIMIT hanya jika parameter diberikan
+    if ($limit !== null && $offset !== null) {
+        $query .= " LIMIT ? OFFSET ?";
+        $bindTypes .= 'ii';
+        $bindParams[] = (int)$limit;
+        $bindParams[] = (int)$offset;
+    }
+
+    $stmt = $this->conn->prepare($query);
+    if (!$stmt) {
+        error_log("Prepare failed: " . $this->conn->error);
+        return [];
+    }
+
+    if (!empty($bindParams)) {
+        $stmt->bind_param($bindTypes, ...$bindParams);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $data;
+}
     // =============================
     // READ Status (Lunas DP)
     // =============================

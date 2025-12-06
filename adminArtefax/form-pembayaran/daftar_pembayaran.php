@@ -426,7 +426,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       </div>
     </div>
   </div>
-
+  <?php require_once __DIR__ . "/../detail_pembayaran.php"; ?>
   <script src="../lib/jquery/jquery.min.js"></script>
   <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="../js/azia.js"></script>

@@ -177,7 +177,7 @@ function openRefundPopup(data) {
 
     const html = `
         <div class="section">
-            <h3><span class="badge badge-warning">Menunggu Konfirmasi Refund</span> #REFUND${String(data.IDRefund).padStart(6, '0')}</h3>
+            <h3><span class="badge badge-warning">Menunggu Konfirmasi</span> #REFUND${String(data.IDRefund).padStart(6, '0')}</h3>
             
             <div style="margin: 20px 0; padding: 18px; background: #fff3cd; border-radius: 10px; border-left: 5px solid #ffc107;">
                 <strong>Alasan Pengajuan Refund:</strong><br>

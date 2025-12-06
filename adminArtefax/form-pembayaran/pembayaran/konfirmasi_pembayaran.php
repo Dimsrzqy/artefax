@@ -32,8 +32,15 @@ $conn = $db->getConnection();
 $pembayaran = new Pembayaran($conn);
 $user = new User($conn);
 
-$pendingPayments = $pembayaran->readPending();
-$detailPembayaran = $pembayaran->readJoinFull();
+$limit  = 9;
+$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
+
+$totalBooking = $pembayaran->TotalBookingPending();
+$totalPages    = ceil($totalBooking / $limit);
+
+$pendingPayments = $pembayaran->readPending($limit, $offset);
+$detailPembayaran = $pembayaran->readJoinFull($limit, $offset);
 
 // Feedback
 $success = $_SESSION['success'] ?? '';
@@ -472,6 +479,48 @@ unset($_SESSION['success'], $_SESSION['error']);
                                 </div>
                             </div>
                         <?php endforeach; ?>
+                        <?php if ($totalPages > 1): ?>
+    <div class="text-center mt-5">
+        <!-- Paksa rata tengah penuh, tanpa gangguan row/col -->
+        <div class="mx-auto" style="max-width: 600px;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-3">
+                    <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $page-1 ?>">Sebelumnya</a>
+                    </li>
+
+                    <?php
+                    $start = max(1, $page - 2);
+                    $end   = min($totalPages, $page + 2);
+
+                    if ($start > 1) {
+                        echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                        if ($start > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+
+                    for ($i = $start; $i <= $end; $i++) {
+                        $active = ($i == $page) ? 'active' : '';
+                        echo "<li class='page-item $active'><a class='page-link' href='?page=$i'>$i</a></li>";
+                    }
+
+                    if ($end < $totalPages) {
+                        if ($end < $totalPages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                        echo "<li class='page-item'><a class='page-link' href='?page=$totalPages'>$totalPages</a></li>";
+                    }
+                    ?>
+
+                    <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $page+1 ?>">Berikutnya</a>
+                    </li>
+                </ul>
+            </nav>
+
+            <small class="text-muted">
+                Halaman <?= $page ?> dari <?= $totalPages ?> | Total <?= $totalBooking ?> Pembayaran
+            </small>
+        </div>
+    </div>
+<?php endif; ?>
                     <?php else: ?>
                         <div class="col-12">
                             <div class="empty-state">

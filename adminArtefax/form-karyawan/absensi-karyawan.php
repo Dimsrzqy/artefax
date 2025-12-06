@@ -59,14 +59,14 @@
                         <a href="../index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>Karyawan</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
                     </li>
                     <li class="nav-item">
                         <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Users</a>
-                    </li>
+                    </li> 
                     <li class="nav-item">
                         <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
                     </li>
