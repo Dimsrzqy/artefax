@@ -455,7 +455,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                             $namaCustomer = $customer['UserNama'] ?? 'Unknown';
                             $tglBooking = date('d M Y', strtotime($r['BkgTglMulai']));
                             $tglPengajuan = date('d M Y, H:i', strtotime($r['RefundWaktu'])) . ' WIB';
-                            $rf = $r; // Menggunakan variabel yang sama untuk modal
+                            $rf = $r; 
                         ?>
                             <div class="col-md-6 col-lg-4 mb-4" data-id="<?= $r['IDRefund'] ?>">
                                 <div class="card-refund shadow-sm h-100 border-warning">
@@ -499,8 +499,8 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         </div>
                                     </div>
                                     <div class="card-footer d-flex justify-content-between align-items-center">
-                                        <button class="btn-action btn-detail" 
-                                                    onclick='openRefundPopup(<?= json_encode($rf, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                        <button type="button" class="btn-action btn-detail" 
+                                                onclick='openRefundPopup(<?= json_encode($r, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                             <i class="fas fa-eye"></i> Detail
                                         </button>
                                         <button type="button" class="btn btn-success btn-sm btn-setuju-refund" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
@@ -520,7 +520,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                         </div>
                     <?php endif; ?>
                 </div>
-
+                        
                 <div id="modalRefund" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
                     <div style="background:white; width:90%; max-width:480px; margin:100px auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.4); overflow:hidden;">
                         <div style="background:#28a745; color:white; padding:15px 20px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
@@ -544,7 +544,7 @@ unset($_SESSION['success'], $_SESSION['error']);
             </div>
         </div>
     </div>
-
+    <?php include 'detail_refund.php'; ?>
     <script>
         let idYangDipilih = 0;
 
@@ -568,18 +568,14 @@ unset($_SESSION['success'], $_SESSION['error']);
             if (e.target === this) tutupModalKu();
         });
 
-        // Function untuk menampilkan detail refund (modal terpisah, karena ini hanya modal konfirmasi)
-        function openRefundPopup(data) {
-            alert("Detail Refund:\nID: " + data.IDRefund + "\nAlasan: " + data.RefundAlasan);
-            // Anda bisa mengganti ini dengan modal detail yang lebih kompleks jika diperlukan.
-        }
+        
     </script>
 
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/popper.js/popper.min.js"></script> 
     <script src="../../lib/bootstrap/js/bootstrap.min.js"></script> 
     <script src="../../js/azia.js"></script>
-
+    
     <script>
         $(document).ready(function() {
             // Toggle menu mobile
@@ -599,26 +595,18 @@ unset($_SESSION['success'], $_SESSION['error']);
             // 1. Memaksa elemen menu untuk berada di dalam kontainer profil (mengatasi bug Azia)
             if ($dropdownMenu.length && !$dropdownMenu.parent().is($dropdownContainer)) {
                 $dropdownMenu.appendTo($dropdownContainer);
-            }
-            
-            // 2. Menginisialisasi Ulang dan Menangani Klik Manual (Event Delegation)
-            // Hapus semua inisialisasi Bootstrap yang mungkin gagal sebelumnya, dan tangani secara manual
-            
-            // Menghapus data-toggle untuk mencegah inisialisasi ganda yang gagal
+            } 
             $dropdownContainer.find('.dropdown-toggle').removeAttr('data-toggle');
-
-            // Mengganti fungsionalitas Bootstrap dengan JQuery Toggle Class
+ 
             $dropdownContainer.on('click', '.dropdown-toggle', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                // Menutup dropdown lain jika ada
+                e.stopPropagation(); 
                 $('.az-profile-menu .dropdown-menu').not($(this).siblings('.dropdown-menu')).removeClass('show');
 
-                // Toggle kelas 'show'
+
                 $(this).siblings('.dropdown-menu').toggleClass('show');
             });
-
-            // Menyembunyikan menu saat mengklik di luar
+ 
             $(document).on('click', function (e) {
                 if (!$dropdownContainer.is(e.target) && $dropdownContainer.has(e.target).length === 0) {
                     $dropdownMenu.removeClass('show');

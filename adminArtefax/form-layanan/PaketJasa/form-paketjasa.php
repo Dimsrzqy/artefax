@@ -170,7 +170,56 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             justify-content: center;
             background-color: rgba(0, 0, 0, 0.5);
         }
-        
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 9999;
+        overflow-y: auto;
+        padding: 20px;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-container {
+        background: white;
+        border-radius: 12px;
+        max-width: 800px;
+        width: 100%;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        animation: modalShow 0.3s ease-out;
+    }
+    @keyframes modalShow {
+        from { opacity: 0; transform: translateY(-50px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        opacity: 0.6;
+    }
+    .close-btn:hover { opacity: 1; }
+    .modal-body-scroll {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #eee;
+        text-align: right;
+    }
         /* Lightbox */
         .lightbox-overlay {
             position: fixed;
@@ -425,13 +474,26 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                         </div>
                         
                         <div class="form-group">
-                            <label>Gambar <span class="text-danger">*</span></label>
-                            <div id="previewContainer" style="display:none;">
-                                <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px;">
-                            </div>
-                            <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*">
+                        <label>Gambar <span class="text-danger">*</span></label> 
+
+                        <div id="previewContainer" class="text-center mb-4" style="display:none;">
+                            <img id="previewImg" src="" alt="Preview" style="max-height:220px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.18);">
+                            <p class="mt-2 text-success"><small id="previewText">Preview gambar</small></p>
                         </div>
 
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="fileNameDisplay" placeholder="Belum ada file dipilih" readonly>
+                            <button type="button" class="btn btn-sm btn-danger" id="btnHapusGambar" style="display:none;" title="Hapus gambar">
+                                <i class="fas fa-times" style="font-size:12px;"></i>
+                            </button>
+                            <label for="gambar_paketjasa" class="btn btn-primary">
+                                <i class="fas fa-camera me-1"></i> Browse
+                            </label>
+                        </div>
+
+                        <input type="file" name="gambar" id="gambar_paketjasa" accept="image/*" style="display:none;">
+                        <small class="text-muted mt-2 d-block">Maksimal 5MB, format: JPG</small>
+                    </div>
                         <div class="form-group">
                             <label>Kategori <span class="text-danger">*</span></label>
                             <select name="PaketKategori" class="form-control" required>
@@ -475,82 +537,155 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             </div>
         </div>
     </div>
+    
 
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../js/azia.js"></script>
+    <div class="modal-backdrop fade show" id="modalBackdrop" style="display:none; z-index:1040;"></div>  
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal            = document.getElementById('layananModal');
+    const form             = document.getElementById('formLayanan');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImg       = document.getElementById('previewImg');
+    const fileNameDisplay  = document.getElementById('fileNameDisplay');
+    const btnHapusGambar   = document.getElementById('btnHapusGambar');
+    const lightbox       = document.getElementById('gambarLightbox');
+const lightboxImg    = document.getElementById('lightboxImg');
+const lightboxJudul  = document.getElementById('lightboxJudul');
+const lightboxClose  = document.querySelector('.lightbox-close');
+
+// Buka lightbox saat tombol Detail diklik
+document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const imgPath = this.getAttribute('data-img');
+        const nama    = this.getAttribute('data-nama');
+
+        // Path gambar sesuai struktur folder kamu
+        const fullPath = '/artefax/Paket/img/produk/' + imgPath;
+
+        lightboxJudul.textContent = nama;
+        lightboxImg.src = fullPath;
+        lightbox.style.display = 'flex'; // atau 'block' juga boleh
+        document.body.style.overflow = 'hidden'; // biar tidak scroll background
+    });
+});
+
+// Tutup lightbox saat klik tanda × atau klik di luar gambar
+lightboxClose.addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', function(e) {
+    if (e.target === lightbox || e.target === lightboxClose) {
+        closeLightbox();
+    }
+});
+
+function closeLightbox() {
+    lightbox.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    lightboxImg.src = '';
+}
+
+// Tutup dengan tombol ESC (bonus)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+        closeLightbox();
+    }
+});
     
-    <script>
-        const modal = document.getElementById('layananModal');
-        const form = document.getElementById('formLayanan');
 
-        document.addEventListener('DOMContentLoaded', function() {
-            modal.style.display = 'none';
-            
-            setTimeout(function() {
-                $('.alert').fadeOut('slow');
-            }, 5000);
-            
-            $('#azMenuShow').on('click', function(e) {
-                e.preventDefault();
-                $('.az-header-menu').toggleClass('show');
-            });
-            
-            $('.az-header-menu .close').on('click', function(e) {
-                e.preventDefault();
-                $('.az-header-menu').removeClass('show');
-            });
-        });
+    window.openTambahPopup = function () {
+        document.getElementById('modalTitle').textContent = 'Tambah Layanan';
+        form.action = 'tambah_paketjasa.php';
+        form.reset();
         
-        function openTambahPopup() {
-            document.getElementById('modalTitle').textContent = 'Tambah Layanan';
-            form.action = 'tambah_paketjasa.php';
-            form.reset();
-            modal.style.display = 'flex';
+        document.getElementById('idPaket').value = '';
+        document.getElementById('gambarLama').value = '';
+        fileNameDisplay.value = 'Belum ada file dipilih';
+        btnHapusGambar.style.display = 'none';
+        previewContainer.style.display = 'none';
+
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.getElementById('modalBackdrop').style.display = 'block';
+        document.body.classList.add('modal-open');
+    };
+
+    window.openEditPopup = function (data) {
+        document.getElementById('modalTitle').textContent = 'Edit Layanan';
+        form.action = 'edit_paketjasa.php';
+
+        document.getElementById('idPaket').value = data.IDPaket;
+        form.PaketNama.value       = data.PaketNama || '';
+        form.PaketKategori.value   = data.PaketKategori || '';
+        form.PaketDeskripsi.value  = data.PaketDeskripsi || '';
+        form.PaketHarga.value      = data.PaketHarga || '';
+        form.PaketDurasi.value     = data.PaketDurasi || '';
+        form.PaketStatus.value     = data.PaketStatus || 'Aktif';
+
+        const imgPath = data.PaketDirGbr?.trim();
+        if (imgPath) {
+            document.getElementById('gambarLama').value = imgPath;
+            previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
+            previewContainer.style.display = 'block';
+            fileNameDisplay.value = imgPath.split('/').pop();
+            btnHapusGambar.style.display = 'block';
+        } else {
+            document.getElementById('gambarLama').value = '';
+            previewContainer.style.display = 'none';
+            fileNameDisplay.value = 'Belum ada file dipilih';
+            btnHapusGambar.style.display = 'none';
         }
 
-        function openEditPopup(data) {
-            document.getElementById('modalTitle').textContent = 'Edit Layanan';
-            form.action = 'edit_paketjasa.php';
-            document.getElementById('idPaket').value = data.IDPaket;
-            form.PaketNama.value = data.PaketNama;
-            form.PaketKategori.value = data.PaketKategori;
-            form.PaketDeskripsi.value = data.PaketDeskripsi;
-            form.PaketHarga.value = data.PaketHarga;
-            form.PaketDurasi.value = data.PaketDurasi;
-            form.PaketStatus.value = data.PaketStatus;
-            
-            if (data.PaketDirGbr) {
-                document.getElementById('gambarLama').value = data.PaketDirGbr;
-                document.getElementById('previewImg').src = '../../Paket/img/produk/' + data.PaketDirGbr;
-                document.getElementById('previewContainer').style.display = 'block';
-            }
-            
-            modal.style.display = 'flex';
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.getElementById('modalBackdrop').style.display = 'block';
+        document.body.classList.add('modal-open');
+    };
+
+    window.closeModal = function () {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.getElementById('modalBackdrop').style.display = 'none';
+        document.body.classList.remove('modal-open');
+    };
+
+    // Klik luar modal
+    modal.addEventListener('click', e => {
+        if (e.target === modal) closeModal();
+    });
+
+    // Preview + update nama file
+    document.getElementById('gambar_paketjasa').addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Ukuran maksimal 5MB!');
+            this.value = '';
+            return;
         }
 
-        function closeModal() {
-            modal.style.display = 'none';
-        }
+        fileNameDisplay.value = file.name;
+        btnHapusGambar.style.display = 'block';
 
-        window.onclick = (e) => {
-            if (e.target === modal) closeModal();
+        const reader = new FileReader();
+        reader.onload = e => {
+            previewImg.src = e.target.result;
+            previewContainer.style.display = 'block';
         };
+        reader.readAsDataURL(file);
+    });
 
-        // Lightbox
-        document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const lightbox = document.getElementById('gambarLightbox');
-                const imgPath = '../../Paket/img/produk/' + this.getAttribute('data-img');
-                document.getElementById('lightboxImg').src = imgPath;
-                document.getElementById('lightboxJudul').textContent = this.getAttribute('data-nama');
-                lightbox.style.display = 'flex';
-            });
-        });
-
-        document.querySelector('.lightbox-close').onclick = () => {
-            document.getElementById('gambarLightbox').style.display = 'none';
-        };
-    </script>
+    btnHapusGambar.addEventListener('click', function () {
+        document.getElementById('gambar_paketjasa').value = '';
+        document.getElementById('gambarLama').value = '';
+        previewContainer.style.display = 'none';
+        fileNameDisplay.value = 'Belum ada file dipilih';
+        this.style.display = 'none';
+    });
+});
+</script>
 </body>
 </html>
