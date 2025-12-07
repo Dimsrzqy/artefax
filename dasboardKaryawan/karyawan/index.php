@@ -384,7 +384,7 @@ $stats = $assignment->getStats($idKaryawan);
             </div>
             
             <div class="az-header-right">
-                <a href="../../view/profile.php" title="Profil Saya" class="d-flex align-items-center">
+                <a href="../../View/profilekaryawan.php" title="Profil Saya" class="d-flex align-items-center">
                     <i class="fas fa-user-circle az-profile-icon"></i>
                 </a>
                 

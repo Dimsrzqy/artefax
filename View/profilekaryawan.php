@@ -548,7 +548,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
 
                 <div class="button-group">
                     <div class="button-group-left">
-                        <a href="../adminArtefax/index.html" class="btn btn-secondary btn-action" style="text-decoration: none;">
+                        <a href="../dasboardKaryawan/karyawan/index.php" class="btn btn-secondary btn-action" style="text-decoration: none;">
                             <i class="bi bi-arrow-left-circle-fill"></i> Kembali
                         </a>
                     </div>
