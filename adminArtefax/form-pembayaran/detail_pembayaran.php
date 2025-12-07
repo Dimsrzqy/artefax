@@ -126,6 +126,75 @@
         box-shadow: 0 5px 15px rgba(67,97,238,0.4);
     }
     @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    #buktiLightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.94);
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.lightbox-overlay {
+    position: relative;
+    max-width: 95vw;
+    max-height: 95vh;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.7);
+}
+
+.lightbox-image {
+    max-width: 95vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 12px;
+    background: #000;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    background: #ff3b30;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    font-size: 28px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    transition: all 0.2s;
+}
+
+.lightbox-close:hover { transform: scale(1.1); background: #ff453a; }
+
+.lightbox-caption {
+    color: #aaa;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+/* Thumbnail di dalam modal */
+.bukti-container { text-align: center; margin: 12px 0; }
+.bukti-thumbnail {
+    max-width: 260px;
+    max-height: 320px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 4px solid #fff;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    cursor: zoom-in;
+    transition: transform 0.3s;
+}
+.bukti-thumbnail:hover { transform: scale(1.06); }
 </style>
 <script>
 let isDragging = false, startX, startY, offsetX = 0, offsetY = 0;
@@ -153,7 +222,7 @@ document.addEventListener('mouseup', () => {
 
 // === FUNGSI UTAMA ===
 function openDetailPopup(data) {
-    // Reset posisi
+    // Reset posisi draggable kalau ada
     popupEl.style.transform = 'translate(0,0)';
     offsetX = offsetY = 0;
 
@@ -164,16 +233,48 @@ function openDetailPopup(data) {
     const items = Array.isArray(data.DaftarPesanan) && data.DaftarPesanan.length > 0
         ? data.DaftarPesanan.map(i => `<li>${i}</li>`).join('')
         : '<li style="color:#888"><em>Tidak ada item dipesan</em></li>';
-
-    const bukti = data.PbrBukti
-        ? `<button class="btn-bukti" onclick="window.open('${data.PbrBukti}', '_blank')">
-               Lihat Bukti Pembayaran
-           </button>`
-        : '<em style="color:#888">Tidak ada bukti pembayaran</em>';
-
+ 
     const tglMulai = data.BkgTglMulai ? new Date(data.BkgTglMulai).toLocaleDateString('id-ID') : '-';
     const tglSelesai = data.BkgTglSelesai ? new Date(data.BkgTglSelesai).toLocaleDateString('id-ID') : '-';
     const waktu = new Date(data.CreatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+    const buktiPath = data.PbrBukti?.trim();
+let bukti = '<em style="color:#888">Tidak ada bukti pembayaran</em>';
+
+if (buktiPath && buktiPath !== '') {
+    // PAKAI CARA INI → PALING AMAN di Laragon + multi form
+    const basePath = window.location.origin + '/artefax/uploads/'; // sesuaikan dengan nama folder project kamu
+    let imgUrl = '';
+
+    if (buktiPath.startsWith('http')) {
+        imgUrl = buktiPath;
+    } else {
+        // Kalau di DB hanya simpan: bukti_pembayaran/nama_file.jpg
+        // atau uploads/bukti_pembayaran/nama_file.jpg
+        if (buktiPath.includes('uploads/') || buktiPath.includes('bukti_pembayaran/')) {
+            imgUrl = basePath + buktiPath.replace(/^(\.\/|\/)+/, '');
+        } else {
+            imgUrl = basePath + 'uploads/' + buktiPath;
+        }
+    }
+
+    bukti = `
+        <div style="text-align: center; margin: 25px 0; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #4361ee;">
+            <p style="margin: 0 0 15px 0; color: #4361ee; font-weight: 600;">Bukti Transfer dari Pelanggan</p>
+            <img src="${imgUrl}" 
+                 alt="Bukti Pembayaran" 
+                 style="max-width: 100%; max-height: 550px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); cursor: zoom-in; border: 4px solid white;"
+                 onclick="window.open('${imgUrl}', '_blank')"
+                 onerror="this.onerror=null; this.src='https://via.placeholder.com/600x400/eeeeee/999999?text=Bukti+Tidak+Ditemukan'; this.style.border='4px solid #fcc'; this.onclick=null; this.style.cursor='not-allowed';"
+                 onload="this.style.opacity=1"
+                 style="opacity: 0; transition: opacity 0.5s;">
+            <br><br>
+            <button class="btn-bukti" onclick="window.open('${imgUrl}', '_blank')">
+                Buka Gambar di Tab Baru
+            </button>
+        </div>
+    `;
+}
 
     const html = `
         <div class="section">
@@ -211,15 +312,55 @@ function openDetailPopup(data) {
     document.getElementById('detailPopupPembayaran').style.display = 'flex';
 }
 
+// === LIGHTBOX BUKTI PEMBAYARAN (versi final + cantik) ===
+function openBuktiLightbox(imagePath) {
+    const baseUrl = window.location.origin + '/artefax';
+    const fullPath = `${baseUrl}/uploads/${imagePath}`;
+
+    let lightbox = document.getElementById('buktiLightbox');
+    if (!lightbox) {
+        lightbox = document.createElement('div');
+        lightbox.id = 'buktiLightbox';
+        lightbox.innerHTML = `
+            <div class="lightbox-overlay">
+                <span class="lightbox-close">×</span>
+                <img class="lightbox-image" id="lightboxImg" src="" alt="Bukti Pembayaran">
+                <div class="lightbox-caption">Klik di luar gambar atau tekan ESC untuk menutup</div>
+            </div>
+        `;
+        document.body.appendChild(lightbox);
+
+        lightbox.querySelector('.lightbox-close').onclick = closeBuktiLightbox;
+        lightbox.addEventListener('click', e => {
+            if (e.target === lightbox || e.target.classList.contains('lightbox-overlay')) {
+                closeBuktiLightbox();
+            }
+        });
+    }
+
+    const img = document.getElementById('lightboxImg');
+    img.src = fullPath;
+    lightbox.style.display = 'flex';
+}
+
+function closeBuktiLightbox() {
+    const lightbox = document.getElementById('buktiLightbox');
+    if (lightbox) lightbox.style.display = 'none';
+}
+
+// Tutup modal detail
 function closeDetailPopup() {
     document.getElementById('detailPopupPembayaran').style.display = 'none';
 }
-
-// Tutup dengan klik luar atau ESC
+ 
 document.getElementById('detailPopupPembayaran')?.addEventListener('click', e => {
     if (e.target === document.getElementById('detailPopupPembayaran')) closeDetailPopup();
 });
+
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeDetailPopup();
+    if (e.key === 'Escape') {
+        closeDetailPopup();
+        closeBuktiLightbox();
+    }
 });
 </script>
