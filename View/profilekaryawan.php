@@ -554,7 +554,7 @@ if (!empty($currentPhotoName) && file_exists($photoPath)) {
                     </div>
                     <div class="button-group-content">
                         <div class="view-mode-controls">
-                            <a href="reset_password.php" class="btn btn-warning btn-action" style="text-decoration: none;">
+                            <a href="forgot_password.php" class="btn btn-warning btn-action" style="text-decoration: none;">
                                 <i class="bi bi-key-fill"></i> Ubah Password
                             </a>
                             <button type="button" class="btn btn-primary btn-action" onclick="enableEditMode()">

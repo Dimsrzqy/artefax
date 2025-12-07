@@ -1,30 +1,58 @@
 <?php
-// File: export_absensi_excel.php (Diubah menjadi CSV/Excel-friendly)
+// File: export_absensi_excel.php (Diubah menjadi CSV/Excel-friendly dengan FILTER)
 session_start();
 
 // --- VERIFIKASI LOGIN (Opsional, asumsikan sudah ada di file LaporanAbsensiKaryawan.php)
 if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
     // Sesuaikan path jika diperlukan
-    // header("Location: ../../view/login.php"); 
-    // exit;
+    header("Location: ../../view/login.php"); 
+    exit;
 }
 // --- END VERIFIKASI LOGIN
 
 require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/absensi.php";
 
 $db = new Database();
 $conn = $db->getConnection();
-$absensi = new Absensi($conn);
 
-// 🛑 Asumsi: Jika fungsi tampilSemua() tidak menerima parameter filter, 
-// data yang diekspor adalah semua data yang ada.
-// Jika ingin memfilter, Anda harus menambahkan logika filter tanggal di file ini.
-$result = $absensi->tampilSemua(); 
+// --- AMBIL PARAMETER FILTER DARI URL ---
+$start_date = isset($_GET['start_date']) && $_GET['start_date'] !== '' ? $_GET['start_date'] . ' 00:00:00' : null;
+$end_date = isset($_GET['end_date']) && $_GET['end_date'] !== '' ? $_GET['end_date'] . ' 23:59:59' : null;
+
+// --- QUERY SQL DENGAN FILTER ---
+$base_sql = "SELECT p.IDPresensi, p.PsnWaktu, p.PsnLokasi, p.PsnFoto, p.PsnStatus, u.UserNama
+             FROM presensi p
+             LEFT JOIN users u ON p.IDUser = u.IDUser";
+
+$where_clauses = [];
+$params = [];
+$types = '';
+
+if ($start_date) {
+    $where_clauses[] = "p.PsnWaktu >= ?";
+    $params[] = $start_date;
+    $types .= 's';
+}
+if ($end_date) {
+    $where_clauses[] = "p.PsnWaktu <= ?";
+    $params[] = $end_date;
+    $types .= 's';
+}
+
+$where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
+$sql = $base_sql . $where_sql . " ORDER BY p.PsnWaktu DESC";
+
+// --- EKSEKUSI QUERY ---
+$stmt = $conn->prepare($sql);
+if ($types) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
 
 
 /* ========================================================== */
-/* PENGATURAN HEADER DAN OUTPUT CSV                 */
+/* PENGATURAN HEADER DAN OUTPUT CSV                          */
 /* ========================================================== */
 
 // Header untuk file CSV (Lebih modern dan kompatibel)
@@ -44,6 +72,20 @@ fwrite($output, "\xEF\xBB\xBF");
 // --- BARIS HEADER LAPORAN ---
 fputcsv($output, ["LAPORAN ABSENSI KARYAWAN ARTEFAX"], ';');
 fputcsv($output, ["Dicetak pada: " . date('d F Y - H:i')], ';');
+
+// Tampilkan informasi filter jika ada
+if ($start_date || $end_date) {
+    $filter_info = "Periode: ";
+    if ($start_date && $end_date) {
+        $filter_info .= date('d/m/Y', strtotime($start_date)) . " - " . date('d/m/Y', strtotime($end_date));
+    } elseif ($start_date) {
+        $filter_info .= "Dari " . date('d/m/Y', strtotime($start_date));
+    } elseif ($end_date) {
+        $filter_info .= "Sampai " . date('d/m/Y', strtotime($end_date));
+    }
+    fputcsv($output, [$filter_info], ';');
+}
+
 fputcsv($output, [''], ';'); // Baris kosong
 
 // --- HEADER TABEL (Kolom) ---
@@ -87,7 +129,12 @@ if ($result && $result->num_rows > 0) {
     fputcsv($output, ['Tidak ada data absensi yang ditemukan.'], ';');
 }
 
-// Menutup stream output
+// --- FOOTER LAPORAN ---
+fputcsv($output, [''], ';'); // Baris kosong
+fputcsv($output, ["Total Data: " . ($no - 1) . " record"], ';');
+
+// Menutup statement dan stream output
+$stmt->close();
 fclose($output);
 exit;
 ?>
