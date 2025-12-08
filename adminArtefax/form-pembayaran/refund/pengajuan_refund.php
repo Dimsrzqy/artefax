@@ -152,14 +152,20 @@ unset($_SESSION['success'], $_SESSION['error']);
 
         .card-payment:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
         }
 
         .card-refund .card-header {
-            background: linear-gradient(135deg, #ffc107, #ffb300) !important;
-            color: #000 !important;
+            background: linear-gradient(135deg, #3366ff, #3366ff) !important;
+            color: #ffffffff !important;
             font-weight: 600;
             font-size: 1.1em;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+        .card-refund .card-footer {
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
         }
 
         .card-body {
@@ -196,7 +202,7 @@ unset($_SESSION['success'], $_SESSION['error']);
 
         .badge-pending {
             background: #fff3cd;
-            color: #856404;
+            color: #f8e6b0ff;
             padding: 3px 8px;
             border-radius: 2px;
             font-size: 11px;
@@ -228,9 +234,9 @@ unset($_SESSION['success'], $_SESSION['error']);
             background: #17a2b8;
         }
 
-        .btn-setuju-refund {
-            min-width: 130px;
-            background: #28a745;
+        .btn-action.btn-approve {
+            background-color: #28a745;   
+            border-color: #28a745;
         }
 
         .btn-tolak {
@@ -503,7 +509,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                                                 onclick='openRefundPopup(<?= json_encode($r, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                             <i class="fas fa-eye"></i> Detail
                                         </button>
-                                        <button type="button" class="btn btn-success btn-sm btn-setuju-refund" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)">
+                                        <button type="button" class="btn-action btn-approve" onclick="konfirmasiRefund(<?= $r['IDRefund'] ?>)"><i class="fas fa-check"></i>
                                             Setujui Refund
                                         </button>
                                     </div>

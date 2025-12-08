@@ -9,11 +9,27 @@
       font-size: 14px;
     }
 
-    .tombol-aksi {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-    }
+    .btn-action-square {
+    padding: 0.375rem 0.75rem !important;
+    border: none !important;
+    border-radius: 0.25 !important;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 80px;
+    justify-content: center;
+}
+
+.btn-detail-custom {
+    background-color: #17a2b8 !important;
+    color: white !important;
+}
+
+.btn-hapus-custom {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
 
     .custom-table th,
     .custom-table td {

@@ -232,7 +232,7 @@ class Pembayaran
                 p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
                 u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
             ORDER BY 
-                p.CreatedAt ASC
+                p.CreatedAt DESC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -299,7 +299,7 @@ class Pembayaran
                 p.IDPembayaran, p.IDBooking, p.PbrJumlah, p.PbrMetode, p.PbrStatus, p.PbrConfirmed, p.PbrBukti, p.CreatedAt,
                 u.UserNama, b.IDUser, b.BkgTotalHarga, b.BkgTglMulai
             ORDER BY 
-                p.CreatedAt ASC
+                p.CreatedAt DESC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -426,7 +426,7 @@ class Pembayaran
                 LEFT JOIN alat a ON g.IDAlat = a.IDAlat
                 LEFT JOIN paketjasa j ON g.IDPaket = j.IDPaket
             GROUP BY p.IDPembayaran
-            ORDER BY p.CreatedAt ASC
+            ORDER BY p.CreatedAt DESC
         ";
 
         if ($limit !== null && $offset !== null) {

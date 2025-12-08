@@ -51,7 +51,7 @@
 
         .badge-pending {
             background: #fff3cd;
-            color: #856404;
+            color: #ffde7c;
             padding: 3px 8px;
             border-radius: 2px;
             font-size: 11px;
@@ -78,6 +78,10 @@
             align-items: center;
             gap: 5px;
             text-decoration: none;
+        }
+        .btn-action.btn-approve {
+            background-color: #28a745;   
+            border-color: #28a745;
         }
 
         .btn-detail {
@@ -287,8 +291,8 @@
         font-size: 0.9em;
     }
     .badge-lunas { background: #d4edda; color: #155724; }
-    .badge-dp { background: #fff3cd; color: #856404; }
-    .badge-pending { background: #fff3cd; color: #b8860b; }
+    .badge-dp { background: #fff3cd; color: #eed997; }
+    .badge-pending { background: #fff3cd; color: #edc768; }
     .item-list {
         margin: 15px 0;
         padding-left: 5px;
