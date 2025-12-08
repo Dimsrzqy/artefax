@@ -1081,7 +1081,7 @@ ob_end_flush();
                       </div>
                       <div class="contact-details">
                         <span class="method-label">Telepon</span>
-                        <p>+62 812-3456-7890</p>
+                        <p>+62 896-5352-1667</p>
                       </div>
                     </div>
 
@@ -1091,7 +1091,7 @@ ob_end_flush();
                       </div>
                       <div class="contact-details">
                         <span class="method-label">Jam Operasional</span>
-                        <p>Senin - Jumat: 09.00 - 18.00<br />Sabtu: 10.00 - 16.00</p>
+                        <p>Senin - Jumat: 08.00 - 21.00<br />Sabtu - Minggu : 10.00 - 21.00</p>
                       </div>
                     </div>
                   </div>
@@ -1099,9 +1099,9 @@ ob_end_flush();
                   <div class="connect-section">
                     <span class="connect-label">Terhubung dengan Kami</span>
                     <div class="social-links">
-                      <a href="#" class="social-link"><i class="bi bi-instagram"></i></a>
-                      <a href="#" class="social-link"><i class="bi bi-facebook"></i></a>
-                      <a href="#" class="social-link"><i class="bi bi-tiktok"></i></a>
+                      <a href="#" class="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0"><i class="bi bi-instagram"></i></a>
+                      <a href="#" class="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg"><i class="bi bi-youtube"></i></a>
+                      <a href="#" class="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym"><i class="bi bi-tiktok"></i></a>
                       <a href="#" class="social-link"><i class="bi bi-whatsapp"></i></a>
                     </div>
                   </div>
@@ -1112,6 +1112,62 @@ ob_end_flush();
         </section>
         <!-- /Contact Section -->
   </main>
+
+  <!-- Map Section -->
+<section class="map-section">
+  <div class="container">
+    <h3 class="map-title">Lokasi Kami</h3>
+
+    <div class="map-wrapper">
+      <iframe 
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3951.566010013717!2d113.708465!3d-8.158553!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd695dfc3ccab7b%3A0x4fe67fa8b73c9bb1!2zOMKwMDknMzAuOCJTIDExM8KwNDInMzkuNyJF!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
+        loading="lazy"
+        allowfullscreen=""
+        referrerpolicy="no-referrer-when-downgrade">
+      </iframe>
+    </div>
+  </div>
+</section>
+<style>
+  /* MAP SECTION FULL WIDTH */
+.map-section {
+  width: 100%;
+  padding: 40px 0;
+  background: #eaf3ff;
+}
+
+.map-section .container {
+  max-width: 100%;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.map-title {
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Wrapper map */
+.map-wrapper {
+  width: 100%;
+  height: 400px; /* --- ukuran BESAR --- */
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* Iframe */
+.map-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: cover; /* biar full area */
+}
+</style>
+
+
 
   <footer id="footer" class="footer position-relative light-background">
     <div class="container">

@@ -2,37 +2,28 @@
 session_start();
 include __DIR__ . '/../config/koneksi.php';
 
-// Validasi: Harus ada session user
+// Validasi Login
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "Silakan login terlebih dahulu.";
     header('Location: ../view/login.php');
     exit;
 }
 
-// Ambil user data
+// Ambil Data User & Booking
 $userId = $_SESSION['user']['IDUser'] ?? $_SESSION['user']['id'] ?? null;
-$userName = $_SESSION['user']['UserNama'] ?? $_SESSION['user']['nama'] ?? $_SESSION['user']['username'] ?? 'Pengunjung';
-
-// Ambil ID Booking
+$userName = $_SESSION['user']['UserNama'] ?? $_SESSION['user']['nama'] ?? 'Pengunjung';
 $idBooking = $_GET['id'] ?? $_SESSION['current_booking_id'] ?? null;
 
 if (!$idBooking || !is_numeric($idBooking)) {
-    die("
-        <div style='text-align:center; padding:50px; font-family:Arial;'>
-            <h2>Booking Tidak Ditemukan</h2>
-            <p>ID Booking tidak valid. Silakan ulangi proses checkout.</p>
-            <a href='checkout.php' style='padding:10px 20px; background:#007bff; color:white; text-decoration:none; border-radius:5px;'>Kembali ke Checkout</a>
-        </div>
-    ");
+    echo "<script>alert('ID Booking tidak valid'); window.location='shop.php';</script>";
+    exit;
 }
-
-// Simpan ke session
 $_SESSION['current_booking_id'] = $idBooking;
 
 $db = new Database();
 $conn = $db->getConnection();
 
-// Ambil data booking
+// Cek Booking
 $stmtBooking = $conn->prepare("SELECT * FROM booking WHERE IDBooking = ? AND IDUser = ?");
 $stmtBooking->bind_param("ii", $idBooking, $userId);
 $stmtBooking->execute();
@@ -40,177 +31,153 @@ $booking = $stmtBooking->get_result()->fetch_assoc();
 $stmtBooking->close();
 
 if (!$booking) {
-    $_SESSION['error'] = "Booking tidak ditemukan atau bukan milik Anda.";
-    header('Location: shop.php');
+    echo "<script>alert('Booking tidak ditemukan'); window.location='shop.php';</script>";
     exit;
 }
 
-// Cek status pembayaran
+$jenisBayarOtomatis = $_SESSION['checkout_payment'] ?? 'DP';
+
+// Cek Pembayaran Existing
 $pembayaran = null;
-$stmtPembayaran = $conn->prepare("SELECT * FROM pembayaran WHERE IDBooking = ?");
-$stmtPembayaran->bind_param("i", $idBooking);
-$stmtPembayaran->execute();
-$resPembayaran = $stmtPembayaran->get_result();
-if ($resPembayaran->num_rows > 0) {
-    $pembayaran = $resPembayaran->fetch_assoc();
-}
-$stmtPembayaran->close();
+$stmtCek = $conn->prepare("SELECT * FROM pembayaran WHERE IDBooking = ?");
+$stmtCek->bind_param("i", $idBooking);
+$stmtCek->execute();
+$resCek = $stmtCek->get_result();
+if($resCek->num_rows > 0) $pembayaran = $resCek->fetch_assoc();
+$stmtCek->close();
 
-// PROSES UPLOAD BUKTI PEMBAYARAN
-$uploadSuccess = false;
-$uploadError = '';
-
+// Logic Upload
+$uploadSuccess = false; $uploadError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['bukti_tf'])) {
     $metode = $_POST['metode_pembayaran'] ?? '';
-    $keterangan = $_POST['keterangan'] ?? ''; // DP atau LUNAS
+    $keterangan = $_POST['keterangan'] ?? ''; 
     $file = $_FILES['bukti_tf'];
-    
-    if (empty($metode) || empty($keterangan)) {
-        $uploadError = "Pilih metode pembayaran dan keterangan terlebih dahulu.";
+
+    if(empty($metode)){
+        $uploadError = "Pilih Bank Tujuan Transfer.";
     } elseif ($file['error'] !== UPLOAD_ERR_OK) {
-        $uploadError = "Gagal mengupload file. Error code: " . $file['error'];
+        $uploadError = "Gagal upload file.";
     } else {
-        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
-        
-        if (!in_array($file['type'], $allowedTypes)) {
-            $uploadError = "Format file tidak didukung. Gunakan JPG, PNG, atau PDF.";
-        } elseif ($file['size'] > $maxSize) {
-            $uploadError = "Ukuran file terlalu besar. Maksimal 5MB.";
+        $allowed = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        if(!in_array($file['type'], $allowed)) {
+            $uploadError = "Format file harus JPG, PNG, atau PDF.";
         } else {
-            $uploadDir = __DIR__ . '/../uploads/bukti_pembayaran/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            
             $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
             $newFileName = 'bukti_' . $idBooking . '_' . time() . '.' . $ext;
-            $uploadPath = $uploadDir . $newFileName;
+            $target = __DIR__ . '/../uploads/bukti_pembayaran/' . $newFileName;
             
-            if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                // Hitung jumlah bayar
-                $totalBooking = $booking['BkgTotalHarga'];
-                $jumlahBayar = ($keterangan === 'DP') ? ($totalBooking * 0.5) : $totalBooking;
+            if (!is_dir(dirname($target))) mkdir(dirname($target), 0755, true);
 
+            if(move_uploaded_file($file['tmp_name'], $target)){
+                $jumlah = ($keterangan === 'DP') ? ($booking['BkgTotalHarga'] * 0.5) : $booking['BkgTotalHarga'];
+                
+                $conn->begin_transaction();
                 try {
-                    $conn->begin_transaction();
-
-                    if ($pembayaran) {
-                        // UPDATE data pembayaran yang sudah ada
-                        $stmt = $conn->prepare("UPDATE pembayaran SET 
-                            PbrMetode = ?, 
-                            PbrKeterangan = ?, 
-                            PbrJumlah = ?, 
-                            PbrBukti = ?, 
-                            PbrStatus = 'Pending', 
-                            PbrConfirmed = 0, 
-                            UpdatedAt = CURRENT_TIMESTAMP 
-                            WHERE IDBooking = ?");
-                        $stmt->bind_param("ssdsi", $metode, $keterangan, $jumlahBayar, $newFileName, $idBooking);
+                    if($pembayaran) {
+                        $sql = "UPDATE pembayaran SET PbrMetode=?, PbrKeterangan=?, PbrJumlah=?, PbrBukti=?, PbrStatus='Pending', UpdatedAt=NOW() WHERE IDBooking=?";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("ssdsi", $metode, $keterangan, $jumlah, $newFileName, $idBooking);
                     } else {
-                        // INSERT data pembayaran baru
-                        $stmt = $conn->prepare("INSERT INTO pembayaran 
-                            (IDBooking, PbrMetode, PbrKeterangan, PbrJumlah, PbrBukti, PbrStatus, PbrConfirmed, CreatedAt) 
-                            VALUES (?, ?, ?, ?, ?, 'Pending', 0, CURRENT_TIMESTAMP)");
-                        $stmt->bind_param("issds", $idBooking, $metode, $keterangan, $jumlahBayar, $newFileName);
+                        $sql = "INSERT INTO pembayaran (IDBooking, PbrMetode, PbrKeterangan, PbrJumlah, PbrBukti, PbrStatus, CreatedAt) VALUES (?, ?, ?, ?, ?, 'Pending', NOW())";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->bind_param("issds", $idBooking, $metode, $keterangan, $jumlah, $newFileName);
                     }
+                    $stmt->execute();
+                    
+                    $conn->query("UPDATE booking SET BkgStatus='Pending', UpdatedAt=NOW() WHERE IDBooking=$idBooking");
+                    $conn->commit();
+                    
+                    $uploadSuccess = true;
+                    unset($_SESSION['cart']);
+                    
+                    $stmtRefresh = $conn->prepare("SELECT * FROM pembayaran WHERE IDBooking = ?");
+                    $stmtRefresh->bind_param("i", $idBooking);
+                    $stmtRefresh->execute();
+                    $pembayaran = $stmtRefresh->get_result()->fetch_assoc();
 
-                    if ($stmt->execute()) {
-                        $stmt->close();
-
-                        // Update status booking tetap 'Pending' (menunggu konfirmasi admin)
-                        $updateBooking = $conn->prepare("UPDATE booking SET BkgStatus = 'Pending', UpdatedAt = NOW() WHERE IDBooking = ?");
-                        $updateBooking->bind_param("i", $idBooking);
-                        $updateBooking->execute();
-                        $updateBooking->close();
-
-                        $conn->commit();
-
-                        // ✅ BARU KOSONGKAN CART SETELAH UPLOAD BERHASIL
-                        unset($_SESSION['cart']);
-                        unset($_SESSION['checkout_success']);
-
-                        $uploadSuccess = true;
-                        $_SESSION['success_pembayaran'] = "Bukti pembayaran berhasil diupload! Menunggu verifikasi admin.";
-
-                        // Reload data pembayaran
-                        $stmtReload = $conn->prepare("SELECT * FROM pembayaran WHERE IDBooking = ?");
-                        $stmtReload->bind_param("i", $idBooking);
-                        $stmtReload->execute();
-                        $pembayaran = $stmtReload->get_result()->fetch_assoc();
-                        $stmtReload->close();
-
-                    } else {
-                        $conn->rollback();
-                        $uploadError = "Gagal menyimpan ke database: " . $stmt->error;
-                        $stmt->close();
-                    }
-
-                } catch (Exception $e) {
+                } catch(Exception $e) {
                     $conn->rollback();
-                    $uploadError = "Error: " . $e->getMessage();
+                    $uploadError = "Database Error: " . $e->getMessage();
                 }
-
             } else {
-                $uploadError = "Gagal memindahkan file bukti transfer.";
+                $uploadError = "Gagal memindahkan file ke folder uploads.";
             }
         }
     }
 }
 
-function rupiah($n) { 
-    return 'Rp ' . number_format((float)$n, 0, ',', '.'); 
-}
+function rupiah($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Upload Bukti Pembayaran - Artefax</title>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Pembayaran - Artefax</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="../assets/img/logo Artefax1.png" rel="icon" />
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
+    <link href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" rel="stylesheet"/>
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link href="css/style.css?v=<?= time() ?>" rel="stylesheet"> 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .header-rincian-text { color: #ffb400 !important; font-weight: 800; }
+        .info-table td { padding: 8px 5px; font-size: 1rem; color: #333; }
+        .info-table td:first-child { font-weight: 600; color: #555; }
+        .note-verification {
+            font-size: 0.85rem;
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ffeeba;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
 
-<!-- Navbar -->
-<div class="container-fluid fixed-top">
-    <div class="container px-0">
-        <nav class="navbar navbar-light bg-white navbar-expand-xl">
+<div class="container-fluid fixed-top px-0">
+    <nav class="navbar navbar-light bg-white navbar-expand-xl shadow-sm">
+        <div class="container">
             <a href="../index.php" class="navbar-brand">
-                <h1 class="text-primary display-6">Artefax</h1>
+                <img src="../assets/img/logo Artefax.png" alt="Artefax" style="max-height: 55px;">
             </a>
-            <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                 <span class="fa fa-bars text-primary"></span>
             </button>
-            <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
+            <div class="collapse navbar-collapse" id="navbarCollapse">
                 <div class="navbar-nav mx-auto">
-                    <a href="../index.php" class="nav-item nav-link">Home</a>
-                    <a href="Services.php" class="nav-item nav-link">Services</a>
+                    <a href="Services.php" class="nav-item nav-link">Home</a>
                     <a href="shop.php" class="nav-item nav-link">Shop</a>
-                    <a href="checkout.php" class="nav-item nav-link">Checkout</a>
-                    <a href="contact.php" class="nav-item nav-link">Contact</a>
                 </div>
-                <div class="d-flex m-3 me-0">
-                    <a href="riwayat_booking.php" class="my-auto me-3">
-                        <i class="fas fa-history fa-2x"></i>
+                
+                <div class="nav-icon-wrapper m-3 me-0">
+                    <a href="../RiwayatBooking.php" class="nav-icon-btn" title="Riwayat Booking">
+                        <i class="fas fa-history"></i>
+                    </a> 
+                    <a href="../View/profil.php" class="nav-icon-btn" title="Profil">
+                        <i class="fas fa-user"></i>
                     </a>
-                    <a href="#" class="my-auto"><i class="fas fa-user fa-2x"></i></a>
                 </div>
             </div>
-        </nav>
+        </div>
+    </nav>
+</div>
+
+<div class="container-fluid page-header mb-5">
+    <div class="container text-center">
+        <h1 class="display-5 text-white fw-bold mb-2">Konfirmasi Pembayaran</h1>
+        <p class="text-white-50 mb-0">Langkah terakhir sebelum pesanan diproses</p>
     </div>
 </div>
 
-<div class="container py-5" style="margin-top:100px;">
+<div class="container pembayaran-container pb-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="fas fa-upload me-2"></i> Upload Bukti Pembayaran</h4>
+            <div class="pembayaran-card">
+                <div class="pembayaran-card-header">
+                    <h4 class="mb-0 header-rincian-text"><i class="fas fa-wallet me-2"></i> Rincian Tagihan</h4>
                 </div>
                 <div class="card-body p-4">
                     
@@ -218,183 +185,145 @@ function rupiah($n) {
                     <script>
                        Swal.fire({
                             icon: 'success',
-                            title: 'Berhasil!',
-                            html: '<p>Bukti pembayaran telah berhasil diupload.</p><p class="text-warning"><strong>Status: Menunggu Konfirmasi Admin</strong></p><p>Anda akan menerima notifikasi setelah admin memverifikasi pembayaran Anda.</p>',
-                            confirmButtonText: 'Lihat Riwayat Booking'
+                            title: 'Pembayaran Berhasil Dikirim!',
+                            html: 'Terima kasih. Bukti pembayaran Anda telah kami terima.<br>Mohon tunggu proses <b>verifikasi oleh admin</b>.',
+                            confirmButtonColor: '#008ac0',
+                            confirmButtonText: 'Lihat Status Booking'
                         }).then(() => {
-                            // LANGSUNG KE RIWAYAT BOOKING YANG SUDAH ADA DI FOLDER UTAMA
                             window.location.href = '../RiwayatBooking.php';
                         });
                     </script>
                     <?php endif; ?>
 
-                    <?php if (!empty($uploadError)): ?>
-                        <div class="alert alert-danger alert-dismissible">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            <?= htmlspecialchars($uploadError) ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
+                    <?php if ($uploadError): ?>
+                        <div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i> <?= htmlspecialchars($uploadError) ?></div>
                     <?php endif; ?>
 
-                    <!-- Info Booking -->
-                    <div class="alert alert-info mb-4">
-                        <h5><i class="fas fa-info-circle me-2"></i> Informasi Pembayaran</h5>
-                        <table class="table table-sm table-borderless mb-0">
+                    <div class="info-box-blue mb-4">
+                        <table class="table table-borderless table-sm mb-0 info-table">
                             <tr>
-                                <td width="150"><strong>ID Booking:</strong></td>
-                                <td>#<?= str_pad($idBooking, 6, '0', STR_PAD_LEFT) ?></td>
+                                <td width="40%">ID Booking</td>
+                                <td>: <strong>#<?= str_pad($idBooking, 6, '0', STR_PAD_LEFT) ?></strong></td>
                             </tr>
                             <tr>
-                                <td><strong>Nama:</strong></td>
-                                <td><?= htmlspecialchars($userName) ?></td>
+                                <td>Atas Nama</td>
+                                <td>: <strong><?= htmlspecialchars($userName) ?></strong></td>
                             </tr>
                             <tr>
-                                <td><strong>Total Pesanan:</strong></td>
-                                <td class="text-primary fw-bold"><?= rupiah($booking['BkgTotalHarga']) ?></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Status Booking:</strong></td>
-                                <td>
-                                    <span class="badge bg-warning text-dark"><?= htmlspecialchars($booking['BkgStatus']) ?></span>
-                                </td>
+                                <td>Total Transaksi</td>
+                                <td class="text-danger fw-bold fs-5">: <?= rupiah($booking['BkgTotalHarga']) ?></td>
                             </tr>
                         </table>
                     </div>
 
-                    <!-- Rekening Tujuan -->
-                    <div class="bg-light p-3 rounded mb-4">
-                        <h5><i class="fas fa-university me-2"></i> Rekening Tujuan Transfer</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="border p-3 rounded bg-white">
-                                    <strong class="text-primary">Bank BCA</strong><br>
-                                    <h4 class="my-2">1234567890</h4>
-                                    <small>a.n. Artefax Indonesia</small>
-                                </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="bank-card">
+                                <i class="fas fa-university fa-3x text-primary mb-3"></i>
+                                <h5 class="fw-bold text-dark">BANK BCA</h5>
+                                <h3 class="mb-1 text-primary fw-bold">1234 567 890</h3>
+                                <small class="text-muted">a.n. Artefax Indonesia</small>
                             </div>
-                            <div class="col-md-6">
-                                <div class="border p-3 rounded bg-white">
-                                    <strong class="text-primary">Bank BRI</strong><br>
-                                    <h4 class="my-2">0987654321</h4>
-                                    <small>a.n. Artefax Indonesia</small>
-                                </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bank-card">
+                                <i class="fas fa-university fa-3x text-primary mb-3"></i>
+                                <h5 class="fw-bold text-dark">BANK BRI</h5>
+                                <h3 class="mb-1 text-primary fw-bold">0987 654 321</h3>
+                                <small class="text-muted">a.n. Artefax Indonesia</small>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Status Pembayaran -->
-                    <?php if ($pembayaran): ?>
-                        <?php if ($pembayaran['PbrStatus'] === 'Pending'): ?>
-                            <div class="alert alert-warning">
-                                <h5><i class="fas fa-clock me-2"></i> Status: Menunggu Konfirmasi Admin</h5>
-                                <p class="mb-2">Bukti pembayaran Anda sudah diupload dan sedang dalam proses verifikasi oleh admin.</p>
-                                <hr>
-                                <p class="mb-1"><strong>Detail Pembayaran:</strong></p>
-                                <ul class="mb-0">
-                                    <li>Metode: <?= htmlspecialchars($pembayaran['PbrMetode']) ?></li>
-                                    <li>Jenis: <?= htmlspecialchars($pembayaran['PbrKeterangan']) ?></li>
-                                    <li>Jumlah: <?= rupiah($pembayaran['PbrJumlah']) ?></li>
-                                    <li>File: <?= htmlspecialchars($pembayaran['PbrBukti']) ?></li>
-                                    <li>Waktu Upload: <?= date('d M Y H:i', strtotime($pembayaran['CreatedAt'])) ?> WIB</li>
-                                </ul>
-                            </div>
-                            <div class="text-center mt-3">
-                                <a href="../RiwayatBooking.php" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-history me-2"></i> Lihat Riwayat Booking
-                                </a>
-                            </div>
-                        <?php elseif ($pembayaran['PbrStatus'] === 'Lunas' || $pembayaran['PbrStatus'] === 'Lunas DP'): ?>
-                            <div class="alert alert-success">
-                                <h5><i class="fas fa-check-circle me-2"></i> Pembayaran Terverifikasi!</h5>
-                                <p>Pembayaran Anda sudah diverifikasi oleh admin.</p>
-                                <p class="mb-0"><strong>Status:</strong> <?= htmlspecialchars($pembayaran['PbrStatus']) ?></p>
-                            </div>
-                            <div class="text-center mt-3">
-                                <a href="riwayat_booking.php" class="btn btn-success btn-lg">
-                                    <i class="fas fa-check me-2"></i> Lihat Detail Booking
-                                </a>
-                            </div>
-                        <?php elseif ($pembayaran['PbrStatus'] === 'Gagal'): ?>
-                            <div class="alert alert-danger">
-                                <h5><i class="fas fa-times-circle me-2"></i> Pembayaran Ditolak</h5>
-                                <p>Bukti pembayaran Anda ditolak oleh admin. Silakan upload ulang bukti pembayaran yang valid.</p>
-                            </div>
-                            <?php $showForm = true; ?>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <?php $showForm = true; ?>
-                    <?php endif; ?>
-
-                    <!-- Form Upload (hanya tampil jika belum upload atau ditolak) -->
-                    <?php if (isset($showForm) && $showForm): ?>
-                        <form method="POST" enctype="multipart/form-data" id="formUploadBukti">
-                            <div class="mb-3">
-                                <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
-                                <select name="metode_pembayaran" class="form-select" required>
-                                    <option value="">-- Pilih Bank Tujuan --</option>
-                                    <option value="BRI">Transfer BRI</option>
-                                    <option value="BCA">Transfer BCA</option>
+                    <?php if (!$pembayaran || $pembayaran['PbrStatus'] === 'Gagal'): ?>
+                    <form method="POST" enctype="multipart/form-data">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">Form Upload Bukti</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Transfer Ke Bank</label>
+                                <select name="metode_pembayaran" class="form-select bg-light" required>
+                                    <option value="">-- Pilih --</option>
+                                    <option value="BCA">BCA</option>
+                                    <option value="BRI">BRI</option>
                                 </select>
                             </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Jenis Pembayaran <span class="text-danger">*</span></label>
-                                <select name="keterangan" class="form-select" id="keteranganSelect" required>
-                                    <option value="">-- Pilih Jenis Pembayaran --</option>
-                                    <option value="DP">DP 50% (Sisa dibayar saat acara)</option>
-                                    <option value="LUNAS">Lunas</option>
-                                </select>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Jenis Pembayaran</label>
+                                <input type="text" class="form-control bg-light" value="<?= $jenisBayarOtomatis === 'DP' ? 'DP 50%' : 'LUNAS (Full)' ?>" readonly>
+                                <input type="hidden" name="keterangan" id="keteranganInput" value="<?= $jenisBayarOtomatis ?>">
                             </div>
+                        </div>
 
-                            <div class="alert alert-info" id="infoJumlahBayar">
-                                <strong>Jumlah yang harus dibayar:</strong> <span id="displayJumlah" class="fs-5 text-danger">-</span>
-                            </div>
+                        <div class="total-box-green d-flex justify-content-between align-items-center">
+                            <span class="fw-bold fs-6 text-dark">Nominal Transfer:</span>
+                            <span class="total-nominal-red" id="displayJumlah">...</span>
+                        </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Upload Bukti Transfer <span class="text-danger">*</span></label>
-                                <input type="file" name="bukti_tf" class="form-control" accept="image/jpeg,image/jpg,image/png,application/pdf" required>
-                                <small class="text-muted">Format: JPG, PNG, atau PDF. Maksimal 5MB.</small>
-                            </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Foto Bukti Transfer <span class="text-danger">*</span></label>
+                            <input type="file" name="bukti_tf" class="form-control" required>
+                            <small class="text-muted">Format: JPG, PNG, PDF (Max 5MB)</small>
+                        </div>
 
-                            <div class="alert alert-warning">
-                                <strong><i class="fas fa-info-circle me-2"></i>Penting:</strong>
-                                <ul class="mb-0">
-                                    <li>Pastikan bukti transfer jelas dan terbaca</li>
-                                    <li>Nama pengirim harus sesuai dengan nama akun Anda</li>
-                                    <li>Pembayaran akan diverifikasi dalam 1x24 jam</li>
-                                    <li>Status booking akan berubah menjadi "Diterima" setelah verifikasi berhasil</li>
-                                </ul>
-                            </div>
+                        <button type="submit" class="btn-kirim-pembayaran">
+                            <i class="fas fa-paper-plane me-2"></i> KIRIM KONFIRMASI
+                        </button>
 
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-upload me-2"></i> Kirim Bukti Pembayaran
-                                </button>
-                                <a href="shop.php" class="btn btn-outline-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i> Kembali ke Shop
-                                </a>
-                            </div>
-                        </form>
+                        <div class="note-verification text-center">
+                            <i class="fas fa-clock me-1"></i> <strong>Info:</strong> Proses verifikasi pembayaran membutuhkan waktu maksimal <strong>1x24 Jam</strong> kerja.
+                        </div>
 
-                        <script>
-                        // Update jumlah bayar dinamis
-                        const totalBooking = <?= $booking['BkgTotalHarga'] ?>;
-                        document.getElementById('keteranganSelect').addEventListener('change', function() {
-                            const keterangan = this.value;
-                            const displayEl = document.getElementById('displayJumlah');
-                            
-                            if (keterangan === 'DP') {
-                                const dpAmount = totalBooking * 0.5;
-                                displayEl.textContent = 'Rp ' + dpAmount.toLocaleString('id-ID');
-                            } else if (keterangan === 'LUNAS') {
-                                displayEl.textContent = 'Rp ' + totalBooking.toLocaleString('id-ID');
-                            } else {
-                                displayEl.textContent = '-';
-                            }
+                    </form>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const total = <?= (float)$booking['BkgTotalHarga'] ?>;
+                            const jenis = document.getElementById('keteranganInput').value;
+                            const bayar = (jenis === 'DP') ? total * 0.5 : total;
+                            document.getElementById('displayJumlah').textContent = 'Rp ' + bayar.toLocaleString('id-ID');
                         });
-                        </script>
+                    </script>
+                    <?php else: ?>
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-4x text-warning mb-3"></i>
+                            <h4 class="fw-bold">Pembayaran Sedang Diproses</h4>
+                            <p class="text-muted">Status: <span class="badge bg-warning text-dark"><?= htmlspecialchars($pembayaran['PbrStatus']) ?></span></p>
+                            <div class="note-verification mt-3">
+                                <i class="fas fa-info-circle"></i> Mohon tunggu admin memverifikasi bukti pembayaran Anda (Max 1x24 Jam).
+                            </div>
+                            <div class="d-flex justify-content-center gap-2 mt-4">
+                                <a href="../RiwayatBooking.php" class="btn btn-primary">Lihat Riwayat</a>
+                                <a href="shop.php" class="btn btn-outline-secondary">Kembali Belanja</a>
+                            </div>
+                        </div>
                     <?php endif; ?>
 
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-3 col-md-6">
+                <h3 class="text-primary mb-4">ARTEFAX.ID</h3>
+                <p class="mb-2">Jasa dokumentasi & sewa alat multimedia terpercaya.</p>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <h4 class="text-light mb-4">Menu Cepat</h4>
+                <a class="btn btn-link" href="Services.php">Home</a>
+                <a class="btn btn-link" href="shop.php">Shop</a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <h4 class="text-light mb-4">Kontak</h4>
+                <p class="mb-2">Jember, Jawa Timur</p>
+                <p class="mb-2">WA: 0896-5352-1667</p>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <h4 class="text-light mb-4">Sosial Media</h4>
+                <div class="d-flex pt-2">
+                    <a class="btn btn-social" href="#"><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
         </div>

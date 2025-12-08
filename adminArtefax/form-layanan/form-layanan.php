@@ -263,6 +263,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                             <strong><?= htmlspecialchars($p['PaketNama']) ?></strong><br>
                                             <small class="text-muted"><?= htmlspecialchars(substr($p['PaketDeskripsi'], 0, 60)) ?>...</small>
                                         </td>
+                                        <!-- gambar -->
                                         <td class="text-center">
                                           <?php if (!empty($p['PaketDirGbr'])): ?>
                                               <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
