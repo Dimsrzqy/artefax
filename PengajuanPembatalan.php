@@ -213,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_cancellation']
                                 <hr>
                                 <h5 class="mb-0">Jumlah Refund Diajukan: <span class="float-end text-success">Rp<?= number_format($refundAmount, 0, ',', '.') ?></span></h5>
                                 <?php if ($refundAmount > 0): ?>
-                                    <p class="mt-2 small text-danger">PERINGATAN: Jika disetujui, nominal pembayaran akan di-update menjadi **Rp<?= number_format($pendapatanBersihBaru, 0, ',', '.') ?>**</p>
+                                    <p class="mt-2 small text-danger">PERINGATAN: Jika disetujui, nominal yang diterima sejumlah Rp<?= number_format($pendapatanBersihBaru, 0, ',', '.') ?>**</p>
                                 <?php endif; ?>
                             </div>
 
