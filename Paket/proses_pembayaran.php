@@ -20,7 +20,7 @@ $jaminan = $_POST['jaminan'] ?? '';
 $phone = $_POST['phone'] ?? '';
 $tgl_mulai = $_POST['tgl_mulai'] ?? '';
 $tgl_selesai = $_POST['tgl_selesai'] ?? '';
-$payment = $_POST['payment'] ?? 'dp';
+$payment = $_POST['payment'] ?? 'DP';
 $deskripsi = $_POST['deskripsi'] ?? '';
 
 // Validasi user ID

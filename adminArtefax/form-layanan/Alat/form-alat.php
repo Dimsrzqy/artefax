@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 
 // ============== WHITELIST – FILE YANG BOLEH DIAKSES TANPA LOGIN ==============
@@ -71,7 +72,13 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         'UserNama' => $userData['UserNama'] ?? 'Aziana Pechon',
         'UserRole' => $userData['UserRole'] ?? 'Premium Member'
     ];
+
     $defaultProfileImage = "../../img/faces/artefax.jpg";
+
+    // --- PERBAIKAN BASE PATH GAMBAR UNTUK HOSTING ---
+    // Jalur relatif dari /adminArtefax/form-layanan/Alat/ ke /Paket/img/produk/
+    $baseImagePath = '../../../Paket/img/produk/'; 
+    // --- END PERBAIKAN BASE PATH ---
 
     // ============== PROSES DATA ALAT ==============
     require_once __DIR__ . "/../../../config/koneksi.php";
@@ -94,7 +101,9 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
     $error_message = $_SESSION['error_message'] ?? '';
     unset($_SESSION['success_message'], $_SESSION['error_message']);
 }
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -224,26 +233,44 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow-y: auto;
         }
         .lightbox-content {
             background: white;
-            padding: 20px;
+            padding: 30px; /* Tambah padding */
             border-radius: 8px;
             position: relative;
-            max-width: 90%;
-            max-height: 90%;
+            
+            /* DIBUAT FLEKSIBEL SESUAI UKURAN GAMBAR */
+            width: fit-content; 
+            max-width: 95%; /* Batasan Lebar Maksimum */
+            
             text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .lightbox-close {
             position: absolute;
             top: 10px;
             right: 25px;
-            color: #fff;
+            color: #fff; 
             font-size: 35px;
             font-weight: bold;
             transition: 0.3s;
             cursor: pointer;
+            z-index: 10000;
         }
+        /* Style untuk gambar di dalam lightbox */
+        #lightboxImg {
+            max-width: 100%; 
+            max-height: 80vh; 
+            height: auto; 
+            width: auto; 
+            object-fit: contain; 
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+        
         .badge-active { background-color: #d4edda; color: #155724; }
         .badge-inactive { background-color: #f8d7da; color: #721c24; }
     </style>
@@ -305,7 +332,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             </div>
         </div>
     </div>
-            
+    
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -364,9 +391,9 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                                         <td class="text-center">
                                             <?php if (!empty($p['AlatDirGbr'])): ?>
                                                 <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
-                                                         data-img="<?= htmlspecialchars($p['AlatDirGbr']) ?>"
-                                                         data-nama="<?= htmlspecialchars($p['AlatNama']) ?>">
-                                                     <i class="fas fa-image"></i> Detail
+                                                            data-img="<?= htmlspecialchars($p['AlatDirGbr']) ?>"
+                                                            data-nama="<?= htmlspecialchars($p['AlatNama']) ?>">
+                                                            <i class="fas fa-image"></i> Detail
                                                 </button>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
@@ -383,13 +410,13 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                                         <td>
                                             <div class="tombol-aksi">
                                                 <button class="btn btn-sm btn-warning" onclick='openEditPopup(<?= json_encode($p) ?>)'>
-                                                     <i class="fas fa-edit"></i> Edit
+                                                    <i class="fas fa-edit"></i> Edit
                                                 </button>
                                                 <form action="hapus_alat.php" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus layanan ini?')">
-                                                     <input type="hidden" name="id" value="<?= $p['IDAlat'] ?>">
-                                                     <button type="submit" class="btn btn-sm btn-danger">
-                                                         <i class="fas fa-trash"></i> Hapus
-                                                     </button>
+                                                    <input type="hidden" name="id" value="<?= $p['IDAlat'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i> Hapus
+                                                    </button>
                                                 </form>
                                             </div>
                                         </td>
@@ -444,19 +471,21 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                         </div>
                     <?php endif; ?>
                 </div>
-            </div> 
+            </div>  
         </div>
     </div>
 </div>
+
 
 <div id="gambarLightbox" class="lightbox-overlay" style="display:none;">
     <div class="lightbox-content">
         <span class="lightbox-close">&times;</span>
         <h5 id="lightboxJudul" class="mb-3"></h5>
-        <img id="lightboxImg" src="" alt="Gambar Alat" style="max-width:100%; max-height:80vh; border-radius:8px;">
+        <img id="lightboxImg" src="" alt="Gambar Alat">
     </div>
     <span class="lightbox-close-icon" onclick="document.getElementById('gambarLightbox').style.display='none'">&times;</span>
 </div>
+
 
 <div id="layananModal" class="modal" style="display:none;">
     <div class="modal-dialog modal-lg">
@@ -473,7 +502,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                     <div class="form-group">
                         <label>Nama Alat <span class="text-danger">*</span></label>
                         <input type="text" name="AlatNama" class="form-control" required minlength="3" maxlength="100">
-                    </div> 
+                    </div>  
                     <div class="form-group">
                         <label>Gambar <span class="text-danger">*</span></label> 
 
@@ -534,6 +563,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                             <option value="Dipinjam">Dipinjam</option>
                         </select>
                     </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Batal</button>
@@ -544,20 +574,26 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
     </div>
 </div>
 
+
 <script src="../../lib/jquery/jquery.min.js"></script>
+<script src="../../lib/popper.js/popper.min.js"></script>
 <script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="../../lib/ionicons/ionicons.js"></script>
 <script src="../../js/azia.js"></script>
 <script src="../../js/chart.chartjs.js"></script>
 <script src="../../js/jquery.cookie.js" type="text/javascript"></script>
 
+
 <script>
+    // Definisikan BASE_IMG_PATH dari PHP untuk digunakan di JS Lightbox
+    const BASE_IMG_PATH = '<?= htmlspecialchars($baseImagePath) ?>'; 
+
     const modal = document.getElementById('layananModal');
     const form = document.getElementById('formLayanan');
 
     document.addEventListener('DOMContentLoaded', function() {
-        modal.style.display = 'none'; 
-        document.body.style.overflow = 'auto'; 
+        modal.style.display = 'none';   
+        document.body.style.overflow = 'auto';  
         setTimeout(function() {
             $('.alert').fadeOut('slow');
         }, 5000);
@@ -574,8 +610,9 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         });
         
         // Memastikan Bootstrap Dropdown diinisialisasi
-        $('.dropdown-toggle').dropdown(); 
+        $('.dropdown-toggle').dropdown();   
     });
+
     function openTambahPopup() {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
         form.action = 'tambah_alat.php';
@@ -585,7 +622,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         document.getElementById('fileNameDisplay').value = '';
         document.getElementById('btnHapusGambar').style.display = 'none';
         document.getElementById('previewContainer').style.display = 'none';
-        modal.style.display = 'flex'; 
+        modal.style.display = 'flex';   
     }
 
     function openEditPopup(data) {
@@ -604,7 +641,10 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         const previewContainer = document.getElementById('previewContainer');
         if (imgPath && imgPath.trim() !== '') {
             document.getElementById('gambarLama').value = imgPath;
-            previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
+            
+            // Perbaikan Edit Preview: Gunakan BASE_IMG_PATH
+            previewImg.src = BASE_IMG_PATH + imgPath; 
+            
             previewContainer.style.display = 'block';
             document.getElementById('previewText').textContent = 'Preview Gambar';
             document.getElementById('fileNameDisplay').value = imgPath.split('/').pop();
@@ -668,36 +708,35 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             closeModal();
         }, 100);
     });
-    document.addEventListener('DOMContentLoaded', function() {
-        const inputs = modal.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            input.style.pointerEvents = 'auto';
-            input.style.userSelect = 'auto';
-            input.disabled = false;
-        });
-    });
-</script>
+    
+    // ===================================
+    // LIGHTBOX JAVASCRIPT (Perlu diperbaiki untuk menggunakan BASE_IMG_PATH)
+    // ===================================
 
-<script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // ... (Elemen Lightbox sudah didefinisikan di global scope) ...
         const lightbox = document.getElementById('gambarLightbox');
         const lightboxImg = document.getElementById('lightboxImg');
         const lightboxJudul = document.getElementById('lightboxJudul');
         const closeBtn = document.querySelector('.lightbox-close');
-        const basePath = '/artefax/Paket/img/produk/';
-
+        
+        // JALUR LAMA DIHAPUS, GANTIKAN DENGAN BASE_IMG_PATH
+        // const basePath = '/artefax/Paket/img/produk/'; 
+        
         document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
             btn.addEventListener('click', function() {
                 const imgFile = this.getAttribute('data-img');
                 const nama = this.getAttribute('data-nama');
-                const fullPath = basePath + imgFile.trim();
-
-                console.log('Mencoba load gambar:', fullPath);
+                
+                // PERBAIKAN: Gunakan BASE_IMG_PATH dari PHP
+                const fullPath = BASE_IMG_PATH + imgFile.trim(); 
 
                 lightboxJudul.textContent = nama;
                 lightboxImg.src = fullPath;
                 lightbox.style.display = 'flex';
 
+                // Tambahkan onerror handler
                 lightboxImg.onerror = function() {
                     lightboxImg.src = '';
                     lightboxJudul.textContent = 'Gambar tidak ditemukan!';
@@ -706,15 +745,18 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             });
         });
 
-        closeBtn.onclick = () => {
+        // Tutup lightbox
+        document.querySelector('.lightbox-close').onclick = () => {
             lightbox.style.display = 'none';
             lightboxImg.src = '';
+            document.body.style.overflow = 'auto'; 
         };
 
         lightbox.onclick = (e) => {
             if (e.target === lightbox) {
                 lightbox.style.display = 'none';
                 lightboxImg.src = '';
+                document.body.style.overflow = 'auto'; 
             }
         };
 
@@ -722,10 +764,14 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             if (e.key === 'Escape' && lightbox.style.display === 'flex') {
                 lightbox.style.display = 'none';
                 lightboxImg.src = '';
+                document.body.style.overflow = 'auto';
             }
         };
     });
+
 </script>
+
+
 </body>
 
 </html>

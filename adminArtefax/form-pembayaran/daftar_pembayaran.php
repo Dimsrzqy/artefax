@@ -159,12 +159,29 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     line-height: 1.2em; /
 }
 
+    /* PERBAIKAN TOMBOL AKSI: SAMA UKURAN & HAPUS BERFUNGSI */
     .tombol-aksi {
       display: flex;
       gap: 8px;
       justify-content: center;
+      flex-wrap: nowrap;
     }
-    
+    .btn-aksi-uniform {
+      min-width: 92px !important;
+      height: 36px !important;
+      padding: 0 12px !important;
+      font-size: 13px !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      text-decoration: none !important;
+    }
+    .btn-aksi-uniform i {
+      font-size: 14px;
+    }
+
     .badge {
       padding: 5px 10px;
       border-radius: 12px;
@@ -240,7 +257,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
       <div class="az-header-menu">
         <div class="az-header-menu-header">
           <a href="index.html" class="az-logo"><span></span> Artefax</a>
-          <a href="" class="close">&times;</a>
+          <a href="" class="close">×</a>
         </div>
         <ul class="nav">
           <li class="nav-item">
@@ -311,7 +328,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
           <span>Pembayaran</span>
           <span>Daftar Pembayaran</span>
         </div>
-        <h2 class="az-content-title"><i class="fas fa-file-invoice-dollar"></i> Daftar Pembayaran</h2>
+        <h2 class="az-content-title">Daftar Pembayaran</h2>
 
         <div class="d-flex justify-content-between align-items-center mg-b-20">
           <p class="mg-b-0">Daftar keseluruhan transaksi pemesanan.</p>
@@ -434,33 +451,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     </div>
   </div>
 
-  <script src="../lib/jquery/jquery.min.js"></script>
-  <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="../js/azia.js"></script>
-  
-  <script>
-    $(document).ready(function() {
-      // Menu toggle handlers
-      $('#azMenuShow').on('click', function(e) {
-        e.preventDefault();
-        $('.az-header-menu').toggleClass('show');
-        $(this).toggleClass('open');
-      });
-      
-      $('.az-header-menu .close').on('click', function(e) {
-        e.preventDefault();
-        $('.az-header-menu').removeClass('show');
-        $('#azMenuShow').removeClass('open');
-      });
-
-      // Auto fadeout alert
-      setTimeout(function() {
-        $('.alert').fadeOut('slow');
-      }, 5000);
-    });
-
-    <!-- POPUP DETAIL PEMBAYARAN (Cantik + Draggable + Lightbox) -->
-<div class="popup-overlay" id="detailPopupPembayaran">
+  <!-- POPUP DETAIL PEMBAYARAN -->
+  <div class="popup-overlay" id="detailPopupPembayaran">
     <div class="popup-content" id="draggablePopup">
         <div class="popup-header" id="dragHandle">
             <span id="popupTitle">Detail Pembayaran</span>
@@ -474,10 +466,113 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
-</div>
+  </div>
 
-<!-- Lightbox untuk bukti pembayaran -->
-<div id="buktiLightbox"></div>
+  <!-- Lightbox untuk bukti pembayaran -->
+  <div id="buktiLightbox"></div>
+
+  <script src="../lib/jquery/jquery.min.js"></script>
+  <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/azia.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+      $('#azMenuShow').on('click', function(e) {
+        e.preventDefault();
+        $('.az-header-menu').toggleClass('show');
+        $(this).toggleClass('open');
+      });
+      
+      $('.az-header-menu .close').on('click', function(e) {
+        e.preventDefault();
+        $('.az-header-menu').removeClass('show');
+        $('#azMenuShow').removeClass('open');
+      });
+
+      setTimeout(function() {
+        $('.alert').fadeOut('slow');
+      }, 5000);
+    });
+
+    // Draggable Popup
+    let isDragging = false, startX, startY, offsetX = 0, offsetY = 0;
+    const popupEl = document.getElementById('draggablePopup');
+    const headerEl = document.getElementById('dragHandle');
+
+    headerEl.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('close-popup')) return;
+        isDragging = true;
+        startX = e.clientX - offsetX;
+        startY = e.clientY - offsetY;
+        headerEl.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        e.preventDefault();
+        offsetX = e.clientX - startX;
+        offsetY = e.clientY - startY;
+        popupEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    });
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        headerEl.style.cursor = 'grab';
+    });
+
+    function openDetailPopup(data) {
+        popupEl.style.transform = 'translate(0,0)';
+        offsetX = offsetY = 0;
+
+        const status = (data.PbrStatus || 'Pending').trim();
+        const badge = status === 'Lunas' ? 'badge-lunas' : 'badge-dp';
+
+        const items = (data.DaftarPesanan && data.DaftarPesanan.length > 0)
+            ? data.DaftarPesanan.map(i => `<li>${i}</li>`).join('')
+            : '<li style="color:#888"><em>Tidak ada item dipesan</em></li>';
+
+        const tglMulai = data.BkgTglMulai ? new Date(data.BkgTglMulai).toLocaleDateString('id-ID') : '-';
+        const tglSelesai = data.BkgTglSelesai ? new Date(data.BkgTglSelesai).toLocaleDateString('id-ID') : '-';
+        const waktu = new Date(data.CreatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+
+        let bukti = '<em style="color:#888">Tidak ada bukti pembayaran</em>';
+        if (data.PbrBukti && data.PbrBukti.trim() !== '') {
+            const basePath = window.location.origin + '/artefax/uploads/';
+            const imgUrl = data.PbrBukti.startsWith('http') ? data.PbrBukti : basePath + data.PbrBukti.replace(/^(\.\/|\/)+/, '');
+            
+            bukti = `
+                <div style="text-align:center;margin:25px 0;padding:20px;background:#f8f9fa;border-radius:12px;border:2px dashed #4361ee;">
+                    <p style="margin:0 0 15px 0;color:#4361ee;font-weight:600;">Bukti Transfer dari Pelanggan</p>
+                    <img src="${imgUrl}" class="bukti-thumbnail" onclick="window.open('${imgUrl}','_blank')"
+                         onerror="this.src='https://via.placeholder.com/600x400?text=Bukti+Tidak+Ditemukan';this.onclick=null;">
+                    <br><br>
+                    <button class="btn-bukti" onclick="window.open('${imgUrl}', '_blank')">Buka di Tab Baru</button>
+                </div>`;
+        }
+
+        const html = `
+            <div class="section"><h3>Informasi Pembayaran & Status</h3>
+                <table class="info-table">
+                    <tr><td>Total Jumlah</td><td><strong>Rp ${Number(data.PbrJumlah || 0).toLocaleString('id-ID')}</strong></td></tr>
+                    <tr><td>Status</td><td><span class="badge ${badge}">${status}</span></td></tr>
+                    <tr><td>Metode</td><td>${data.PbrMetode || '-'}</td></tr>
+                    <tr><td>Keterangan</td><td>${data.PbrKeterangan || '-'}</td></tr>
+                    <tr><td>Waktu Transaksi</td><td>${waktu}</td></tr>
+                    <tr><td>Jaminan</td><td>${data.BkgJaminan || '-'}</td></tr>
+                </table>
+                ${bukti}
+            </div>
+            <div class="section"><h3>Informasi Pelanggan & Lokasi</h3>
+                <table class="info-table">
+                    <tr><td>Nama Pelanggan</td><td>${data.UserNama || '-'}</td></tr>
+                    <tr><td>Alamat Penggunaan</td><td>${data.BkgAlamat || '-'}</td></tr>
+                    <tr><td>Tanggal Mulai</td><td>${tglMulai}</td></tr>
+                    <tr><td>Tanggal Selesai</td><td>${tglSelesai}</td></tr>
+                </table>
+            </div>
+            <div class="section"><h3>Daftar Pesanan</h3>
+                <p><strong>Jenis Booking:</strong> ${data.JenisBooking || '-'}</p>
+                <ul class="item-list">${items}</ul>
+            </div>
+        `;
 
 <style> 
    
@@ -537,51 +632,17 @@ function openDetailPopup(data) {
             </div>`;
     }
 
-    const html = `
-        <div class="section"><h3>Informasi Pembayaran & Status</h3>
-            <table class="info-table">
-                <tr><td>Total Jumlah</td><td><strong>Rp ${Number(data.PbrJumlah || 0).toLocaleString('id-ID')}</strong></td></tr>
-                <tr><td>Status</td><td><span class="badge ${badge}">${status}</span></td></tr>
-                <tr><td>Metode</td><td>${data.PbrMetode || '-'}</td></tr>
-                <tr><td>Keterangan</td><td>${data.PbrKeterangan || '-'}</td></tr>
-                <tr><td>Waktu Transaksi</td><td>${waktu}</td></tr>
-                <tr><td>Jaminan</td><td>${data.BkgJaminan || '-'}</td></tr>
-            </table>
-            ${bukti}
-        </div>
-        <div class="section"><h3>Informasi Pelanggan & Lokasi</h3>
-            <table class="info-table">
-                <tr><td>Nama Pelanggan</td><td>${data.UserNama || '-'}</td></tr>
-                <tr><td>Alamat Penggunaan</td><td>${data.BkgAlamat || '-'}</td></tr>
-                <tr><td>Tanggal Mulai</td><td>${tglMulai}</td></tr>
-                <tr><td>Tanggal Selesai</td><td>${tglSelesai}</td></tr>
-            </table>
-        </div>
-        <div class="section"><h3>Daftar Pesanan</h3>
-            <p><strong>Jenis Booking:</strong> ${data.JenisBooking || '-'}</p>
-            <ul class="item-list">${items}</ul>
-        </div>
-    `;
+    function closeDetailPopup() {
+        document.getElementById('detailPopupPembayaran').style.display = 'none';
+    }
 
-    document.getElementById('popupTitle').textContent = `Detail Booking #${data.IDBooking || '—'}`;
-    document.getElementById('popupBody').innerHTML = html;
-    document.getElementById('detailPopupPembayaran').style.display = 'flex';
-}
+    document.getElementById('detailPopupPembayaran')?.addEventListener('click', e => {
+        if (e.target.id === 'detailPopupPembayaran') closeDetailPopup();
+    });
 
-function closeDetailPopup() {
-    document.getElementById('detailPopupPembayaran').style.display = 'none';
-}
-
-// Klik di luar popup = tutup
-document.getElementById('detailPopupPembayaran')?.addEventListener('click', e => {
-    if (e.target.id === 'detailPopupPembayaran') closeDetailPopup();
-});
-
-// ESC = tutup
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeDetailPopup();
-});
-</script>
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeDetailPopup();
+    });
   </script>
 </body>
 </html>

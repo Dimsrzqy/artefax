@@ -6,23 +6,17 @@ if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
     $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
     $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
 }
-
 if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
-    header("Location: ../../view/login.php"); 
+    header("Location: ../../View/login.php"); 
     exit;
 }
 // --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
-
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/booking.php";
-
 $db      = new Database();
 $conn    = $db->getConnection();
 $booking = new Booking($conn);
-
-// OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL SUDAH LEWAT
 $booking->updateStatusSelesaiOtomatis();
-
 // --- START: DATA USER LOGIN ---
 $loggedInUser = [
     'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
@@ -30,14 +24,10 @@ $loggedInUser = [
 ];
 $defaultProfileImage = '../img/faces/artefax.jpg'; 
 // --- END: DATA USER LOGIN ---
-
 /* ============== PAGINATION ============== */
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
-
-/* ============ QUERY MANUAL YANG AMAN & SESUAI ============ */
-// Hanya ambil booking Diterima + punya Paket Jasa + BELUM punya event (Penugasan)
 $sql = "
     SELECT 
         b.IDBooking,
@@ -58,15 +48,12 @@ $sql = "
     ORDER BY b.CreatedAt DESC
     LIMIT ? OFFSET ?
 ";
-
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("ii", $limit, $offset);
 $stmt->execute();
 $result = $stmt->get_result();
 $bookings = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
-
-/* Hitung total untuk pagination */
 $totalSql = "
     SELECT COUNT(*) AS total
     FROM (
@@ -81,13 +68,10 @@ $totalSql = "
 $totalResult = $conn->query($totalSql);
 $totalBooking = $totalResult->fetch_assoc()['total'];
 $totalPages = ceil($totalBooking / $limit);
-
-/* Feedback */
 $success = $_SESSION['success_message'] ?? '';
 $error   = $_SESSION['error_message'] ?? '';
 unset($_SESSION['success_message'], $_SESSION['error_message']);
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -99,7 +83,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
     <style>
-        /* --- FIXED LAYOUT --- */
         .az-body {
             padding-top: 70px !important;
         }
@@ -131,7 +114,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         .az-content-left .component-item label:first-child {
             margin-top: 0;
         }
-        
+
         @media (min-width: 992px) {
             .az-content-body {
                 padding-top: 0 !important;
@@ -152,8 +135,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                 padding-top: 70px !important;
             }
         }
-        
-        /* --- BADGE PAKET JASA --- */
         .badge-paket{
             background:#28a745;
             color:#fff;
@@ -165,8 +146,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             font-weight:500;
             white-space: nowrap; 
         }
-
-        /* --- TABLE STYLE --- */
         .table{
             background:#fff;
             border-radius:12px;
@@ -266,7 +245,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
-
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -281,15 +259,12 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <a href="form-penugasan.php" class="nav-link">Penugasan</a>
                 </div>
             </div>
-
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Data</span>
                     <span>Booking</span>
                 </div>
-
                 <h2 class="az-content-title"><i class="fas fa-calendar-check"></i> Daftar Booking Aktif</h2>
-
                 <?php if ($success): ?>
                     <div class="alert alert-success alert-dismissible fade show">
                         <?= htmlspecialchars($success) ?>
@@ -302,13 +277,11 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
-
                 <?php if ($bookings): ?>
                     <small class="text-muted mb-3">Menampilkan **<?= count($bookings) ?>** booking aktif yang memiliki Paket Jasa dan **belum ditugaskan**.</small>
                 <?php else: ?>
                     <small class="text-muted mb-3">Tidak ada booking aktif yang belum ditugaskan.</small>
                 <?php endif; ?>
-
                 <div class="table-responsive">
                     <?php if ($bookings): ?>
                         <table class="table table-hover mg-b-0">
@@ -326,17 +299,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                             <tbody>
                                 <?php $no = $offset + 1; foreach ($bookings as $b): ?>
                                     <?php
-                                    // Hitung durasi
                                     $mulai     = new DateTime($b['BkgTglMulai']);
                                     $selesai   = new DateTime($b['BkgTglSelesai']);
-                                    
                                     if ($mulai >= $selesai) {
                                         $durasi = "< 1 jam";
                                     } else {
                                         $diffInSeconds = $selesai->getTimestamp() - $mulai->getTimestamp();
                                         $days = floor($diffInSeconds / (60 * 60 * 24));
                                         $hours = floor(($diffInSeconds % (60 * 60 * 24)) / (60 * 60));
-                                        
                                         $durasiParts = [];
                                         if ($days > 0) {
                                             $durasiParts[] = "$days hari";
@@ -344,7 +314,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                         if ($hours > 0) {
                                             $durasiParts[] = "$hours jam";
                                         }
-                                        
                                         $durasi = count($durasiParts) > 0 ? implode(', ', $durasiParts) : "Beberapa menit";
                                     }
                                     ?>
@@ -368,7 +337,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-
                         <?php if ($totalPages > 1): ?>
                             <nav class="mt-4">
                                 <ul class="pagination justify-content-center">
@@ -386,7 +354,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 </ul>
                             </nav>
                         <?php endif; ?>
-
                     <?php else: ?>
                         <div class="text-center py-5">
                             <h5 class="text-muted">Tidak ada booking Paket Jasa yang aktif dan belum ditugaskan.</h5>
@@ -396,29 +363,22 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
-    
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../js/azia.js"></script>
     <script>
         $(document).ready(function() {
-            // Fix dropdown menu in fixed header
             $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
-            
-            // Menu toggle handlers
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
                 $(this).toggleClass('open');
             });
-            
             $('.az-header-menu .close').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').removeClass('show');
                 $('#azMenuShow').removeClass('open');
             });
-            
-            // Auto fadeout alert
             setTimeout(() => $('.alert').fadeOut('slow'), 5000);
         });
     </script>

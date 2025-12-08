@@ -1,35 +1,102 @@
 <?php
-session_start();
+// File: View/Karyawan/InputAbsenKaryawan.php atau dasboardKaryawan/InputAbsenKaryawan.php
+// PERBAIKAN LOOP LOGIN - SESUAI DENGAN SISTEM LOGIN
+
+// ==========================================
+// KONFIGURASI SESSION UNTUK HOSTING
+// ==========================================
+
+if (session_status() === PHP_SESSION_NONE) {
+    $session_path = ini_get('session.save_path');
+    if (empty($session_path) || !is_writable($session_path)) {
+        $local_session_path = dirname(__FILE__) . '/../../tmp/sessions';
+        if (!file_exists($local_session_path)) {
+            @mkdir($local_session_path, 0700, true);
+        }
+        if (is_writable($local_session_path)) {
+            session_save_path($local_session_path);
+        }
+    }
+    
+    ini_set('session.cookie_path', '/');
+    ini_set('session.use_cookies', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.gc_maxlifetime', 86400);
+    ini_set('session.cookie_lifetime', 0);
+    
+    session_start();
+}
+
+date_default_timezone_set('Asia/Jakarta');
+
 require_once '../../config/koneksi.php';
 require_once '../../class/absensi.php';
 
-// === CEK LOGIN ===
-if (!isset($_SESSION['user']) || $_SESSION['user']['UserRole'] !== 'Karyawan') {
+// ==========================================
+// VALIDASI SESSION SESUAI FORMAT LOGIN.PHP
+// ==========================================
+
+function isValidKaryawanSession() {
+    if (!isset($_SESSION['user']) || !is_array($_SESSION['user'])) {
+        return false;
+    }
+    
+    $requiredFields = ['IDUser', 'UserNama', 'UserEmail', 'UserRole'];
+    foreach ($requiredFields as $field) {
+        if (!isset($_SESSION['user'][$field])) {
+            return false;
+        }
+    }
+    
+    // Cek role - LOWERCASE 'karyawan' sesuai login.php
+    $role = strtolower(trim($_SESSION['user']['UserRole']));
+    if ($role !== 'karyawan') {
+        return false;
+    }
+    
+    return true;
+}
+
+// Redirect jika tidak valid
+if (!isValidKaryawanSession()) {
+    $_SESSION = array();
+    if (isset($_COOKIE[session_name()])) {
+        setcookie(session_name(), '', time() - 3600, '/');
+    }
+    session_destroy();
     header('Location: ../../View/login.php');
     exit();
 }
 
-$userData     = $_SESSION['user'];
-$namaKaryawan = $userData['UserNama'];
-$idKaryawan   = $userData['IDUser'];
+// ==========================================
+// AMBIL DATA USER
+// ==========================================
 
-// === KONEKSI DB ===
+$userData = $_SESSION['user'];
+$namaKaryawan = htmlspecialchars($userData['UserNama']);
+$idKaryawan = (int)$userData['IDUser'];
+
+// ==========================================
+// KONEKSI DATABASE
+// ==========================================
+
 $db = new Database();
 $conn = null;
 try {
     $conn = $db->getConnection();
 } catch (Exception $e) {
-    // Tangani pengecualian jika koneksi gagal sebelum die()
+    error_log("Database connection error: " . $e->getMessage());
 }
 
-// ✅ PERBAIKAN: Cek koneksi yang lebih aman
 if ($conn === null) {
-    // Jika koneksi gagal, hentikan skrip dan tampilkan pesan
-    die("<script>alert('Gagal terhubung ke database!');</script>");
+    die("<div style='padding:20px;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:5px;margin:20px;'>
+        <h3>Error Koneksi Database</h3>
+        <p>Tidak dapat terhubung ke database. Silakan hubungi administrator.</p>
+        </div>");
 }
 
 // === Cari event aktif ===
-// Baris 25 ada di sini:
 $sqlEvent = "
     SELECT e.IDEvent, e.EventNama 
     FROM event e
@@ -38,7 +105,7 @@ $sqlEvent = "
     ORDER BY e.EventTanggal DESC, e.EventMulai DESC
     LIMIT 1
 ";
-$stmt = $conn->prepare($sqlEvent); // ERROR terjadi jika $conn adalah NULL
+$stmt = $conn->prepare($sqlEvent);
 $stmt->bind_param("i", $idKaryawan);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -46,15 +113,15 @@ $eventAktif = $result->fetch_assoc();
 $stmt->close();
 
 // Variabel default
-$namaEvent    = '';
+$namaEvent = '';
 $idEventAktif = 0;
-$sudahAbsen   = false;
+$sudahAbsen = false;
 $adaEventAktif = ($eventAktif !== null);
-$errorMsg = ''; // Pastikan variabel errorMsg diinisialisasi
+$errorMsg = '';
 
 if ($adaEventAktif) {
     $idEventAktif = $eventAktif['IDEvent'];
-    $namaEvent    = $eventAktif['EventNama'];
+    $namaEvent = $eventAktif['EventNama'];
 
     $cekAbsen = $conn->prepare("SELECT 1 FROM presensi WHERE IDUser = ? AND IDEvent = ?");
     $cekAbsen->bind_param("ii", $idKaryawan, $idEventAktif);
@@ -67,10 +134,10 @@ if ($adaEventAktif) {
 // === Proses absensi ===
 $absenBerhasil = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
-    $latitude    = $_POST['latitude'] ?? '';
-    $longitude   = $_POST['longitude'] ?? '';
-    $fotoData    = $_POST['foto'] ?? '';
-    $clientTime  = $_POST['client_time'] ?? '';
+    $latitude = $_POST['latitude'] ?? '';
+    $longitude = $_POST['longitude'] ?? '';
+    $fotoData = $_POST['foto'] ?? '';
+    $clientTime = $_POST['client_time'] ?? '';
 
     if (empty($fotoData)) {
         $errorMsg = "Ambil foto dulu ya!";
@@ -92,11 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             : "Tidak terdeteksi";
 
         $absensi = new Absensi($conn);
-        $absensi->IDUser    = $idKaryawan;
-        $absensi->IDEvent   = $idEventAktif;
-        $absensi->PsnWaktu  = ($clientTime && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $clientTime)) ? $clientTime : date('Y-m-d H:i:s');
+        $absensi->IDUser = $idKaryawan;
+        $absensi->IDEvent = $idEventAktif;
+        $absensi->PsnWaktu = ($clientTime && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $clientTime)) ? $clientTime : date('Y-m-d H:i:s');
         $absensi->PsnLokasi = $lokasiString;
-        $absensi->PsnFoto   = $fileName;
+        $absensi->PsnFoto = $fileName;
         $absensi->PsnStatus = 'Hadir';
 
         if ($absensi->tambah()) {
@@ -114,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Absensi - <?= htmlspecialchars($namaKaryawan) ?> | Artefax</title>
+    <title>Absensi - <?= $namaKaryawan ?> | Artefax</title>
 
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
@@ -125,16 +192,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* ✅ PERBAIKAN: Background Biru Penuh */
+        /* Background Biru Penuh */
         .az-body {
-            /* Warna dan gradien yang konsisten dengan template Azia/Login */
             background: linear-gradient(135deg, #5c99ee 0%, #4c89de 100%);
-            height: 100vh; /* Memastikan body mengisi seluruh viewport */
+            height: 100vh;
             margin: 0;
-            overflow-y: auto; /* Mengizinkan scroll jika konten melebihi 100vh */
+            overflow-y: auto;
         }
         
-        /* ✅ PERBAIKAN: Fixed Header */
+        /* Fixed Header */
         .az-header {
             position: fixed; 
             top: 0;
@@ -142,13 +208,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             z-index: 1030;
             background-color: #ffffff; 
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            padding: 10px 0; /* Sesuaikan padding */
+            padding: 10px 0;
         }
-        /* Memberikan padding pada body agar konten tidak tertutup header */
         .az-body {
-            padding-top: 60px; /* Nilai ini disesuaikan dengan tinggi header Azia */
+            padding-top: 60px;
         }
-        /* Mengatur kontainer konten agar terpusat di latar belakang biru */
         .az-content {
             padding-top: 20px;
             padding-bottom: 20px;
@@ -168,16 +232,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         .btn-logout-nav {
             padding: 5px 10px;
             font-size: 13px;
-            /* margin-left akan diatur di az-header-right */
             display: flex;
             align-items: center;
         }
         .btn-logout-nav i {
-            margin-right: 5px; /* Jarak antara ikon dan teks */
+            margin-right: 5px;
         }
+        
         /* CSS untuk Mobile (Hamburger) */
         .az-menu-toggle {
-            display: none; /* Sembunyikan di desktop */
+            display: none;
             font-size: 24px;
             cursor: pointer;
             color: #4b4be5;
@@ -195,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             z-index: 999;
             padding: 10px;
             min-width: 150px;
-            display: none; /* Default hidden */
+            display: none;
             flex-direction: column;
         }
         .az-mobile-menu .nav-item {
@@ -210,14 +274,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
         .az-header-right {
             display: flex;
             align-items: center;
-            /* ✅ PERBAIKAN: Menambahkan margin di antara ikon profil dan tombol logout */
-            gap: 10px; /* Jarak yang lebih baik antar elemen di header kanan */
+            gap: 10px;
         }
 
         /* Responsive Navbar */
         @media (max-width: 991px) {
             .az-header-menu {
-                display: none; /* Sembunyikan menu desktop di mobile */
+                display: none;
             }
             .az-menu-toggle {
                 display: block;
@@ -226,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             }
         }
         
-        /* Notif dan Kamera CSS (TIDAK BERUBAH) */
+        /* Notif dan Kamera CSS */
         .no-event-notif, .sudah-absen-notif {
             text-align: center;
             padding: 50px 30px;
@@ -280,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
-                <a href="index.php" class="az-logo"><span>artefax</span></a>
+                <a href="index.php" class="az-logo"><span></span> artefax</a>
             </div>
             
             <div class="az-header-menu" id="desktopMenu">
@@ -295,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                     <i class="fas fa-user-circle az-profile-icon"></i>
                 </a>
                 
-                <a href="../../logout.php" class="btn btn-sm btn-danger btn-logout-nav">
+                <a href="../../logout.php" class="btn btn-sm btn-danger btn-logout-nav" onclick="return confirm('Yakin ingin logout?')">
                     <i class="fas fa-sign-out-alt"></i> Keluar
                 </a>
 
@@ -327,7 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                     <div class="sudah-absen-notif">
                         <i class="fas fa-check-circle"></i>
                         <h3>Absensi Sudah Tercatat</h3>
-                        <p>Terima kasih <strong><?= htmlspecialchars($namaKaryawan) ?></strong>,<br>
+                        <p>Terima kasih <strong><?= $namaKaryawan ?></strong>,<br>
                             Anda sudah melakukan absensi untuk event:</p>
                         <h4 style="margin:15px 0;color:#10b981;font-weight:700;"><?= htmlspecialchars($namaEvent) ?></h4>
                         <p>Selamat bekerja!</p>
@@ -406,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                 }, () => Swal.fire("Error", "Gagal mendeteksi lokasi", "warning"));
             };
 
-            // FOTO - PERBAIKAN UTAMA: hasil foto TIDAK mirror
+            // FOTO - hasil foto TIDAK mirror
             document.getElementById('ambilFoto').onclick = e => {
                 e.preventDefault();
                 const video = document.getElementById('kamera');
@@ -416,19 +479,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
                 canvas.width = video.videoWidth || 640;
                 canvas.height = video.videoHeight || 480;
 
-                // 1. Reset/Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // 2. Set transform untuk membalik gambar secara horizontal
-                // Karena video LIVE sudah di-flip (transform: scaleX(-1)) di CSS,
-                // kita perlu mem-flip-nya LAGI di canvas agar hasilnya normal.
-                ctx.translate(canvas.width, 0); // Pindahkan origin ke kanan
-                ctx.scale(-1, 1); // Flip horizontal
-
-                // 3. Gambar video (kini gambar akan terlihat normal/tidak mirror)
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                // 4. Reset transform agar toDataURL tidak menyertakan transformasi
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
 
                 document.getElementById('foto').value = canvas.toDataURL('image/jpeg', 0.8);
@@ -453,10 +507,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
     <?php endif; ?>
     
     <script>
-        // JAVASCRIPT UNTUK HAMBURGER MENU:
+        // JAVASCRIPT UNTUK HAMBURGER MENU
         document.getElementById('azMenuToggle').addEventListener('click', function() {
             const mobileMenu = document.getElementById('mobileMenu');
-            // Toggle display flex/none
             if (mobileMenu.style.display === 'flex') {
                 mobileMenu.style.display = 'none';
             } else {
@@ -464,11 +517,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adaEventAktif && !$sudahAbsen) {
             }
         });
 
-        // Hapus style inline saat resize ke desktop
         window.addEventListener('resize', function() {
             if (window.innerWidth > 991) {
                 document.querySelector('.az-header-menu').style.cssText = '';
-                document.getElementById('mobileMenu').style.display = 'none'; // Sembunyikan mobile menu di desktop
+                document.getElementById('mobileMenu').style.display = 'none';
             }
         });
     </script>

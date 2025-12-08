@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 
 // ============== WHITELIST – FILE YANG BOLEH DIAKSES TANPA LOGIN ==============
@@ -39,7 +40,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         ];
     }
 
-    // Jika tetap belum login → redirect
+    // Jika tetap belum login ? redirect
     if (!$isLoggedIn) {
         $_SESSION['login_attempts']++;
         $_SESSION['last_redirect_time'] = time();
@@ -78,6 +79,10 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
 
     $defaultProfileImage = "../../img/faces/artefax.jpg";
 
+    // --- PERBAIKAN BASE PATH GAMBAR UNTUK HOSTING ---
+    $baseImagePath = '../../../Paket/img/produk/';
+    // ------------------------------------------------
+
     $db = new Database();
     $conn = $db->getConnection();
     $paket = new PaketJasa($conn);
@@ -92,14 +97,14 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
     $paketList = $paket->readAll($limit, $offset);
 
     $success_message = $_SESSION['success_message'] ?? '';
-    $error_message   = $_SESSION['error_message'] ?? '';
+    $error_message  = $_SESSION['error_message'] ?? '';
     unset($_SESSION['success_message'], $_SESSION['error_message']);
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- ... head content tetap sama ... -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Admin ArtefaxID</title>
@@ -232,26 +237,50 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow-y: auto; /* Memungkinkan scroll jika konten terlalu besar */
         }
         .lightbox-content {
             background: white;
-            padding: 20px;
+            padding: 30px; /* Tambah padding */
             border-radius: 8px;
             position: relative;
-            max-width: 90%;
-            max-height: 90%;
+            
+            /* DIBUAT FLEKSIBEL SESUAI UKURAN GAMBAR */
+            width: fit-content; 
+            max-width: 95%; /* Batasan Lebar Maksimum */
+            
+            /* Hapus max-height agar box mengikuti gambar (kecuali batasan viewport di #lightboxImg) */
             text-align: center;
         }
         .lightbox-close {
             position: absolute;
             top: 10px;
             right: 25px;
-            color: #fff;
+            color: #fff; /* Warna putih agar terlihat di atas overlay */
             font-size: 35px;
             font-weight: bold;
             cursor: pointer;
+            z-index: 10000;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+
+        /* === PERBAIKAN FOTO LIGHTBOX UTAMA === */
+        #lightboxImg {
+            /* Penting: Memastikan gambar tidak pernah melebihi container/viewport */
+            max-width: 100%; 
+            max-height: 80vh; /* Batasi tinggi agar sesuai viewport */
+            height: auto; 
+            width: auto; /* Biarkan lebar didorong oleh file gambar asli (tapi dibatasi max-width 100%) */
+            object-fit: contain; 
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            display: block;
+            margin: 0 auto;
         }
     </style>
+
 </head>
 
 <body class="az-body">
@@ -291,11 +320,8 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
             </div>
             
             <div class="az-header-right">
-                <!-- DROPDOWN PROFIL - SUDAH DIPERBAIKI -->
                 <div class="dropdown az-profile-menu">
-                    <a href="../../View/profile.php" class="az-img-user">
-                        <img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt="">
-                    </a>
+                    <a href="#" class="az-img-user" id="profileDropdownToggle"><img src="<?= htmlspecialchars($defaultProfileImage) ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -307,7 +333,7 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="../../View/profile.php" class="dropdown-item">
+                        <a href="../../../View/profile.php" class="dropdown-item">
                             <i class="typcn typcn-user-outline"></i> My Profile
                         </a>
                         <a href="../../logout.php" class="dropdown-item">
@@ -319,7 +345,6 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         </div>
     </div>
     
-    <!-- Content tetap sama seperti kode asli -->
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -354,7 +379,6 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                     <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
                 <?php endif; ?>
 
-                <!-- Tabel dan pagination tetap sama -->
                 <div class="table-container">
                     <?php if ($paketList && count($paketList) > 0): ?>
                         <table class="custom-table">
@@ -381,9 +405,9 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
                                         <td class="text-center">
                                             <?php if (!empty($p['PaketDirGbr'])): ?>
                                                 <button type="button" class="btn btn-sm btn-info btn-detail-gambar"
-                                                        data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
-                                                        data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
-                                                    <i class="fas fa-image"></i> Detail
+                                                             data-img="<?= htmlspecialchars($p['PaketDirGbr']) ?>"
+                                                             data-nama="<?= htmlspecialchars($p['PaketNama']) ?>">
+                                                             <i class="fas fa-image"></i> Detail
                                                 </button>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
@@ -447,12 +471,11 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
         </div>
     </div>
 
-    <!-- Modal dan Lightbox tetap sama -->
     <div id="gambarLightbox" class="lightbox-overlay" style="display:none;">
         <div class="lightbox-content">
             <span class="lightbox-close">&times;</span>
             <h5 id="lightboxJudul" class="mb-3"></h5>
-            <img id="lightboxImg" src="" alt="Gambar Paket" style="max-width:100%; max-height:80vh; border-radius:8px;">
+            <img id="lightboxImg" src="" alt="Gambar Paket"> 
         </div>
     </div>
 
@@ -542,10 +565,16 @@ if (!in_array($currentFile, $allowedWithoutLogin)) {
     <script src="../../lib/jquery/jquery.min.js"></script>
     <script src="../../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../../js/azia.js"></script>
-    <div class="modal-backdrop fade show" id="modalBackdrop" style="display:none; z-index:1040;"></div>  
+    <div class="modal-backdrop fade show" id="modalBackdrop" style="display:none; z-index:1040;"></div>   
+
 
 <script>
+
+// Definisikan BASE_IMG_PATH dari PHP untuk digunakan di JS Lightbox
+const BASE_IMG_PATH = '<?= htmlspecialchars($baseImagePath) ?>'; 
+
 document.addEventListener('DOMContentLoaded', function () {
+
     const modal            = document.getElementById('layananModal');
     const form             = document.getElementById('formLayanan');
     const previewContainer = document.getElementById('previewContainer');
@@ -553,48 +582,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileNameDisplay  = document.getElementById('fileNameDisplay');
     const btnHapusGambar   = document.getElementById('btnHapusGambar');
     const lightbox       = document.getElementById('gambarLightbox');
-const lightboxImg    = document.getElementById('lightboxImg');
-const lightboxJudul  = document.getElementById('lightboxJudul');
-const lightboxClose  = document.querySelector('.lightbox-close');
+    const lightboxImg    = document.getElementById('lightboxImg');
+    const lightboxJudul  = document.getElementById('lightboxJudul');
+    const lightboxClose  = document.querySelector('.lightbox-close');
 
-// Buka lightbox saat tombol Detail diklik
-document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const imgPath = this.getAttribute('data-img');
-        const nama    = this.getAttribute('data-nama');
+    // ===================================
+    // LIGHTBOX FUNGSIONALITAS
+    // ===================================
 
-        // Path gambar sesuai struktur folder kamu
-        const fullPath = '/artefax/Paket/img/produk/' + imgPath;
+    // Buka lightbox saat tombol Detail diklik
+    document.querySelectorAll('.btn-detail-gambar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const imgPath = this.getAttribute('data-img');
+            const nama    = this.getAttribute('data-nama');
 
-        lightboxJudul.textContent = nama;
-        lightboxImg.src = fullPath;
-        lightbox.style.display = 'flex'; // atau 'block' juga boleh
-        document.body.style.overflow = 'hidden'; // biar tidak scroll background
+            // JALUR PERBAIKAN UTAMA: Menggunakan BASE_IMG_PATH dari PHP
+            const fullPath = BASE_IMG_PATH + imgPath;
+
+            lightboxJudul.textContent = nama;
+            lightboxImg.src = fullPath;
+            lightbox.style.display = 'flex'; 
+            document.body.style.overflow = 'hidden'; 
+        });
     });
-});
 
-// Tutup lightbox saat klik tanda × atau klik di luar gambar
-lightboxClose.addEventListener('click', closeLightbox);
-lightbox.addEventListener('click', function(e) {
-    if (e.target === lightbox || e.target === lightboxClose) {
-        closeLightbox();
+    // Tutup lightbox saat klik tanda × atau klik di luar gambar
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox || e.target === lightboxClose) {
+            closeLightbox();
+        }
+    });
+
+    function closeLightbox() {
+        lightbox.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        lightboxImg.src = '';
     }
-});
 
-function closeLightbox() {
-    lightbox.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    lightboxImg.src = '';
-}
+    // Tutup dengan tombol ESC (bonus)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+            closeLightbox();
+        }
+    });
 
-// Tutup dengan tombol ESC (bonus)
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && lightbox.style.display === 'flex') {
-        closeLightbox();
-    }
-});
+    // ===================================
+    // MODAL DAN CRUD FUNGSIONALITAS
+    // ===================================
     
-
     window.openTambahPopup = function () {
         document.getElementById('modalTitle').textContent = 'Tambah Layanan';
         form.action = 'tambah_paketjasa.php';
@@ -617,17 +653,20 @@ document.addEventListener('keydown', function(e) {
         form.action = 'edit_paketjasa.php';
 
         document.getElementById('idPaket').value = data.IDPaket;
-        form.PaketNama.value       = data.PaketNama || '';
-        form.PaketKategori.value   = data.PaketKategori || '';
-        form.PaketDeskripsi.value  = data.PaketDeskripsi || '';
-        form.PaketHarga.value      = data.PaketHarga || '';
-        form.PaketDurasi.value     = data.PaketDurasi || '';
-        form.PaketStatus.value     = data.PaketStatus || 'Aktif';
+        form.PaketNama.value         = data.PaketNama || '';
+        form.PaketKategori.value     = data.PaketKategori || '';
+        form.PaketDeskripsi.value    = data.PaketDeskripsi || '';
+        form.PaketHarga.value        = data.PaketHarga || '';
+        form.PaketDurasi.value       = data.PaketDurasi || '';
+        form.PaketStatus.value       = data.PaketStatus || 'Aktif';
 
         const imgPath = data.PaketDirGbr?.trim();
         if (imgPath) {
             document.getElementById('gambarLama').value = imgPath;
-            previewImg.src = '/artefax/Paket/img/produk/' + imgPath;
+            
+            // JALUR PERBAIKAN EDIT: Menggunakan BASE_IMG_PATH dari PHP
+            previewImg.src = BASE_IMG_PATH + imgPath; 
+            
             previewContainer.style.display = 'block';
             fileNameDisplay.value = imgPath.split('/').pop();
             btnHapusGambar.style.display = 'block';
@@ -685,7 +724,31 @@ document.addEventListener('keydown', function(e) {
         fileNameDisplay.value = 'Belum ada file dipilih';
         this.style.display = 'none';
     });
+    
+    // ===================================
+    // HEADER PROFILE FIX (Non-Bootstrap API)
+    // ===================================
+
+    const $profileDropdown = $('#profileDropdownToggle').closest('.dropdown');
+    
+    $('#profileDropdownToggle').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); 
+        
+        $profileDropdown.toggleClass('show');
+        $profileDropdown.find('.dropdown-menu').toggleClass('show');
+    });
+
+    $(document).on('click', function(e) {
+        if (!$profileDropdown.is(e.target) && $profileDropdown.has(e.target).length === 0) {
+            $profileDropdown.removeClass('show');
+            $profileDropdown.find('.dropdown-menu').removeClass('show');
+        }
+    });
 });
+
 </script>
+
 </body>
+
 </html>

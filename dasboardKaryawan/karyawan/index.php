@@ -1,26 +1,118 @@
 <?php
-session_start();
-// === CEK LOGIN ===
-if (!isset($_SESSION['user']) || $_SESSION['user']['UserRole'] !== 'Karyawan') {
+// File: View/Karyawan/index.php atau dasboardKaryawan/index.php
+// PERBAIKAN AGAR SESUAI DENGAN SISTEM LOGIN YANG ADA
+
+// ==========================================
+// KONFIGURASI SESSION UNTUK HOSTING
+// ==========================================
+
+// Cek apakah session sudah dimulai
+if (session_status() === PHP_SESSION_NONE) {
+    // Set session path ke folder yang writable di hosting
+    $session_path = ini_get('session.save_path');
+    if (empty($session_path) || !is_writable($session_path)) {
+        $local_session_path = dirname(__FILE__) . '/../../tmp/sessions';
+        if (!file_exists($local_session_path)) {
+            @mkdir($local_session_path, 0700, true);
+        }
+        if (is_writable($local_session_path)) {
+            session_save_path($local_session_path);
+        }
+    }
+    
+    // Konfigurasi session yang kompatibel dengan hosting
+    ini_set('session.cookie_path', '/');
+    ini_set('session.use_cookies', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.gc_maxlifetime', 86400);
+    ini_set('session.cookie_lifetime', 0);
+    
+    session_start();
+}
+
+// Set timezone sesuai dengan login.php
+date_default_timezone_set('Asia/Jakarta');
+
+// ==========================================
+// VALIDASI SESSION SESUAI FORMAT LOGIN.PHP
+// ==========================================
+
+// Fungsi untuk validasi session
+function isValidKaryawanSession() {
+    // Cek apakah session user ada
+    if (!isset($_SESSION['user'])) {
+        return false;
+    }
+    
+    // Cek apakah session user adalah array
+    if (!is_array($_SESSION['user'])) {
+        return false;
+    }
+    
+    // Cek field yang diperlukan sesuai dengan login.php
+    $requiredFields = ['IDUser', 'UserNama', 'UserEmail', 'UserRole'];
+    foreach ($requiredFields as $field) {
+        if (!isset($_SESSION['user'][$field])) {
+            return false;
+        }
+    }
+    
+    // Cek role - SESUAI DENGAN LOGIN.PHP (lowercase 'karyawan')
+    $role = strtolower(trim($_SESSION['user']['UserRole']));
+    if ($role !== 'karyawan') {
+        return false;
+    }
+    
+    return true;
+}
+
+// Validasi session dan redirect jika tidak valid
+if (!isValidKaryawanSession()) {
+    // Bersihkan session
+    $_SESSION = array();
+    
+    // Hapus cookie session
+    if (isset($_COOKIE[session_name()])) {
+        setcookie(session_name(), '', time() - 3600, '/');
+    }
+    
+    // Destroy session
+    session_destroy();
+    
+    // Redirect ke login - SESUAI STRUKTUR FILE ANDA
     header('Location: ../../View/login.php');
     exit();
 }
-$userData = $_SESSION['user'];
-$idKaryawan = $userData['IDUser'];
-$namaKaryawan = $userData['UserNama'];
 
-// === KONEKSI DB ===
+// ==========================================
+// AMBIL DATA USER DENGAN AMAN
+// ==========================================
+
+$userData = $_SESSION['user'];
+$idKaryawan = (int)$userData['IDUser'];
+$namaKaryawan = htmlspecialchars($userData['UserNama']);
+$emailKaryawan = htmlspecialchars($userData['UserEmail']);
+
+// ==========================================
+// KONEKSI DATABASE
+// ==========================================
+
 require_once '../../config/koneksi.php';
 require_once '../../class/EventAssignment.php';
+
 $db = new Database();
 $conn = $db->getConnection();
-// Mengganti if ($conn === null) die("Database gagal terkoneksi!");
+
 if ($conn === null) {
-    die("<script>alert('Database gagal terkoneksi!');</script>");
+    die("<div style='padding:20px;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:5px;margin:20px;'>
+        <h3>Error Koneksi Database</h3>
+        <p>Tidak dapat terhubung ke database. Silakan hubungi administrator.</p>
+        </div>");
 }
 
 $assignment = new EventAssignment($conn);
-$assignments = $assignment->getAssignmentsByKaryawan($idKaryawan); // otomatis update status
+$assignments = $assignment->getAssignmentsByKaryawan($idKaryawan);
 $stats = $assignment->getStats($idKaryawan);
 ?>
 <!DOCTYPE html>
@@ -29,17 +121,13 @@ $stats = $assignment->getStats($idKaryawan);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Penugasan - <?= htmlspecialchars($namaKaryawan) ?> | Artefax</title>
+    <title>Penugasan - <?= $namaKaryawan ?> | Artefax</title>
     
     <link href="../lib/fontawesome-free/css/all.min.css" rel="stylesheet">
     <link href="../css/azia.css" rel="stylesheet">
     <link href="../lib/bootstrap/css/bootstrap.min.css" rel="stylesheet"> 
     
     <style>
-        /* ==================================================== */
-        /* STYLE INLINE DARI KARYAWAN.CSS & PERBAIKAN NAVBAR    */
-        /* ==================================================== */
-
         /* Fixed Navbar */
         .az-header {
             position: fixed; 
@@ -47,7 +135,7 @@ $stats = $assignment->getStats($idKaryawan);
             width: 100%;
             z-index: 1030;
             background-color: #ffffff; 
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Shadow untuk header */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             padding: 10px 0;
         }
         .az-body {
@@ -145,7 +233,7 @@ $stats = $assignment->getStats($idKaryawan);
             width: 70%;
         }
 
-        /* ================== CARD & STATISTIK (DARI karyawan.css) ================== */
+        /* CARD & STATISTIK */
         .card {
           border: 1px solid #e0e6ed;
           border-radius: 8px;
@@ -197,7 +285,7 @@ $stats = $assignment->getStats($idKaryawan);
           border-left: 4px solid #007bff;
         }
 
-        /* ================== TABEL KOTAK (DARI karyawan.css) ================== */
+        /* TABEL KOTAK */
         .table-kotak {
           width: 100%;
           border-collapse: separate;
@@ -251,7 +339,7 @@ $stats = $assignment->getStats($idKaryawan);
           border-bottom: none;
         }
 
-        /* ================== BADGE STATUS (DARI karyawan.css) ================== */
+        /* BADGE STATUS */
         .badge-kotak {
           padding: 8px 18px;
           border-radius: 6px;
@@ -287,7 +375,7 @@ $stats = $assignment->getStats($idKaryawan);
           font-size: 16px;
         }
 
-        /* ================== EMPTY STATE (DARI karyawan.css) ================== */
+        /* EMPTY STATE */
         .empty-state {
           text-align: center;
           padding: 70px 20px;
@@ -304,7 +392,7 @@ $stats = $assignment->getStats($idKaryawan);
           color: #adb5bd;
         }
 
-        /* ================== WAKTU MULAI & SELESAI (DARI karyawan.css) ================== */
+        /* WAKTU MULAI & SELESAI */
         td[data-label="Mulai"] strong,
         td[data-label="Selesai"] strong {
           font-size: 1.1em;
@@ -317,7 +405,7 @@ $stats = $assignment->getStats($idKaryawan);
           margin: 2px 0;
         }
 
-        /* ================== RESPONSIF (MOBILE) (DARI karyawan.css) ================== */
+        /* RESPONSIF (MOBILE) */
         @media (max-width: 768px) {
           .table-kotak {
             border: none;
@@ -360,8 +448,20 @@ $stats = $assignment->getStats($idKaryawan);
             margin-top: 10px;
             float: right;
           }
+          .row-sm.mg-b-30 > div {
+            margin-bottom: 15px;
+            flex: 0 0 50%;
+            max-width: 50%;
+          }
+          .row-sm.mg-b-30 {
+            margin-left: -7.5px;
+            margin-right: -7.5px;
+          }
+          .row-sm.mg-b-30 > div {
+            padding-left: 7.5px;
+            padding-right: 7.5px;
+          }
         }
-        /* Penyesuaian agar az-content tidak terlalu jauh di desktop */
         .az-content {
             padding-top: 25px; 
             padding-bottom: 25px;
@@ -388,7 +488,7 @@ $stats = $assignment->getStats($idKaryawan);
                     <i class="fas fa-user-circle az-profile-icon"></i>
                 </a>
                 
-                <a href="../../logout.php" class="btn btn-sm btn-danger btn-logout-nav">
+                <a href="../../logout.php" class="btn btn-sm btn-danger btn-logout-nav" onclick="return confirm('Yakin ingin logout?')">
                     <i class="fas fa-sign-out-alt"></i> Keluar
                 </a>
                 
@@ -409,28 +509,28 @@ $stats = $assignment->getStats($idKaryawan);
         <div class="container">
             <div class="az-content-body">
                 <h2 class="az-content-title">Penugasan Event</h2>
-                <p>Halo <strong><?= htmlspecialchars($namaKaryawan) ?></strong>, berikut daftar penugasan aktif Anda:</p>
+                <p>Halo <strong><?= $namaKaryawan ?></strong>, berikut daftar penugasan aktif Anda:</p>
 
                 <div class="row row-sm mg-b-30">
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="card card-stat bg-menunggu">
                             <h6>Menunggu</h6>
                             <h3><?= $stats['menunggu'] ?></h3>
                         </div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="card card-stat bg-berjalan">
                             <h6>Berjalan</h6>
                             <h3><?= $stats['berjalan'] ?></h3>
                         </div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="card card-stat bg-selesai">
                             <h6>Selesai</h6>
                             <h3><?= $stats['selesai'] ?></h3>
                         </div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="card card-stat bg-total">
                             <h6>Total</h6>
                             <h3><?= $stats['total'] ?></h3>
@@ -446,51 +546,50 @@ $stats = $assignment->getStats($idKaryawan);
                             <small class="text-muted">Event yang sudah selesai otomatis disembunyikan.</small>
                         </div>
                     <?php else: ?>
-                        <table class="table-kotak">
-                            <thead>
-                                <tr>
-                                    <th>Event</th>
-                                    <th>Lokasi</th>
-                                    <th>Customer</th>
-                                    <th>Mulai</th>
-                                    <th>Selesai</th>
-                                    <th>Durasi</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($assignments as $t): ?>
-                                    <?php
-                                    // Format tanggal Indonesia (contoh: 18 Nov 2025)
-                                    $dateObj = new DateTime($t['EventTanggal']);
-                                    $tanggalFormatted = $dateObj->format('d M Y');
-
-                                    // Format durasi biar bagus
-                                    $durasiJam = (int)$t['EventDurasi'];
-                                    if ($durasiJam >= 24) {
-                                        $hari = floor($durasiJam / 24);
-                                        $jam  = $durasiJam % 24;
-                                        $durasiTxt = $hari . ' hari' . ($jam > 0 ? ' ' . $jam . ' jam' : '');
-                                    } else {
-                                        $durasiTxt = $durasiJam . ' jam';
-                                    }
-
-                                    // Status untuk class badge
-                                    $status = strtolower(trim($t['EventStatus']));
-                                    $statusClean = ($status === 'menunggu') ? 'menunggu' : (($status === 'berjalan') ? 'berjalan' : 'selesai');
-                                    ?>
+                        <div class="table-responsive">
+                            <table class="table-kotak">
+                                <thead>
                                     <tr>
-                                        <td data-label="Event"><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
-                                        <td data-label="Lokasi"><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></td>
-                                        <td data-label="Customer"><?= htmlspecialchars($t['CustomerNama'] ?? '—') ?></td>
-                                        <td data-label="Mulai"><?= $tanggalFormatted ?><br><strong><?= substr($t['EventMulai'], 0, 5) ?></strong></td>
-                                        <td data-label="Selesai"><?= $tanggalFormatted ?><br><strong><?= substr($t['EventSelesai'], 0, 5) ?></strong></td>
-                                        <td data-label="Durasi"><?= $durasiTxt ?></td>
-                                        <td data-label="Status"><span class="badge-kotak status-<?= $statusClean ?>"><?= ucfirst($t['EventStatus']) ?></span></td>
+                                        <th>Event</th>
+                                        <th>Lokasi</th>
+                                        <th>Customer</th>
+                                        <th>Mulai</th>
+                                        <th>Selesai</th>
+                                        <th>Durasi</th>
+                                        <th>Status</th>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($assignments as $t): ?>
+                                        <?php
+                                        $dateObj = new DateTime($t['EventTanggal']);
+                                        $tanggalFormatted = $dateObj->format('d M Y');
+
+                                        $durasiJam = (int)$t['EventDurasi'];
+                                        if ($durasiJam >= 24) {
+                                            $hari = floor($durasiJam / 24);
+                                            $jam  = $durasiJam % 24;
+                                            $durasiTxt = $hari . ' hari' . ($jam > 0 ? ' ' . $jam . ' jam' : '');
+                                        } else {
+                                            $durasiTxt = $durasiJam . ' jam';
+                                        }
+
+                                        $status = strtolower(trim($t['EventStatus']));
+                                        $statusClean = ($status === 'menunggu') ? 'menunggu' : (($status === 'berjalan') ? 'berjalan' : 'selesai');
+                                        ?>
+                                        <tr>
+                                            <td data-label="Event"><strong><?= htmlspecialchars($t['EventNama']) ?></strong></td>
+                                            <td data-label="Lokasi"><?= htmlspecialchars($t['EventLokasi'] ?? '—') ?></td>
+                                            <td data-label="Customer"><?= htmlspecialchars($t['CustomerNama'] ?? '—') ?></td>
+                                            <td data-label="Mulai"><?= $tanggalFormatted ?><br><strong><?= substr($t['EventMulai'], 0, 5) ?></strong></td>
+                                            <td data-label="Selesai"><?= $tanggalFormatted ?><br><strong><?= substr($t['EventSelesai'], 0, 5) ?></strong></td>
+                                            <td data-label="Durasi"><?= $durasiTxt ?></td>
+                                            <td data-label="Status"><span class="badge-kotak status-<?= $statusClean ?>"><?= ucfirst($t['EventStatus']) ?></span></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -502,10 +601,8 @@ $stats = $assignment->getStats($idKaryawan);
     <script src="../js/azia.js"></script>
     
     <script>
-        // JAVASCRIPT UNTUK HAMBURGER MENU:
         document.getElementById('azMenuToggle').addEventListener('click', function() {
             const mobileMenu = document.getElementById('mobileMenu');
-            // Toggle display flex/none
             if (mobileMenu.style.display === 'flex') {
                 mobileMenu.style.display = 'none';
             } else {
@@ -513,11 +610,10 @@ $stats = $assignment->getStats($idKaryawan);
             }
         });
 
-        // Hapus style inline saat resize ke desktop
         window.addEventListener('resize', function() {
             if (window.innerWidth > 991) {
                 document.querySelector('.az-header-menu').style.cssText = '';
-                document.getElementById('mobileMenu').style.display = 'none'; // Sembunyikan mobile menu di desktop
+                document.getElementById('mobileMenu').style.display = 'none';
             }
         });
     </script>

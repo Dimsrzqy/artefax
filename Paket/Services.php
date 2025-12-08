@@ -1,777 +1,361 @@
 <?php
-// ===============================
-// 🔹 1. KONEKSI DAN SESI AWAL
-// ===============================
+// Services.php - FINAL VERSION WITH GLOBAL PAKET JASA 2 SLOT PER DAY
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
 
-if (isset($_SESSION['success_checkout'])) {
-    echo "
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            Swal.fire({
-                title: 'Berhasil!',
-                text: '" . $_SESSION['success_checkout'] . "',
-                icon: 'success',
-                timer: 2500,
-                showConfirmButton: false
-            });
-        });
-    </script>
-    ";
-    unset($_SESSION['success_checkout']);
-}
-
-$db = new Database();
+$db = new Database(); 
 $conn = $db->getConnection();
-
-if (!$conn) {
-    die("Koneksi database gagal.");
-}
-
 $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
-// ===============================
-// 🔹 2. QUERY BESTSELLER BERDASARKAN BOOKING TERBANYAK
-// ===============================
+// === HITUNG TOTAL BOOKING PAKET JASA DI TANGGAL HARI INI (GLOBAL) ===
+$today = date('Y-m-d');
+$paketBookingCount = 0;
+$stmtGlobal = $conn->prepare("
+    SELECT COUNT(*) 
+    FROM booking_detail bd
+    INNER JOIN booking b ON bd.IDBooking = b.IDBooking
+    WHERE bd.BkgDetailJenis = 'Paket Jasa'
+      AND b.BkgStatus IN ('Diterima', 'Selesai')
+      AND ? BETWEEN DATE(b.BkgTglMulai) AND DATE(b.BkgTglSelesai)
+");
+$stmtGlobal->bind_param("s", $today);
+$stmtGlobal->execute();
+$stmtGlobal->bind_result($paketBookingCount);
+$stmtGlobal->fetch();
+$stmtGlobal->close();
 
-// ✅ BESTSELLER: Produk dengan booking terbanyak (Alat + Paket Jasa)
-$sql_bestseller = "
-    (
-        SELECT 
-            a.IDAlat AS id, 
-            'alat' AS tipe,
-            a.AlatNama AS name,
-            a.AlatKategori AS kategori,
-            a.AlatDeskripsi AS description,
-            a.AlatHarga AS price,
-            a.AlatDirGbr AS image,
-            a.AlatStatus AS status,
-            COUNT(bd.IDAlat) AS total_booking
-        FROM alat a
-        LEFT JOIN booking_detail bd ON a.IDAlat = bd.IDAlat
-        WHERE LOWER(a.AlatStatus) IN ('aktif','bestseller','tersedia')
-        GROUP BY a.IDAlat
-    )
-    UNION ALL
-    (
-        SELECT 
-            p.IDPaket AS id,
-            'paket' AS tipe,
-            p.PaketNama AS name,
-            p.PaketKategori AS kategori,
-            p.PaketDeskripsi AS description,
-            p.PaketHarga AS price,
-            p.PaketDirGbr AS image,
-            p.PaketStatus AS status,
-            COUNT(bd.IDPaket) AS total_booking
-        FROM paketjasa p
-        LEFT JOIN booking_detail bd ON p.IDPaket = bd.IDPaket
-        WHERE p.PaketStatus IN ('aktif','Bestseller','bestseller')
-        GROUP BY p.IDPaket
-    )
-    ORDER BY total_booking DESC
-    LIMIT 8
-";
+$isPaketFullToday = ($paketBookingCount >= 2); // GLOBAL: maksimal 2 booking paket per hari
 
-$result_bestseller = $conn->query($sql_bestseller);
-$bestseller_products = [];
-if ($result_bestseller) {
-    while ($row = $result_bestseller->fetch_assoc()) {
-        $bestseller_products[] = $row;
+// === Query Produk Bestseller ===
+$q_best = "SELECT * FROM (
+    (SELECT a.IDAlat AS id, 'alat' AS tipe, a.AlatNama AS name, a.AlatKategori AS kat, a.AlatDeskripsi AS des, a.AlatHarga AS prc, a.AlatDirGbr AS img, a.AlatStatus AS st FROM alat a WHERE AlatStatus!='Nonaktif')
+    UNION ALL 
+    (SELECT p.IDPaket AS id, 'paket' AS tipe, p.PaketNama AS name, p.PaketKategori AS kat, p.PaketDeskripsi AS des, p.PaketHarga AS prc, p.PaketDirGbr AS img, p.PaketStatus AS st FROM paketjasa p WHERE PaketStatus!='Nonaktif')
+) AS gab 
+ORDER BY (CASE WHEN LOWER(st)='bestseller' THEN 0 ELSE 1 END), id DESC 
+LIMIT 8";
+$res_best = $conn->query($q_best);
+
+// === Query Produk Terbaru ===
+$q_new = "SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kat, AlatDeskripsi AS des, AlatHarga AS prc, AlatDirGbr AS img, AlatStatus AS st FROM alat WHERE AlatStatus!='Nonaktif' 
+          UNION ALL 
+          SELECT IDPaket AS id, 'paket' AS tipe, PaketNama AS name, PaketKategori AS kat, PaketDeskripsi AS des, PaketHarga AS prc, PaketDirGbr AS img, PaketStatus AS st FROM paketjasa WHERE PaketStatus!='Nonaktif' 
+          ORDER BY id DESC LIMIT 8";
+$res_new = $conn->query($q_new);
+
+function rupiah($n){ return 'Rp ' . number_format((float)$n,0,',','.'); }
+
+// === Fungsi Render Card dengan Logika Ketersediaan ===
+function renderCard($p, $isFavorite = false, $isPaketFullToday = false) { 
+    global $today;
+    
+    $img = (!empty($p['img']) && file_exists(__DIR__ . '/img/produk/' . $p['img'])) 
+           ? 'img/produk/' . $p['img'] : 'img/noimage.png';
+    $status = $p['st'] ?? '';
+    $isBest = $isFavorite || (strtolower($status) == 'bestseller');
+
+    // Hitung booking untuk alat (jika tipe alat)
+    $bookedCount = 0;
+    if ($p['tipe'] === 'alat') {
+        $stmt = $GLOBALS['conn']->prepare("
+            SELECT COUNT(*) FROM booking_detail bd 
+            JOIN booking b ON bd.IDBooking = b.IDBooking 
+            WHERE bd.IDAlat = ? AND b.BkgStatus IN ('Diterima','Selesai')
+              AND ? BETWEEN DATE(b.BkgTglMulai) AND DATE(b.BkgTglSelesai)
+        ");
+        $stmt->bind_param("is", $p['id'], $today);
+        $stmt->execute();
+        $stmt->bind_result($bookedCount);
+        $stmt->fetch();
+        $stmt->close();
     }
-}
 
-// ✅ PRODUK TERBARU
-$sql_latest = "
-    SELECT IDAlat AS id, 'alat' AS tipe, AlatNama AS name, AlatKategori AS kategori,
-           AlatDeskripsi AS description, AlatHarga AS price, AlatDirGbr AS image, 
-           AlatStatus AS status, CreatedAt as created_at
-    FROM alat
-    WHERE LOWER(AlatStatus) IN ('aktif','bestseller','tersedia')
-    UNION ALL
-    SELECT IDPaket AS id, 'paket' AS tipe, PaketNama AS name, PaketKategori AS kategori,
-           PaketDeskripsi AS description, PaketHarga AS price, PaketDirGbr AS image, 
-           PaketStatus AS status, CreatedAt as created_at
-    FROM paketjasa
-    WHERE PaketStatus IN ('aktif','Bestseller','bestseller')
-    ORDER BY created_at DESC
-    LIMIT 8
-";
+    $limitBookingHarian = 2;
+    $isStockEmpty = ($p['tipe'] === 'alat' && (int)$p['prc'] <= 0); // contoh stok habis
+    $isDateFull   = ($p['tipe'] === 'alat') 
+                    ? ($bookedCount >= $limitBookingHarian) 
+                    : $isPaketFullToday;
 
-$result_latest = $conn->query($sql_latest);
-$latest_products = [];
-if ($result_latest) {
-    while ($row = $result_latest->fetch_assoc()) {
-        $latest_products[] = $row;
-    }
-}
+    $isUnavailable = $isStockEmpty || $isDateFull;
+    ?>
+    <div class="col-md-6 col-lg-4 col-xl-3">
+        <div class="product-card h-100 <?= $isUnavailable ? 'unavailable' : '' ?>">
+            <div class="product-image-wrapper">
+                <?php if ($isBest): ?>
+                    <div class="position-absolute top-0 start-0 p-2 z-index-2">
+                        <span class="badge-fav">FAVORIT</span>
+                    </div>
+                <?php endif; ?>
+                <?php if ($isUnavailable): ?>
+                    <div class="position-absolute top-50 start-50 translate-middle">
+                        <span class="badge bg-danger fs-6 px-3 py-2">FULL</span>
+                    </div>
+                <?php endif; ?>
+                <img src="<?= $img ?>" class="product-image" alt="<?= htmlspecialchars($p['name']) ?>">
+            </div>
+            
+            <div class="p-3 d-flex flex-column flex-grow-1">
+                <div class="mb-2">
+                    <span class="chip-category tipe"><?= htmlspecialchars($p['tipe']) ?></span>
+                    <span class="chip-category"><?= htmlspecialchars($p['kat']) ?></span>
+                </div>
 
-function rupiah($n) {
-    return 'Rp ' . number_format((float)$n, 0, ',', '.');
+                <h5 class="fw-bold text-dark mb-2" style="font-size: 1.1rem; height: 2.5em; overflow: hidden; line-height: 1.3;">
+                    <?= htmlspecialchars($p['name']) ?>
+                </h5>
+
+                <?php if ($isUnavailable): ?>
+                    <div class="small mb-3 text-danger fw-bold">Tidak Tersedia Hari Ini</div>
+                <?php else: ?>
+                    <div class="small mb-3 text-success fw-bold">Tersedia</div>
+                <?php endif; ?>
+
+                <div class="mt-auto pt-3 d-flex justify-content-between align-items-center border-top">
+                    <?php if ($isUnavailable): ?>
+                        <h5 class="price-disabled mb-0"><?= rupiah($p['prc']) ?></h5>
+                        <button class="btn-disabled-fixed" disabled>
+                            Penuh
+                        </button>
+                    <?php else: ?>
+                        <h5 class="product-price mb-0"><?= rupiah($p['prc']) ?></h5>
+                        <button class="btn-action openDetailBtn"
+                            data-id="<?= $p['id'] ?>" 
+                            data-tipe="<?= $p['tipe'] ?>" 
+                            data-name="<?= htmlspecialchars($p['name']) ?>"
+                            data-price="<?= $p['prc'] ?>" 
+                            data-desc="<?= htmlspecialchars($p['des']) ?>" 
+                            data-img="<?= $img ?>"> 
+                            Sewa
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php 
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Layanan - Artefax</title>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-
-    <!-- Google Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
-
-    <!-- Animate.css untuk animasi -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-
-    <!-- Library CSS -->
-    <link href="lib/lightbox/css/lightbox.min.css" rel="stylesheet">
-    <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
-
-    <!-- Bootstrap & Custom -->
+    <title>Artefax - Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="../assets/img/logo Artefax1.png" rel="icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
+    <link href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" rel="stylesheet"/>
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link href="css/style.css?v=<?= time() ?>" rel="stylesheet">
 </head>
-
 <body>
-    <!-- Spinner Start -->
-    <div id="spinner" class="show w-100 vh-100 bg-white position-fixed translate-middle top-50 start-50 d-flex align-items-center justify-content-center">
-        <div class="spinner-grow text-primary" role="status"></div>
-    </div>
-    <!-- Spinner End -->
-
-    <!-- =============================== -->
-    <!-- 🔹 NAVBAR -->
-    <!-- =============================== -->
-    <div class="container-fluid fixed-top">
-        <div class="container px-0">
-            <nav class="navbar navbar-light bg-white navbar-expand-xl">
-                
-                <!-- Logo Brand -->
+    <!-- NAVBAR SAMA -->
+    <div class="container-fluid fixed-top px-0">
+        <nav class="navbar navbar-light bg-white navbar-expand-xl shadow-sm">
+            <div class="container">
                 <a href="../index.php" class="navbar-brand">
-                    <h1 class="text-primary display-6">Artefax</h1>
+                    <img src="../assets/img/logo Artefax.png" alt="Artefax" style="max-height: 55px;">
                 </a>
-
-                <!-- Toggle Button -->
-                <button class="navbar-toggler py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                     <span class="fa fa-bars text-primary"></span>
                 </button>
-
-                <!-- Menu Items -->
-                <div class="collapse navbar-collapse bg-white" id="navbarCollapse">
+                <div class="collapse navbar-collapse" id="#navbarCollapse">
                     <div class="navbar-nav mx-auto">
                         <a href="Services.php" class="nav-item nav-link active">Home</a>
                         <a href="shop.php" class="nav-item nav-link">Shop</a>
                     </div>
-
-                    <!-- Right Side Icons -->
-                    <div class="d-flex m-3 me-0">
-                        <!-- Search Button -->
-                        <button class="btn-search btn border border-secondary btn-md-square rounded-circle bg-white me-4" 
-                                data-bs-toggle="modal" data-bs-target="#searchModal">
-                            <i class="fas fa-search text-primary"></i>
-                        </button>
-
-                        <!-- Cart Icon dengan Counter -->
-                        <a href="#" class="position-relative me-4 my-auto" data-bs-toggle="modal" data-bs-target="#cartModal">
-                            <i class="fa fa-shopping-bag fa-2x"></i>
-                            <span class="position-absolute bg-secondary rounded-circle d-flex align-items-center justify-content-center text-dark px-1"
-                                  style="top: -5px; left: 15px; height: 20px; min-width: 20px;">
-                                <?= $cart_count ?>
-                            </span>
-                        </a>
-
-                        <!-- Account Icon -->
-                        <a href="#" class="my-auto">
-                            <i class="fas fa-user fa-2x"></i>
-                        </a>
+                    <div class="nav-icon-wrapper m-3 me-0">
+                        <a href="#" class="nav-icon-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
+                            <i class="fa fa-shopping-bag"></i>
+                            <span class="cart-badge"><?= $cart_count ?></span>
+                        </a> 
+                        <a href="../View/profil.php" class="nav-icon-btn"><i class="fas fa-user"></i></a>
                     </div>
                 </div>
-            </nav>
-        </div>
-    </div>
-    <!-- Navbar End -->
-<!-- Modal Search -->
-    <div class="modal fade" id="searchModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content rounded-0">
-                <div class="modal-header">
-                    <h5 class="modal-title">Search by keyword</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body d-flex align-items-center">
-                    <form method="GET" action="shop.php" class="input-group w-75 mx-auto d-flex">
-                        <input type="text" name="q" class="form-control p-3" placeholder="Cari produk...">
-                        <button class="input-group-text p-3" type="submit"><i class="fa fa-search"></i></button>
-                    </form>
-                </div>
             </div>
-        </div>
+        </nav>
     </div>
 
-    <!-- Hero -->
-    <div class="container-fluid py-5 mb-5 hero-header">
-        <div class="container py-5">
+    <!-- HERO SECTION SAMA -->
+    <div class="container-fluid hero-header mb-5">
+        <div class="container">
             <div class="row g-5 align-items-center">
-                <div class="col-md-12 col-lg-7">
-                    <h4 class="mb-3 text-secondary">ARTEFAX.ID</h4>
-                    <h1 class="mb-5 display-3 text-primary">Pemesanan Alat & Paket Jasa</h1>
-                    <form method="GET" action="shop.php" class="position-relative mx-auto">
-                        <input class="form-control border-2 border-secondary w-75 py-3 px-4 rounded-pill" 
-                               type="text" 
-                               name="q" 
-                               placeholder="Cari produk..." 
-                               required>
-                        <button type="submit" class="btn btn-primary border-2 border-secondary py-3 px-4 position-absolute rounded-pill text-white h-100" style="top: 0; right: 25%;">
-                            <i class="fa fa-search me-2"></i> Cari
-                        </button>
-                    </form>
+                <div class="col-md-12 col-lg-7 text-center text-lg-start">
+                    <div class="d-inline-block mb-3">
+                        <h4 class="typewriter">Selamat Datang di Artefax.id</h4>
+                    </div>
+                    <h1 class="hero-title text-white">Solusi Sewa Alat & Jasa Dokumentasi</h1>
+                    <div class="search-box-hero position-relative mx-auto ms-lg-0 w-100" style="max-width: 600px;">
+                        <form action="shop.php" method="GET" class="d-flex w-100">
+                            <input class="form-control border-0 w-100 py-3 px-4 rounded-pill shadow-none bg-transparent" 
+                                   type="text" name="q" placeholder="Cari kamera, lensa, atau paket..." required>
+                            <button type="submit" class="btn btn-primary border-0 py-3 px-4 position-absolute rounded-pill text-white fw-bold shadow-sm" style="top: 5px; right: 5px;">
+                                Cari
+                            </button>
+                        </form>
+                    </div>
                 </div>
                 <div class="col-md-12 col-lg-5">
-                    <div id="carouselId" class="carousel slide position-relative" data-bs-ride="carousel">
-                        <div class="carousel-inner" role="listbox">
-                            <div class="carousel-item active rounded">
-                                <img src="img/alat.jpg" class="img-fluid w-100 h-100 bg-secondary rounded" alt="Alat">
-                                <a href="shop.php?type=alat" class="btn px-4 py-2 text-white rounded">Alat</a>
+                    <div id="carouselId" class="carousel slide carousel-fade carousel-hero-container" data-bs-ride="carousel" data-bs-interval="3000">
+                        <div class="carousel-inner">
+                            <div class="carousel-item active">
+                                <img src="img/alat.jpg" class="d-block w-100" alt="Alat">
+                                <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-75 rounded p-2 mb-3"><h5 class="text-white m-0">Alat Multimedia</h5></div>
                             </div>
-                            <div class="carousel-item rounded">
-                                <img src="img/jasa.jpg" class="img-fluid w-100 h-100 rounded" alt="Jasa">
-                                <a href="shop.php?type=paket" class="btn px-4 py-2 text-white rounded">Paket Jasa</a>
+                            <div class="carousel-item">
+                                <img src="img/jasa.jpg" class="d-block w-100" alt="Jasa">
+                                <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-75 rounded p-2 mb-3"><h5 class="text-white m-0">Jasa Dokumentasi</h5></div>
                             </div>
                         </div>
-                        <button class="carousel-control-prev" type="button" data-bs-target="#carouselId" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon"></span>
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#carouselId" data-bs-slide="next">
-                            <span class="carousel-control-next-icon"></span>
-                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ✅ BESTSELLER BERDASARKAN BOOKING TERBANYAK -->
-    <?php if (!empty($bestseller_products)): ?>
-    <div class="container-fluid py-5">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5 text-primary fw-bold">⭐ Layanan Favorit</h2>
-                <p class="text-muted">Produk paling banyak dibooking oleh pelanggan</p>
-            </div>
-
-            <div class="row g-4 justify-content-center">
-                <?php foreach ($bestseller_products as $p): 
-                    $imgFile = $p['image'] ?? '';
-                    $imgUrl = 'img/noimage.png';
-                    
-                    if (!empty($imgFile)) {
-                        // ✅ PERBAIKAN PATH
-                        $fullPath = __DIR__ . '/img/produk/' . $imgFile;
-                        if (file_exists($fullPath)) {
-                            $imgUrl = 'img/produk/' . $imgFile;
-                        }
-                    }
-                ?>
-                <div class="col-md-6 col-lg-4 col-xl-3">
-                    <div class="product-card">
-                        <div class="product-image-wrapper">
-                            <img src="<?= $imgUrl ?>" 
-                                 class="product-image" 
-                                 alt="<?= htmlspecialchars($p['name']) ?>"
-                                 onerror="this.src='img/noimage.png';">
-                            <div class="product-badges">
-                                <span class="badge badge-bestseller">
-                                    <i class="fa fa-star"></i> Bestseller
-                                </span>
-                            </div>
-                        </div>
-                        <div class="product-content">
-                            <div class="product-category">
-                                <span class="badge badge-category">
-                                    <?= htmlspecialchars($p['tipe']) ?>
-                                </span>
-                            </div>
-                            <h5 class="product-name">
-                                <?= htmlspecialchars($p['name']) ?>
-                            </h5>
-                            <div class="product-spacer"></div>
-                            <div class="product-footer">
-                                <div class="product-price">
-                                    <?= rupiah($p['price']) ?>
-                                </div>
-                                <button class="btn btn-primary btn-sm openDetailBtn"
-                                        data-id="<?= htmlspecialchars($p['id']) ?>"
-                                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
-                                        data-name="<?= htmlspecialchars($p['name']) ?>"
-                                        data-kat="<?= htmlspecialchars($p['kategori']) ?>"
-                                        data-desc="<?= htmlspecialchars($p['description']) ?>"
-                                        data-price="<?= htmlspecialchars($p['price']) ?>"
-                                        data-img="<?= $imgUrl ?>">
-                                    Detail <i class="fa fa-arrow-right ms-1"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
+    <!-- PRODUK FAVORIT -->
+    <?php if ($res_best && $res_best->num_rows > 0): ?>
+    <div class="container py-5">
+        <div class="text-center mx-auto mb-5" style="max-width: 700px;">
+            <h2 class="display-5 text-primary fw-bold">Produk Paling Banyak Dicari</h2>
+            <p class="text-muted">Produk favorit pelanggan kami.</p>
+        </div>
+        <div class="row g-4">
+            <?php while($row = $res_best->fetch_assoc()) renderCard($row, true, $isPaketFullToday); ?>
         </div>
     </div>
     <?php endif; ?>
 
-    <!-- ✅ PRODUK TERBARU -->
-    <div class="container-fluid py-5">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5 text-primary fw-bold">Produk Terbaru</h2>
-                <p class="text-muted">Pilihan alat dan paket jasa terbaik untuk kebutuhan Anda</p>
-            </div>
+    <!-- PRODUK TERBARU -->
+    <div class="container py-5">
+        <div class="text-center mx-auto mb-5" style="max-width: 700px;">
+            <h2 class="display-5 text-primary fw-bold">Koleksi Terbaru</h2>
+        </div>
+        <div class="row g-4">
+            <?php while($row = $res_new->fetch_assoc()) renderCard($row, false, $isPaketFullToday); ?>
+        </div>
+        <div class="text-center mt-5">
+            <a href="shop.php" class="btn btn-primary py-3 px-5 shadow-lg">Lihat Semua Produk</a>
+        </div>
+    </div>
 
-            <div class="row g-4 justify-content-center">
-                <?php foreach ($latest_products as $p): 
-                    $imgFile = $p['image'] ?? '';
-                    $imgUrl = 'img/noimage.png';
-                    
-                    if (!empty($imgFile)) {
-                        $fullPath = __DIR__ . '/img/produk/' . $imgFile;
-                        if (file_exists($fullPath)) {
-                            $imgUrl = 'img/produk/' . $imgFile;
-                        }
-                    }
-                ?>
-                <div class="col-md-6 col-lg-4 col-xl-3">
-                    <div class="product-card">
-                        <div class="product-image-wrapper">
-                            <img src="<?= $imgUrl ?>" 
-                                 class="product-image" 
-                                 alt="<?= htmlspecialchars($p['name']) ?>"
-                                 onerror="this.src='img/noimage.png';">
-                            <?php if (strtolower($p['status']) === 'bestseller'): ?>
-                            <div class="product-badges">
-                                <span class="badge badge-bestseller">
-                                    <i class="fa fa-star"></i> Bestseller
-                                </span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="product-content">
-                            <div class="product-category">
-                                <span class="badge badge-category">
-                                    <?= htmlspecialchars($p['tipe']) ?>
-                                </span>
-                            </div>
-                            <h5 class="product-name">
-                                <?= htmlspecialchars($p['name']) ?>
-                            </h5>
-                            <div class="product-spacer"></div>
-                            <div class="product-footer">
-                                <div class="product-price">
-                                    <?= rupiah($p['price']) ?>
-                                </div>
-                                <button class="btn btn-primary btn-sm openDetailBtn"
-                                        data-id="<?= htmlspecialchars($p['id']) ?>"
-                                        data-tipe="<?= htmlspecialchars($p['tipe']) ?>"
-                                        data-name="<?= htmlspecialchars($p['name']) ?>"
-                                        data-kat="<?= htmlspecialchars($p['kategori']) ?>"
-                                        data-desc="<?= htmlspecialchars($p['description']) ?>"
-                                        data-price="<?= htmlspecialchars($p['price']) ?>"
-                                        data-img="<?= $imgUrl ?>">
-                                    Detail <i class="fa fa-arrow-right ms-1"></i>
-                                </button>
-                            </div>
+    <!-- FOOTER SAMA -->
+    <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
+        <div class="container py-5">
+            <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
+                <div class="row g-4">
+                    <div class="col-lg-3">
+                        <a href="#"><h1 class="text-primary mb-0">ARTEFAX.ID</h1><p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p></a>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="d-flex justify-content-end pt-3">
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id" target="_blank"><i class="fab fa-instagram"></i></a>
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id" target="_blank"><i class="fab fa-tiktok"></i></a>
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia" target="_blank"><i class="fab fa-youtube"></i></a>
+                            <a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank"><i class="fab fa-whatsapp"></i></a>
                         </div>
                     </div>
                 </div>
-                <?php endforeach; ?>
             </div>
-
-            <div class="text-center mt-5">
-                <a href="shop.php" class="btn btn-primary btn-lg rounded-pill px-5">
-                    <i class="fa fa-arrow-right me-2"></i> Lihat Semua Produk
-                </a>
+            <div class="row g-5">
+                <div class="col-lg-3 col-md-6"><div class="footer-item"><h4 class="text-light mb-3">Tentang Kami</h4><p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional.</p><a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-primary">Lihat Layanan</a></div></div>
+                <div class="col-lg-3 col-md-6"><div class="d-flex flex-column text-start footer-item"><h4 class="text-light mb-3">Menu Cepat</h4><a class="btn-link" href="../index.php">Landing Page</a><a class="btn-link" href="shop.php">Shop</a><a class="btn-link" href="Services.php">Home</a></div></div>
+                <div class="col-lg-3 col-md-6"><div class="d-flex flex-column text-start footer-item"><h4 class="text-light mb-3">Akun Saya</h4><a class="btn-link" href="../View/profil.php">Profil</a><a class="btn-link" href="cart.php">Keranjang</a><a class="btn-link" href="../RiwayatBooking.php">Riwayat Booking</a></div></div>
+                <div class="col-lg-3 col-md-6"><div class="footer-item"><h4 class="text-light mb-3">Kontak</h4><p>Alamat: Jember, Jawa Timur</p><p>Email: artefaxm@gmail.com</p><p>WhatsApp: +62 896-5352-1667</p><p class="mt-3 mb-0">Pembayaran: Transfer Bank (BCA/BRI)</p><img src="img/pembayaran.png" class="img-fluid" alt="Metode Pembayaran" style="margin-top: 10px;"></div></div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DETAIL PRODUK -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+    <!-- MODAL & CART -->
+    <div class="modal fade" id="productModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content p-3">
-                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
-                <div class="row g-3">
-                    <div class="col-md-5">
-                        <img id="modalImg" src="" class="img-fluid rounded" alt="">
-                    </div>
-                    <div class="col-md-7">
-                        <h4 id="modalName"></h4>
-                        <p><small id="modalCat" class="text-muted"></small></p>
-                        <h5 class="text-primary" id="modalPrice"></h5>
-                        <p id="modalDesc"></p>
-                        <div class="d-flex gap-2 align-items-center">
-                            <label for="modalQty" class="mb-0">Jumlah:</label>
-                            <input type="number" id="modalQty" class="form-control" value="1" min="1" style="width:100px;">
-                            <button id="btnAddToCart" class="btn btn-primary flex-grow-1">
-                                <i class="fa fa-shopping-cart me-2"></i>Tambah ke Keranjang
-                            </button>
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 bg-light">
+                    <h5 class="modal-title fw-bold">Detail Produk</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <img id="modalImg" src="" class="img-fluid rounded shadow w-100" style="height:350px; object-fit:cover;">
+                        </div>
+                        <div class="col-md-6">
+                            <h3 id="modalName" class="fw-bold mb-2"></h3>
+                            <h4 class="fw-bold mb-4 text-warning" id="modalPrice"></h4>
+                            <p id="modalDesc" class="text-muted mb-4"></p>
+                            <div class="bg-light p-3 rounded border mb-4">
+                                <label class="fw-bold small mb-2 text-primary">Tanggal Sewa:</label>
+                                <input type="date" id="modalDateInput" class="form-control fw-bold text-center border-primary" value="<?= $today ?>">
+                            </div>
+                            <input type="hidden" id="modalId">
+                            <input type="hidden" id="modalType">
+                            <div class="d-flex gap-3">
+                                <input type="number" id="modalQty" class="form-control w-25 text-center fw-bold" value="1" min="1">
+                                <button id="btnAddToCart" class="btn btn-primary w-100 fw-bold text-white shadow-sm">Masuk Keranjang</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <style>
-        
-/* ============================================
-   PRODUCT CARD - FIXED LAYOUT
-   Tambahkan CSS ini ke css/style.css
-   ============================================ */
 
+    <?php if (file_exists(__DIR__ . "/components/cart_modal.php")) include __DIR__ . "/components/cart_modal.php"; ?>
 
-.product-card {
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.product-card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    transform: translateY(-4px);
-}
-
-/* Image Section */
-.product-image-wrapper {
-    position: relative;
-    overflow: hidden;
-    height: 250px;
-    background: #f8f9fa;
-}
-
-.product-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    transition: transform 0.4s ease;
-}
-
-.product-card:hover .product-image {
-    transform: scale(1.08);
-}
-
-/* Badges */
-.product-badges {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 2;
-}
-
-.badge-bestseller {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #000;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(255,215,0,0.3);
-}
-
-/* Overlay Button */
-.product-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.product-card:hover .product-overlay {
-    opacity: 1;
-}
-
-.product-overlay .btn {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* Content Section */
-.product-content {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.product-category {
-    margin-bottom: 8px;
-}
-
-.badge-category {
-    background-color: #e9ecef;
-    color: #495057;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-/* Product Name - Max 2 lines */
-.product-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #212529;
-    margin: 0 0 12px 0;
-    height: 3rem;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    line-height: 1.5rem;
-}
-
-/* Spacer to push footer down */
-.product-spacer {
-    flex-grow: 1;
-}
-
-/* Footer */
-.product-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid #e9ecef;
-}
-
-.product-price {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #81c408;
-}
-
-.product-footer .btn {
-    padding: 8px 16px;
-    font-size: 0.875rem;
-    border-radius: 6px;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-/* Responsive */
-@media (max-width: 1199px) {
-    .product-image-wrapper {
-        height: 220px;
-    }
-}
-
-@media (max-width: 767px) {
-    .product-image-wrapper {
-        height: 200px;
-    }
-    
-    .product-name {
-        font-size: 0.95rem;
-        height: 2.8rem;
-    }
-    
-    .product-price {
-        font-size: 1.1rem;
-    }
-    
-    .product-footer .btn {
-        font-size: 0.8rem;
-        padding: 6px 12px;
-    }
-}
-    </style>
-
-     <!-- Footer Start -->
-        <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
-            <div class="container py-5">
-                <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">
-                    <div class="row g-4">
-                        <div class="col-lg-3">
-                            <a href="#">
-                                <h1 class="text-primary mb-0">ARTEFAX.ID</h1>
-                                <p class="text-secondary mb-0">Paket Jasa & Sewa Alat</p>
-                            </a>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="position-relative mx-auto">
-                                <input class="form-control border-0 w-100 py-3 px-4 rounded-pill" type="number" placeholder="Your Email">
-                                <button type="submit" class="btn btn-primary border-0 border-secondary py-3 px-4 position-absolute rounded-pill text-white" style="top: 0; right: 0;">Subscribe Now</button>
-                            </div>
-                        </div>
-                        <div class="col-lg-3">
-                            <div class="d-flex justify-content-end pt-3">
-                                <a class="btn  btn-outline-secondary me-2 btn-md-square rounded-circle" href=""><i class="fab fa-twitter"></i></a>
-                                <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href=""><i class="fab fa-facebook-f"></i></a>
-                                <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href=""><i class="fab fa-youtube"></i></a>
-                                <a class="btn btn-outline-secondary btn-md-square rounded-circle" href=""><i class="fab fa-linkedin-in"></i></a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-5">
-                    <div class="col-lg-3 col-md-6">
-                        <div class="footer-item">
-                            <h4 class="text-light mb-3">Why People Like us!</h4>
-                            <p class="mb-4">typesetting, remaining essentially unchanged. It was 
-                                popularised in the 1960s with the like Aldus PageMaker including of Lorem Ipsum.</p>
-                            <a href="" class="btn border-secondary py-2 px-4 rounded-pill text-primary">Read More</a>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <div class="d-flex flex-column text-start footer-item">
-                            <h4 class="text-light mb-3">Shop Info</h4>
-                            <a class="btn-link" href="">About Us</a>
-                            <a class="btn-link" href="">Contact Us</a>
-                            <a class="btn-link" href="">Privacy Policy</a>
-                            <a class="btn-link" href="">Terms & Condition</a>
-                            <a class="btn-link" href="">Return Policy</a>
-                            <a class="btn-link" href="">FAQs & Help</a>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <div class="d-flex flex-column text-start footer-item">
-                            <h4 class="text-light mb-3">Account</h4>
-                            <a class="btn-link" href="">My Account</a>
-                            <a class="btn-link" href="">Shop details</a>
-                            <a class="btn-link" href="">Shopping Cart</a>
-                            <a class="btn-link" href="">Wishlist</a>
-                            <a class="btn-link" href="">Order History</a>
-                            <a class="btn-link" href="">International Orders</a>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                        <div class="footer-item">
-                            <h4 class="text-light mb-3">Contact</h4>
-                            <p>Address: 1429 Netus Rd, NY 48247</p>
-                            <p>Email: Example@gmail.com</p>
-                            <p>Phone: +0123 4567 8910</p>
-                            <p>Payment Accepted</p>
-                            <img src="img/payment.png" class="img-fluid" alt="">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Footer End -->
-
-        <!-- Copyright Start -->
-        <div class="container-fluid copyright bg-dark py-4">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        <span class="text-light"><a href="#"><i class="fas fa-copyright text-light me-2"></i>Your Site Name</a>, All right reserved.</span>
-                    </div>
-                    <div class="col-md-6 my-auto text-center text-md-end text-white">
-                        Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a> Distributed By <a class="border-bottom" href="https://themewagon.com">ThemeWagon</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Copyright End -->
-    <!-- ✅ CART MODAL & SCRIPT - DIPINDAHKAN KE SINI -->
-    <?php 
-    include __DIR__ . "/components/cart_modal.php";
-    include __DIR__ . "/components/cart_script.php";
-    ?>
-    <!-- JavaScript -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="lib/easing/easing.min.js"></script>
-    <script src="lib/lightbox/js/lightbox.min.js"></script>
-    <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        $(document).on('click', '.openDetailBtn', function(e){
+            e.preventDefault(); 
+            const btn = $(this);
+            $('#modalImg').attr('src', btn.data('img')); 
+            $('#modalName').text(btn.data('name')); 
+            $('#modalDesc').text(btn.data('desc')); 
+            $('#modalPrice').text(new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(btn.data('price')));
+            $('#modalId').val(btn.data('id')); 
+            $('#modalType').val(btn.data('tipe'));
+            $('#modalDateInput').val('<?= $today ?>');
+            new bootstrap.Modal(document.getElementById('productModal')).show();
+        });
 
-    <!-- Script untuk Popup & Add to Cart -->
-   <script>
-    $(document).on('click', '.openDetailBtn', function(){
-        const btn = $(this);
-        $('#modalImg').attr('src', btn.data('img'));
-        $('#modalName').text(btn.data('name'));
-        $('#modalCat').text(btn.data('kat'));
-        $('#modalDesc').text(btn.data('desc'));
-        const price = btn.data('price');
-        $('#modalPrice').text(new Intl.NumberFormat('id-ID', { 
-            style: 'currency', 
-            currency: 'IDR', 
-            maximumFractionDigits: 0 
-        }).format(price));
-        $('#modalQty').val(1);
-        $('#btnAddToCart').data('id', btn.data('id'));
-        $('#btnAddToCart').data('type', btn.data('tipe'));
-        $('#btnAddToCart').data('name', btn.data('name'));
-        $('#btnAddToCart').data('price', btn.data('price'));
-        $('#btnAddToCart').data('img', btn.data('img'));
-        $('#productModal').modal('show');
+        $('#btnAddToCart').click(function(e){
+            e.preventDefault(); 
+            const btn = $(this);
+            const d = $('#modalDateInput').val();
+            if(!d){ alert('Pilih tanggal sewa!'); return; }
+            btn.prop('disabled',true).html('Loading...');
+            $.ajax({
+                url: 'root/cart_add.php',
+                method: 'POST',
+                data: {
+                    id: $('#modalId').val(),
+                    type: $('#modalType').val(),
+                    qty: $('#modalQty').val(),
+                    date: d,
+                    name: $('#modalName').text(),
+                    price: $('#modalPrice').text().replace(/[^0-9]/g,'')
+                },
+                dataType: 'json',
+                success: function(r){
+                    if(r.status==='success'){
+                        $('.cart-badge').text(r.cart_count);
+                        btn.html('Berhasil!');
+                        setTimeout(() => {
+                            bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                            btn.prop('disabled',false).html('Masuk Keranjang');
+                        }, 800);
+                    } else {
+                        alert(r.message || 'Gagal menambah ke keranjang');
+                        btn.prop('disabled',false).html('Masuk Keranjang');
+                    }
+                },
+                error: function(){
+                    alert('Gagal terhubung ke server');
+                    btn.prop('disabled',false).html('Masuk Keranjang');
+                }
+            });
+        });
     });
-
-$('#btnAddToCart').click(function(){
-    const id = $(this).data('id');
-    const type = $(this).data('type');
-    const name = $(this).data('name');
-    const price = $(this).data('price');
-    const qty = parseInt($('#modalQty').val()) || 1;
-
-    // Efek tombol langsung berubah biar user tahu diklik
-    const btn = $(this);
-    const originalText = btn.html();
-    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Menambahkan...');
-
-    fetch('root/cart_add.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `id=${id}&type=${type}&name=${encodeURIComponent(name)}&price=${price}&qty=${qty}`
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update angka keranjang langsung
-            const cartBadge = $('.position-absolute.bg-secondary');
-            cartBadge.text(data.cart_count);
-            
-            // Efek angka naik (opsional, keren)
-            cartBadge.addClass('animate__animated animate__bounceIn');
-            setTimeout(() => cartBadge.removeClass('animate__animated animate__bounceIn'), 600);
-
-            // Tutup modal
-            $('#productModal').modal('hide');
-
-            // Optional: kasih feedback halus tanpa alert
-            // Bisa ditambahin toast kecil nanti kalau mau
-        } else {
-            alert('Gagal menambah ke keranjang: ' + (data.message || 'Coba lagi'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Gagal terhubung ke server!');
-    })
-    .finally(() => {
-        // Kembalikan tombol
-        btn.prop('disabled', false).html(originalText);
-    });
-});
     </script>
-
-    <script src="js/main.js"></script>
 </body>
 </html>
