@@ -320,7 +320,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <a href="../../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link">
+                        <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link">
                             <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
                         </a>
                     </li>
@@ -341,7 +341,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
                         <a href="../../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="../../,,/logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                        <a href="../../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>

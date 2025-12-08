@@ -8,7 +8,7 @@ include __DIR__ . '/../config/koneksi.php';
 $autoDateValue = "";
 
 if (isset($_GET['date']) && !empty($_GET['date'])) {
-   $autoDateValue = date('Y-m-d\TH:i', strtotime($_GET['date'] . ' 09:00'));;
+   $autoDateValue = date('Y-m-d\TH:i', strtotime($_GET['date'] . ' 09:00'));
 }
 
 // === CEK LOGIN & AMBIL DATA USER ===
@@ -134,16 +134,61 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css?v=<?= time() ?>" rel="stylesheet">
     
+    <!-- CSS INTERNAL: NAVBAR FIXED TOP 100% -->
+    <style>
+        /* Navbar benar-benar fixed */
+        .navbar-fixed-custom {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            background-color: #fff !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* Konten tidak tertutup navbar */
+        body {
+            padding-top: 90px !important;
+        }
+        .checkout-title {
+            color: #ffffff !important;
+        }
+
+        @media (max-width: 991.98px) {
+            body {
+                padding-top: 80px !important;
+            }
+        }
+
+        /* Spinner tetap di atas semua */
+        #spinner {
+            position: fixed !important;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.98);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-header {
+            margin-top: 2rem;
+        }
+    </style>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
-<div id="spinner" class="show w-100 vh-100 bg-white position-fixed translate-middle top-50 start-50 d-flex align-items-center justify-content-center">
-    <div class="spinner-grow text-primary" role="status"></div>
+<!-- SPINNER -->
+<div id="spinner" class="show">
+    <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
 </div>
 
-<div class="container-fluid fixed-top px-0">
+<!-- NAVBAR DENGAN KELAS FIXED MANUAL -->
+<div class="navbar-fixed-custom">
     <nav class="navbar navbar-light bg-white navbar-expand-xl shadow-sm">
         <div class="container">
             <a href="../index.php" class="navbar-brand">
@@ -169,17 +214,19 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
     </nav>
 </div>
 
+<!-- HEADER -->
 <div class="container-fluid page-header mb-5">
     <div class="container text-center">
-        <h1 class="display-5 text-white fw-bold mb-2">Checkout</h1>
+        <h1 class="display-5 fw-bold mb-2 checkout-title">Checkout</h1>
         <p class="text-white-50 mb-0">Lengkapi data pemesanan Anda</p>
     </div>
 </div>
 
+<!-- NOTIFIKASI SWEETALERT -->
 <?php if($success): ?>
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
-  Swal.fire({ icon:'success', title:'Berhasil', text: <?= json_encode($success) ?>, timer:2000, showConfirmButton:false });
+  Swal.fire({ icon:'success', title:'Berhasil', text: <?= json_encode($success) ?>, timer:3000, showConfirmButton:false });
 });
 </script>
 <?php endif; ?>
@@ -195,17 +242,18 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <?php if(!empty($blockedProducts)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
-  let productList = <?= json_encode(array_column($blockedProducts, 'name')) ?>.join('<br>');
+  let list = <?= json_encode($blockedProducts) ?>.join('<br>');
   Swal.fire({
     icon:'warning',
     title:'Produk Tidak Tersedia',
-    html: 'Produk berikut telah mencapai batas booking hari ini dan dihapus dari keranjang:<br><br><strong>' + productList + '</strong><br><br>Silakan pilih tanggal lain atau produk lain.',
+    html: 'Produk berikut telah mencapai batas booking hari ini dan dihapus dari keranjang:<br><br><strong>' + list + '</strong><br><br>Silakan pilih tanggal lain atau produk lain.',
     confirmButtonText: 'OK'
   });
 });
 </script>
 <?php endif; ?>
 
+<!-- KONTEN UTAMA -->
 <div class="container py-5">
   
   <?php if (empty($cart)): ?>
@@ -353,13 +401,12 @@ document.addEventListener('DOMContentLoaded', ()=> {
                           <br><small id="infoDurasi" class="text-muted" style="font-size: 0.75em;"></small>
                       </td>
                     </tr>
-                    <tr id="dpRow" style="background-color: #fff3cd;"> <td colspan="2" class="text-end fw-bold p-3" style="color: #856404;"> Bayar Sekarang (DP 50%):
-                        </td>
-                        <td class="text-end p-3">
-                            <strong class="fs-4" id="totalDp" style="color: #d39e00;"> <?= rupiah($total * 0.5) ?>
-                            </strong>
-                        </td>
-                      </tr>
+                    <tr id="dpRow" style="background-color: #fff3cd;">
+                      <td colspan="2" class="text-end fw-bold p-3" style="color: #856404;"> Bayar Sekarang (DP 50%):</td>
+                      <td class="text-end p-3">
+                          <strong class="fs-4" id="totalDp" style="color: #d39e00;"> <?= rupiah($total * 0.5) ?></strong>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -377,10 +424,10 @@ document.addEventListener('DOMContentLoaded', ()=> {
   <?php endif; ?>
 </div>
 
- 
-    <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
+<!-- FOOTER -->
+<div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
     <div class="container py-5">
-        <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5) ;">
+        <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
             <div class="row g-4">
                 <div class="col-lg-3">
                     <a href="#">
@@ -388,21 +435,12 @@ document.addEventListener('DOMContentLoaded', ()=> {
                         <p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
                     </a>
                 </div>
-    
                 <div class="col-lg-3">
                     <div class="d-flex justify-content-end pt-3">
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" target="_blank">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" target="_blank">
-                            <i class="fab fa-tiktok"></i>
-                        </a>
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" target="_blank">
-                            <i class="fab fa-youtube"></i>
-                        </a>
-                        <a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
+                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" target="_blank"><i class="fab fa-instagram"></i></a>
+                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" target="_blank"><i class="fab fa-tiktok"></i></a>
+                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" target="_blank"><i class="fab fa-youtube"></i></a>
+                        <a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank"><i class="fab fa-whatsapp"></i></a>
                     </div>
                 </div>
             </div>
@@ -449,6 +487,11 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <script src="js/main.js"></script>
 
 <script>
+// Hilangkan spinner setelah load
+window.addEventListener('load', () => {
+    document.getElementById('spinner').style.display = 'none';
+});
+
 // Format Rupiah
 const formatter = new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -457,28 +500,20 @@ const formatter = new Intl.NumberFormat('id-ID', {
 });
 
 document.addEventListener("DOMContentLoaded", function() {
-    // === 1. LOGIKA MIN DATE (Tanggal Selesai >= Tanggal Mulai) ===
     const tglMulaiInput = document.getElementById("inputTglMulai");
     const tglSelesaiInput = document.getElementById("inputTglSelesai");
     
     function updateMinDate() {
         if (tglMulaiInput.value) {
-            // Set atribut min pada input selesai
             tglSelesaiInput.min = tglMulaiInput.value;
-            
-            // Jika user sebelumnya memilih tanggal yang lebih kecil, reset.
             if (tglSelesaiInput.value && tglSelesaiInput.value < tglMulaiInput.value) {
                 tglSelesaiInput.value = ""; 
             }
         }
     }
-    
-    // Jalankan saat load & saat berubah
     updateMinDate();
     tglMulaiInput.addEventListener("change", updateMinDate);
 
-
-    // === 2. LOGIKA UPDATE HARGA (DURASI > 24 JAM = 2x LIPAT) ===
     function updatePrices() {
         const startVal = tglMulaiInput.value;
         const endVal = tglSelesaiInput.value;
@@ -489,16 +524,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (startVal && endVal) {
             const startDate = new Date(startVal);
             const endDate = new Date(endVal);
-            
-            // Hitung selisih waktu dalam milidetik
             const diffTime = endDate - startDate;
-            // Konversi ke jam
             const diffHours = diffTime / (1000 * 60 * 60);
-
-            // Hitung jumlah hari (pembulatan ke atas per 24 jam)
             multiplier = Math.ceil(diffHours / 24);
-            
-            // Jaga-jaga agar minimal tetap 1 (tidak boleh 0 atau negatif)
             if (multiplier < 1) multiplier = 1;
 
             if (multiplier > 1) {
@@ -509,31 +537,23 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
-        // Update Subtotal per Item
         $('.subtotal-item').each(function() {
             const basePrice = parseFloat($(this).data('base-price'));
             const newPrice = basePrice * multiplier;
             $(this).text(formatter.format(newPrice));
         });
 
-        // Update Grand Total
         const totalElem = $('#totalFull');
         const baseTotal = parseFloat(totalElem.data('base-total'));
         const newTotal = baseTotal * multiplier;
-        
         totalElem.text(formatter.format(newTotal));
 
-        // Update DP (50% dari Total Baru)
         const newDp = newTotal * 0.5;
         $('#totalDp').text(formatter.format(newDp));
     }
 
-    // Event Listener untuk update harga
-    $('#inputTglMulai').on('change', updatePrices);
-    $('#inputTglSelesai').on('change', updatePrices);
+    $('#inputTglMulai, #inputTglSelesai').on('change', updatePrices);
 
-
-    // === 3. LOGIKA TOMBOL DP (UI) ===
     function updateDpVisibility(){
         const payment = $('input[name=payment]:checked').val();
         if(payment === 'dp'){ $('#dpRow').show(); } else { $('#dpRow').hide(); }
@@ -542,9 +562,8 @@ document.addEventListener("DOMContentLoaded", function() {
     $('input[name=payment]').on('change', updateDpVisibility);
 });
 
-// === 4. LOGIKA KONFIRMASI (SWEETALERT) ===
+// SweetAlert Konfirmasi Checkout
 document.getElementById("btnKonfirmasi").addEventListener("click", function () {
-    // Validasi Sederhana sebelum popup
     if(!document.getElementById("inputTglMulai").value || !document.getElementById("inputTglSelesai").value){
         Swal.fire('Error', 'Mohon lengkapi tanggal sewa.', 'error');
         return;
