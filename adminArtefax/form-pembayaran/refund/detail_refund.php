@@ -1,7 +1,7 @@
 <?php
-
+// Kode PHP bisa ditambahkan di sini jika perlu (misal proteksi session)
 ?>
-<div class="popup-overlay" id="detailPopupRefund">
+<div class="popup-overlay" id="detailPopupRefund" style="z-index: 99999 !important;">
     <div class="popup-content" id="draggablePopupRefund">
         <div class="popup-header" id="dragHandleRefund">
             <span id="popupTitleRefund">Detail Pengajuan Refund</span>
@@ -16,116 +16,119 @@
         </div>
     </div>
 </div>
+
 <style>
 .popup-overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.8);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    }
-    .popup-content {
-        background: #fff;
-        width: 80%;
-        max-width: 900px;
-        max-height: 92vh;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 20px 70px rgba(0,0,0,0.4);
-        position: relative;
-    }
-    .popup-header {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-        color: white;
-        padding: 18px 25px;
-        font-size: 1.5em;
-        font-weight: bold;
-        cursor: grab;
-        user-select: none;
-        position: relative;
-    }
-    .popup-header:active { cursor: grabbing; }
-    .close-popup {
-        position: absolute;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 34px;
-        cursor: pointer;
-        opacity: 0.9;
-    }
-    .close-popup:hover { opacity: 1; }
-    .popup-body {
-        padding: 25px;
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-    .section {
-        margin-bottom: 25px;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 12px;
-        border-left: 6px solid #4361ee;
-    }
-    .section h3 {
-        margin: 0 0 18px 0;
-        color: #2d3436;
-        font-size: 1.35em;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    table.info-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 1.02em;
-    }
-    table.info-table td {
-        padding: 11px 0;
-        border-bottom: 1px dashed #ddd;
-    }
-    table.info-table td:first-child {
-        width: 38%;
-        font-weight: 600;
-        color: #444;
-    }
-    .badge {
-        padding: 6px 16px;
-        border-radius: 50px;
-        font-weight: bold;
-        font-size: 0.9em;
-    }
-    .badge-lunas { background: #d4edda; color: #155724; }
-    .badge-dp { background: #fff3cd; color: #856404; }
-    .badge-pending { background: #fff3cd; color: #b8860b; }
-    .item-list {
-        margin: 15px 0;
-        padding-left: 5px;
-    }
-    .item-list li {
-        padding: 8px 0;
-        color: #2d3436;
-        font-size: 1.05em;
-    }
-    .btn-bukti {
-        background: #4361ee;
-        color: white;
-        border: none;
-        padding: 11px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-    .btn-bukti:hover {
-        background: #3f37c9;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(67,97,238,0.4);
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 99999 !important; /* DIPAKSA DI DEPAN */
+    justify-content: center;
+    align-items: center;
+}
+.popup-content {
+    background: #fff;
+    width: 80%;
+    max-width: 900px;
+    max-height: 92vh;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 70px rgba(0,0,0,0.4);
+    position: relative;
+}
+.popup-header {
+    background: linear-gradient(135deg, #4361ee, #3f37c9);
+    color: white;
+    padding: 18px 25px;
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+}
+.popup-header:active { cursor: grabbing; }
+.close-popup {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 34px;
+    cursor: pointer;
+    opacity: 0.9;
+}
+.close-popup:hover { opacity: 1; }
+.popup-body {
+    padding: 25px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 6px solid #4361ee;
+}
+.section h3 {
+    margin: 0 0 18px 0;
+    color: #2d3436;
+    font-size: 1.35em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+table.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.02em;
+}
+table.info-table td {
+    padding: 11px 0;
+    border-bottom: 1px dashed #ddd;
+}
+table.info-table td:first-child {
+    width: 38%;
+    font-weight: 600;
+    color: #444;
+}
+.badge {
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+.badge-lunas { background: #d4edda; color: #155724; }
+.badge-dp { background: #fff3cd; color: #856404; }
+.badge-pending { background: #fff3cd; color: #b8860b; }
+.badge-ditolak { background: #f8d7da; color: #721c24; } /* TAMBAHAN UNTUK DITOLAK */
+.item-list {
+    margin: 15px 0;
+    padding-left: 5px;
+}
+.item-list li {
+    padding: 8px 0;
+    color: #2d3436;
+    font-size: 1.05em;
+}
+.btn-bukti {
+    background: #4361ee;
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+.btn-bukti:hover {
+    background: #3f37c9;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(67,97,238,0.4);
+}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 </style>
+
 <script>
 let isDraggingRefund = false, startX_r, startY_r, offsetX_r = 0, offsetY_r = 0;
 const popupRefundEl = document.getElementById('draggablePopupRefund');
@@ -155,42 +158,46 @@ function openRefundPopup(data) {
     popupRefundEl.style.transform = 'translate(0,0)';
     offsetX_r = offsetY_r = 0;
 
-    // Status badge
+    // PERBAIKAN: Status badge dan text benar-benar sesuai
     const status = (data.RefundStatus || 'Pending').trim();
     let badgeClass = 'badge-pending';
     let statusText = status;
-    if (status === 'Disetujui') { badgeClass = 'badge-lunas'; statusText = 'Disetujui'; }
-    if (status === 'Ditolak') { badgeClass = 'badge'; badgeClass += ' bg-danger text-white'; statusText = 'Ditolak'; }
+
+    if (status === 'Disetujui') {
+        badgeClass = 'badge-lunas';
+        statusText = 'Disetujui';
+    }
+    if (status === 'Ditolak') {
+        badgeClass = 'badge-ditolak';
+        statusText = 'Ditolak';
+    }
 
     // Format tanggal
-    const waktuRefund = new Date(data.RefundWaktu).toLocaleString('id-ID', { 
-        dateStyle: 'full', 
-        timeStyle: 'short' 
+    const waktuRefund = new Date(data.RefundWaktu).toLocaleString('id-ID', {
+        dateStyle: 'full',
+        timeStyle: 'short'
     });
-
     const tglMulai = data.BkgTglMulai ? new Date(data.BkgTglMulai).toLocaleDateString('id-ID') : '-';
 
     // Daftar pesanan
-    const items = data.DaftarPesanan 
+    const items = data.DaftarPesanan
         ? data.DaftarPesanan.split(', ').map(i => `<li>${i.trim()}</li>`).join('')
         : '<li style="color:#888"><em>Tidak ada item</em></li>';
 
     const html = `
         <div class="section">
-            <h3><span class="badge badge-warning">Menunggu Konfirmasi Refund</span> #REFUND${String(data.IDRefund).padStart(6, '0')}</h3>
-            
+            <h3><span class="badge ${badgeClass}">${statusText}</span> #REFUND${String(data.IDRefund).padStart(6, '0')}</h3>
+           
             <div style="margin: 20px 0; padding: 18px; background: #fff3cd; border-radius: 10px; border-left: 5px solid #ffc107;">
                 <strong>Alasan Pengajuan Refund:</strong><br>
                 <p style="margin: 10px 0 0; font-style: italic; color: #555;">"${data.RefundAlasan || '-'}"</p>
             </div>
-
             <table class="info-table">
                 <tr><td>Jumlah Refund Diajukan</td><td><strong style="font-size:1.3em; color:#e74c3c;">Rp ${Number(data.RefundJumlah).toLocaleString('id-ID')}</strong></td></tr>
                 <tr><td>Waktu Pengajuan</td><td>${waktuRefund}</td></tr>
                 <tr><td>Status Refund</td><td><span class="badge ${badgeClass}">${statusText}</span></td></tr>
             </table>
         </div>
-
         <div class="section">
             <h3>Informasi Booking Terkait</h3>
             <table class="info-table">
@@ -202,12 +209,13 @@ function openRefundPopup(data) {
                 <tr><td>Status Booking</td><td><span class="badge ${data.BkgStatus === 'Selesai' ? 'badge-lunas' : 'badge-pending'}">${data.BkgStatus || '-'}</span></td></tr>
             </table>
         </div>
-
         <div class="section">
             <h3>Daftar Pesanan</h3>
             <ul class="item-list">${items}</ul>
         </div>
 
+        <!-- Tombol hanya muncul jika status masih Pending -->
+        ${status === 'Pending' ? `
         <div style="margin-top: 30px; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px;">
             <button class="btn-bukti" style="background:#27ae60; margin:0 10px;" onclick="konfirmasiRefund(${data.IDRefund}, 'Disetujui')">
                 Setujui Refund
@@ -215,7 +223,7 @@ function openRefundPopup(data) {
             <button class="btn-bukti" style="background:#e74c3c; margin:0 10px;" onclick="konfirmasiRefund(${data.IDRefund}, 'Ditolak')">
                 Tolak Refund
             </button>
-        </div>
+        </div>` : ''}
     `;
 
     document.getElementById('popupTitleRefund').textContent = `Detail Refund #REFUND${String(data.IDRefund).padStart(6, '0')}`;
@@ -235,23 +243,24 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeRefundPopup();
 });
 
-// Fungsi konfirmasi (kamu bisa sesuaikan dengan AJAX ke backend)
+// PERBAIKAN UTAMA: Status dikirim sesuai tombol yang diklik
 function konfirmasiRefund(idRefund, status) {
-    if (!confirm(`Apakah Anda yakin ingin ${status === 'Disetujui' ? 'menyetujui' : 'menolak'} refund ini?`)) return;
+    const aksi = status === 'Disetujui' ? 'menyetujui' : 'menolak';
+    if (!confirm(`Apakah Anda yakin ingin ${aksi} refund ini?`)) return;
 
     fetch('proses_refund.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `action=update_status&id=${idRefund}&status=${status}`
+        body: `action=update_status&id=${idRefund}&status=${encodeURIComponent(status)}`
     })
     .then(r => r.json())
     .then(res => {
         if (res.success) {
-            alert(`Refund telah ${status.toLowerCase()}!`);
+            alert(`Refund telah ${status === 'Disetujui' ? 'disetujui' : 'ditolak'}!`);
             closeRefundPopup();
-            location.reload(); // atau refresh tabel saja
+            location.reload();
         } else {
-            alert('Gagal: ' + res.message);
+            alert('Gagal: ' + (res.message || 'Terjadi kesalahan'));
         }
     })
     .catch(() => alert('Terjadi kesalahan jaringan'));

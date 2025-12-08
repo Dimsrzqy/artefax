@@ -1,7 +1,23 @@
 <?php
+
 session_start();
+
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/pembayaran.php";
+
+// --- START: VERIFIKASI SESI KRITIS (Diambil dari LaporanBooking) ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    // Path relatif dari /adminArtefax/form-laporan/LaporanKeuangan.php ke /adminArtefax/view/login.php
+    header("Location: ../../View/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI SESI KRITIS ---
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -15,6 +31,7 @@ $endDate = $_GET['end_date'] ?? null;
 $statusFilter = ['Lunas', 'Pending', 'Lunas DP', 'Gagal']; 
 
 try {
+    // Note: Modify('+1 day') pada endDate sudah benar untuk mencakup seluruh hari di tanggal yang dipilih.
     if ($startDate) $startDate = (new DateTime($startDate))->format('Y-m-d');
     if ($endDate)  $endDate  = (new DateTime($endDate))->modify('+1 day')->format('Y-m-d');
 } catch (Exception $e) {
@@ -22,43 +39,101 @@ try {
     $_SESSION['error_message'] = "Format tanggal tidak valid.";
 }
 
-/* ============== EXPORT EXCEL ============== */
-if (isset($_GET['export']) && $_GET['export'] == 'excel') {
+/* ============== EXPORT CSV (DIPERBAIKI UNTUK MENGHINDARI WARNING) ============== */
+if (isset($_GET['export']) && $_GET['export'] == 'excel') { 
+    ob_clean(); // Bersihkan output buffer sebelum header
+
+    // >>> SOLUSI: INISIALISASI VARIABEL DISPLAY DARI $_GET DI SINI <<<
+    $displayStartDate = $_GET['start_date'] ?? ''; 
+    $displayEndDate = $_GET['end_date'] ?? '';
+    // >>> END SOLUSI <<<
+
     $dataToExport = $pembayaran->readJoin(null, null, $startDate, $endDate, $statusFilter);
 
+    // Helper untuk menentukan jenis layanan
     $getJenis = fn($j) => $j == 'Paket Jasa,Alat' ? 'Paket & Alat' : ($j ?? '-');
 
-    header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment; filename="Laporan_Keuangan_ArtefaxID_' . date('Ymd_His') . '.xls"');
+    // Helper untuk membersihkan nilai numerik
+    $cleanNumber = fn($num) => is_numeric($num) ? (float)$num : 0;
+    
+    // Header untuk file CSV
+    $filename = "Laporan_Keuangan_ArtefaxID_" . date('Ymd_His') . ".csv";
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header("Pragma: no-cache");
+    header("Expires: 0");
 
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['No', 'Nama Pelanggan', 'Jenis', 'Pesanan', 'Harga Awal', 'Jumlah Refund', 'PENDAPATAN BERSIH', 'Metode', 'Status Pembayaran', 'Waktu', 'ID Pembayaran', 'ID Booking'], "\t");
+    
+    // Tulis BOM (Byte Order Mark) untuk Excel compatibility
+    fwrite($out, "\xEF\xBB\xBF");
+
+    // --- BARIS HEADER LAPORAN ---
+    // Gunakan $displayStartDate yang sudah didefinisikan di awal blok.
+    $displayStartFormatted = $displayStartDate ? date('d/m/Y', strtotime($displayStartDate)) : 'Awal';
+    $displayEndFormatted = $displayEndDate ? date('d/m/Y', strtotime($displayEndDate)) : 'Sekarang';
+
+    fputcsv($out, ["LAPORAN KEUANGAN ARTEFAX"], ';');
+    fputcsv($out, ["Periode: $displayStartFormatted s/d $displayEndFormatted"], ';');
+    fputcsv($out, [''], ';'); 
+
+    // Header Kolom Tabel
+    $header = [
+        'No', 
+        'Nama Pelanggan', 
+        'Jenis', 
+        'Pesanan', 
+        'Harga Awal (Rp)', 
+        'Jumlah Refund (Rp)', 
+        'PENDAPATAN BERSIH (Rp)', 
+        'Metode', 
+        'Status Pembayaran', 
+        'Waktu Transaksi', 
+        'ID Pembayaran', 
+        'ID Booking'
+    ];
+    fputcsv($out, $header, ';');
 
     $no = 1;
+    $grandTotalPendapatan = 0; 
+    
     foreach ($dataToExport as $p) {
-        $refundJumlah = $p['RefundJumlah'] ?? 0;
-        $pendapatanBersih = $p['PbrJumlah']; 
+        $refundJumlah = $cleanNumber($p['RefundJumlah'] ?? 0);
+        $pendapatanBersih = $cleanNumber($p['PbrJumlah']); 
         $hargaAwal = $pendapatanBersih + $refundJumlah;
         
+        $grandTotalPendapatan += $pendapatanBersih;
+
+        // Data yang siap ditulis ke CSV
         $dataRow = [
             $no++,
             $p['UserNama'],
             $getJenis($p['JenisBooking']),
             $p['DaftarPesanan'] ?? '-',
-            $hargaAwal, 
-            $refundJumlah, 
-            $pendapatanBersih, 
+            $hargaAwal,             // Nilai numerik tanpa format Rupiah
+            $refundJumlah,          // Nilai numerik tanpa format Rupiah
+            $pendapatanBersih,      // Nilai numerik tanpa format Rupiah (PENDAPATAN BERSIH)
             $p['PbrMetode'],
             $p['PbrStatus'], 
             date('d/m/Y H:i', strtotime($p['CreatedAt'])),
             $p['IDPembayaran'],
             $p['IDBooking'],
         ];
-        fputcsv($out, $dataRow, "\t");
+        
+        fputcsv($out, $dataRow, ';');
     }
+
+    // --- BARIS SUMMARY ---
+    fputcsv($out, [''], ';'); 
+    fputcsv($out, ['TOTAL TRANSAKSI', '', '', '', '', '', count($dataToExport)], ';');
+    fputcsv($out, ['TOTAL PENDAPATAN BERSIH (Periode Filter)', '', '', '', '', '', $grandTotalPendapatan], ';');
+    fputcsv($out, [''], ';'); 
+
     fclose($out);
     exit();
 }
+/* ============== AKHIR DARI EXPORT CSV (DIPERBARUI) ============== */
 
 /* ============== PAGINATION ============== */
 $limit = 10;
@@ -87,6 +162,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
 
 $displayStartDate = $_GET['start_date'] ?? '';
 $displayEndDate  = $_GET['end_date'] ?? '';
+
+// Ambil data sesi untuk header
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/artefax.jpg';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -103,6 +185,59 @@ $displayEndDate  = $_GET['end_date'] ?? '';
         /* ============================================= */
         /* CSS INTERNAL YANG DIRAPIKAN */
         /* ============================================= */
+        
+        /* FIX LAYOUT CSS */
+        .az-body {
+            padding-top: 70px !important; /* Ruang untuk fixed header */
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px; /* Di bawah header */
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important;
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        /* Responsive Layout untuk body content */
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important; /* Memberi ruang untuk fixed sidebar */
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                width: 100%;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+                display: none; /* Sembunyikan sidebar di mobile, akan ditampilkan via JS jika perlu */
+            }
+        }
+        /* END FIX LAYOUT CSS */
+
         /* Tabel & Badge */
         .custom-table {
             width: 100%;
@@ -142,33 +277,37 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             border-bottom: none
         }
 
+        /* PERBAIKAN BADGE: Menambahkan status Lunas DP dan menyesuaikan padding/font size */
+        .badge-base {
+            padding: 6px 8px; /* Mengurangi padding horizontal sedikit */
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .75rem; /* Mengurangi ukuran font agar teks panjang muat */
+            white-space: nowrap; /* Mencegah wrap */
+        }
+
         .badge-sukses {
             background: #d4edda;
             color: #155724;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
         }
         
         .badge-pending {
             background: #ffc107;
             color: #383d41;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
+        }
+        
+        /* STATUS BARU: Lunas DP */
+        .badge-lunas-dp {
+            background: #00bcd4; /* Warna Biru Muda */
+            color: #fff;
         }
         
         .badge-gagal { 
             background: #dc3545;
             color: #fff;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
         }
-        
+        /* AKHIR PERBAIKAN BADGE */
+
         /* Button style dasar */
         .btn {
             padding: 10px 20px;
@@ -298,7 +437,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
     </style>
 </head>
 
-<body>
+<body class="az-body">
     <div class="az-header">
         <div class="container">
             <div class="az-header-left">
@@ -308,42 +447,47 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
-                    <li class="nav-item"><a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a></li>
-                    <li class="nav-item"><a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a></li>
-                    <li class="nav-item"><a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a></li>
-                    <li class="nav-item"><a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a></li>
-                    <li class="nav-item active"><a href="LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a></li>
                     <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../template/index.html" class="nav-link"><i class="typcn typcn-chart-area-outline"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link">
+                            <i class="fas fa-money-bill-alt" style="margin-right: 8px;"></i> Pembayaran
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link">
+                            <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
+                        </a>
                     </li>
                 </ul>
             </div>
             <div class="az-header-right">
-                <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
-                <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message"><a href="#"><i class="typcn typcn-messages"></i></a></div>
-                <div class="dropdown az-header-notification">
-                    <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu"> </div>
-                </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
-                    <div class="dropdown-menu"> </div>
+                    <a href="#" class="az-img-user" id="profileDropdownToggle"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <div class="dropdown-menu">
+                        <div class="az-dropdown-header d-sm-none">
+                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
+                        </div>
+                        <div class="az-header-profile">
+                            <div class="az-img-user">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
+                            </div>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -351,7 +495,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
 
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
-            <div class="az-content-left az-content-left-components">
+            <div class="az-content-left az-content-left-components d-lg-block d-none">
                 <div class="component-item">
                     <label>Laporan</label>
                     <nav class="nav flex-column">
@@ -368,7 +512,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                     <span>Data</span>
                     <span>Keuangan</span>
                 </div>
-                <h2 class="az-content-title">Laporan Keuangan</h2>
+                <h2 class="az-content-title"><i class="fas fa-money-bill-alt"></i> Laporan Keuangan</h2>
 
                 <div class="mg-t-20">
                     <form method="GET">
@@ -396,7 +540,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                                 $link = http_build_query($exportParams);
                                 ?>
                                 <a href="?<?= $link ?>" class="btn btn-success">
-                                    <i class="fas fa-file-excel"></i> Export Excel
+                                    <i class="fas fa-file-excel"></i> Export CSV
                                 </a>
                             </div>
 
@@ -417,7 +561,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                     <?php if ($daftarPembayaran): ?>
                         
                         <div class="total-box mb-3">
-                            Total Pendapatan Bersih (Periode Filter): 
+                            Total Pendapatan Bersih: 
                             <strong style="color: <?= $grandTotalPendapatan < 0 ? '#dc3545' : '#0f8f4f' ?>;">
                                 Rp <?= number_format($grandTotalPendapatan, 0, ',', '.') ?>
                             </strong>
@@ -445,21 +589,25 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                                     $hargaAwalBooking = ($pendapatanBersih + $refundJumlah); // Hitung mundur harga awal
 
                                     // Tentukan badge status
-                                    $statusBadgeClass = 'badge-sukses';
+                                    $statusBadgeClass = 'badge-base badge-sukses';
                                     $statusText = $p['PbrStatus'] ?? 'Lunas';
                                     
                                     if (isset($p['BkgStatus']) && $p['BkgStatus'] == 'Batal') {
-                                        $statusBadgeClass = 'badge-gagal';
+                                        $statusBadgeClass = 'badge-base badge-gagal';
                                         $statusText = 'Batal';
                                     } elseif (isset($p['PbrStatus'])) {
-                                        if ($p['PbrStatus'] == 'Pending' || $p['PbrStatus'] == 'Lunas DP') {
-                                            $statusBadgeClass = 'badge-pending';
-                                            $statusText = $p['PbrStatus'];
+                                        if ($p['PbrStatus'] == 'Pending') {
+                                            $statusBadgeClass = 'badge-base badge-pending';
+                                            $statusText = 'Pending';
+                                        } elseif ($p['PbrStatus'] == 'Lunas DP') {
+                                            // Status Baru
+                                            $statusBadgeClass = 'badge-base badge-lunas-dp'; 
+                                            $statusText = 'Lunas DP';
                                         } elseif ($p['PbrStatus'] == 'Gagal') {
-                                            $statusBadgeClass = 'badge-gagal';
+                                            $statusBadgeClass = 'badge-base badge-gagal';
                                             $statusText = 'Gagal';
                                         } else {
-                                            $statusBadgeClass = 'badge-sukses';
+                                            $statusBadgeClass = 'badge-base badge-sukses';
                                             $statusText = 'Lunas';
                                         }
                                     }
@@ -469,7 +617,7 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                                         <td><?= htmlspecialchars($p['UserNama']) ?></td>
                                         <td><?= $p['JenisBooking'] == 'Paket Jasa,Alat' ? 'Paket & Alat' : htmlspecialchars($p['JenisBooking'] ?? '-') ?></td>
                                         <td><?= htmlspecialchars($p['DaftarPesanan'] ?? '-') ?></td>
-                                        <td><strong style="color: <?= $refundJumlah > 0 ? '#dc3545' : '#0f8f4f' ?>;">Rp <?= number_format($pendapatanBersih, 0, ',', '.') ?></strong></td>
+                                        <td><strong style="color: <?= $pendapatanBersih < 0 ? '#dc3545' : '#0f8f4f' ?>;">Rp <?= number_format($pendapatanBersih, 0, ',', '.') ?></strong></td>
                                         <td><?= htmlspecialchars($p['PbrMetode']) ?></td>
                                         <td><span class="<?= $statusBadgeClass ?>"><?= htmlspecialchars($statusText) ?></span></td>
                                         <td><?= date('d/m/Y H:i', strtotime($p['CreatedAt'])) ?></td>
@@ -489,9 +637,11 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                         <nav class="mt-4">
                             <ul class="pagination justify-content-center">
                                 <?php
-                                $pagination_query = '';
-                                if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
-                                if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
+                                $pagination_query_params = [];
+                                if (isset($_GET['start_date'])) $pagination_query_params['start_date'] = $_GET['start_date'];
+                                if (isset($_GET['end_date'])) $pagination_query_params['end_date'] = $_GET['end_date'];
+                                $pagination_query = http_build_query($pagination_query_params);
+                                if (!empty($pagination_query)) $pagination_query = '&' . $pagination_query;
 
                                 $prev_page = $page - 1;
                                 $prev_class = ($page <= 1) ? 'disabled' : '';
@@ -554,11 +704,16 @@ $displayEndDate  = $_GET['end_date'] ?? '';
         <div style="background:white;border-radius:12px;max-width:500px;width:90%;padding:20px;position:relative;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                 <h5>Detail Pembayaran</h5>
-                <button onclick="document.getElementById('detailModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+                <button onclick="document.getElementById('detailModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
             </div>
             <div id="detailContent"></div>
         </div>
     </div>
+
+    <script src="../lib/jquery/jquery.min.js"></script>
+    <script src="../lib/popper.js/popper.min.js"></script>
+    <script src="../lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/azia.js"></script> 
 
     <script>
         function openDetail(data, hargaAwalBooking) {
@@ -576,14 +731,32 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                 if (typeof angka !== 'number' && typeof angka !== 'string') return '-';
                 const number = parseFloat(angka);
                 if (isNaN(number)) return '-';
-                return new Intl.NumberFormat('id-ID').format(number);
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number).replace('IDR', 'Rp').trim();
             }
 
+            // Tentukan badge status untuk modal (menggunakan kelas CSS yang baru)
+            let statusBadgeClass = 'badge-base badge-sukses';
+            let statusText = data.PbrStatus || 'Lunas';
+            
+            if (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal') {
+                statusBadgeClass = 'badge-base badge-gagal';
+                statusText = data.BkgStatus == 'Batal' ? 'Batal' : 'Gagal';
+            } else if (data.PbrStatus == 'Pending') {
+                statusBadgeClass = 'badge-base badge-pending';
+                statusText = 'Pending';
+            } else if (data.PbrStatus == 'Lunas DP') {
+                statusBadgeClass = 'badge-base badge-lunas-dp';
+                statusText = 'Lunas DP';
+            } else if (data.PbrStatus == 'Lunas') {
+                statusBadgeClass = 'badge-base badge-sukses';
+                statusText = 'Lunas';
+            }
+            
             let detailHtml = `
             <div style="margin-bottom:8px;"><strong>ID Pembayaran:</strong> #${String(data.IDPembayaran).padStart(5,'0')}</div>
             <div style="margin-bottom:8px;"><strong>Nama Pelanggan:</strong> ${data.UserNama}</div>
             <div style="margin-bottom:8px;"><strong>Jenis Layanan:</strong> ${jenis}</div>
-            <div style="margin-bottom:8px;"><strong>Status Pembayaran:</strong> <span class="${(data.PbrStatus == 'Pending' || data.PbrStatus == 'Lunas DP') ? 'badge-pending' : (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal' ? 'badge-gagal' : 'badge-sukses')}">${data.PbrStatus || 'Lunas'}</span></div>
+            <div style="margin-bottom:8px;"><strong>Status Pembayaran:</strong> <span class="${statusBadgeClass}">${statusText}</span></div>
             <div style="margin-bottom:8px;"><strong>Metode:</strong> ${data.PbrMetode}</div>
             <div style="margin-bottom:15px;"><strong>Waktu:</strong> ${new Date(data.CreatedAt).toLocaleString('id-ID')}</div>
             
@@ -593,26 +766,26 @@ $displayEndDate  = $_GET['end_date'] ?? '';
                  // Kasus Pembatalan/Refund
                  detailHtml += `
                  <div style="font-size: 14px; margin-bottom: 5px;">
-                     <strong>1. Jumlah Pembayaran Awal:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                     <strong>1. Jumlah Pembayaran Awal:</strong> <span style="float:right;">${formatRupiah(totalAwal)}</span>
                  </div>
                  <div style="font-size: 14px; margin-bottom: 5px; color: #dc3545;">
-                     <strong>2. Potongan Refund (Diajukan):</strong> <span style="float:right;">- Rp ${formatRupiah(refundJumlah)}</span>
+                     <strong>2. Potongan Refund (Diajukan):</strong> <span style="float:right;">- ${formatRupiah(refundJumlah)}</span>
                  </div>
                  <hr style="margin-top: 5px; margin-bottom: 5px;">
                  <div style="font-size: 16px; font-weight: bold; color: #0f8f4f;">
-                     <strong>3. PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                     <strong>3. PENDAPATAN BERSIH:</strong> <span style="float:right;">${formatRupiah(pendapatanBersih)}</span>
                  </div>
                  <div style="font-size: 12px; color: #6c757d; margin-top: 10px;">
-                     *Nominal PbrJumlah di database telah di-*update* menjadi pendapatan bersih.
+                     *Nominal PbrJumlah di database telah di-update menjadi pendapatan bersih.
                  </div>`;
             } else {
                  // Kasus Normal (Tidak Ada Refund)
                  detailHtml += `
                  <div style="font-size: 14px; margin-bottom: 5px;">
-                     <strong>Total Tagihan:</strong> <span style="float:right;">Rp ${formatRupiah(totalAwal)}</span>
+                     <strong>Total Tagihan:</strong> <span style="float:right;">${formatRupiah(totalAwal)}</span>
                  </div>
                  <div style="font-size: 16px; font-weight: bold; color: #0f8f4f; margin-top: 10px;">
-                     <strong>PENDAPATAN BERSIH:</strong> <span style="float:right;">Rp ${formatRupiah(pendapatanBersih)}</span>
+                     <strong>PENDAPATAN BERSIH:</strong> <span style="float:right;">${formatRupiah(pendapatanBersih)}</span>
                  </div>`;
             }
 
@@ -620,6 +793,46 @@ $displayEndDate  = $_GET['end_date'] ?? '';
             document.getElementById('detailContent').innerHTML = detailHtml;
             document.getElementById('detailModal').style.display = 'flex';
         }
+
+        $(document).ready(function() {
+            // Menu toggle handlers (Mobile menu)
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
+
+            // CUSTOM DROPDOWN TOGGLE UNTUK PROFILE
+            const $profileDropdown = $('#profileDropdownToggle').closest('.dropdown');
+            
+            $('#profileDropdownToggle').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                // Toggle kelas 'show' pada elemen induk .dropdown
+                $profileDropdown.toggleClass('show');
+                
+                // Toggle kelas 'show' pada .dropdown-menu
+                $profileDropdown.find('.dropdown-menu').toggleClass('show');
+            });
+
+            // Tutup dropdown ketika klik di luar elemen .dropdown
+            $(document).on('click', function(e) {
+                if (!$profileDropdown.is(e.target) && $profileDropdown.has(e.target).length === 0) {
+                    $profileDropdown.removeClass('show');
+                    $profileDropdown.find('.dropdown-menu').removeClass('show');
+                }
+            });
+            
+            // JANGAN INISIALISASI BOOTSTRAP DROPDOWN, karena kita menggunakan custom toggle.
+            // Baris berikut dinonaktifkan: $('[data-toggle="dropdown"]').dropdown();
+        });
     </script>
 </body>
 

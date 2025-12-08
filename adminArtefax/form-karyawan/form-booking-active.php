@@ -1,7 +1,20 @@
 <?php
 session_start();
+// --- START: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+    $_SESSION['IDUser'] = $_SESSION['user']['IDUser'] ?? null;
+    $_SESSION['UserNama'] = $_SESSION['user']['UserNama'] ?? 'Guest User';
+    $_SESSION['UserRole'] = $_SESSION['user']['UserRole'] ?? 'Unknown Role';
+}
+
+if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
+    header("Location: ../../view/login.php"); 
+    exit;
+}
+// --- END: VERIFIKASI DAN ADAPTASI SESI KRITIS ---
+
 require_once __DIR__ . "/../../config/koneksi.php";
-require_once __DIR__ . "/../../class/Booking.php";
+require_once __DIR__ . "/../../class/booking.php";
 
 $db      = new Database();
 $conn    = $db->getConnection();
@@ -10,14 +23,20 @@ $booking = new Booking($conn);
 // OTOMATIS UBAH STATUS BOOKING JADI "Selesai" JIKA TANGGAL SUDAH LEWAT
 $booking->updateStatusSelesaiOtomatis();
 
-// --- LOGIKA PENUGASAN BARU Dihapus ---
+// --- START: DATA USER LOGIN ---
+$loggedInUser = [
+    'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
+    'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
+];
+$defaultProfileImage = '../img/faces/artefax.jpg'; 
+// --- END: DATA USER LOGIN ---
 
 /* ============== PAGINATION ============== */
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-/* ============ QUERY MANUAL YANG AMAN & SESUAI DENGAN CLASS BOOKING LAMA ============ */
+/* ============ QUERY MANUAL YANG AMAN & SESUAI ============ */
 // Hanya ambil booking Diterima + punya Paket Jasa + BELUM punya event (Penugasan)
 $sql = "
     SELECT 
@@ -34,7 +53,6 @@ $sql = "
     INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
     LEFT JOIN paketjasa pj ON bd.IDPaket = pj.IDPaket
     WHERE b.BkgStatus = 'Diterima'
-      -- KONDISI UNTUK MENGHILANGKAN BOOKING YANG SUDAH DITUGASKAN/PUNYA EVENT
       AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
     GROUP BY b.IDBooking
     ORDER BY b.CreatedAt DESC
@@ -56,7 +74,6 @@ $totalSql = "
         FROM booking b
         INNER JOIN booking_detail bd ON b.IDBooking = bd.IDBooking AND bd.BkgDetailJenis = 'Paket Jasa'
         WHERE b.BkgStatus = 'Diterima'
-          -- KONDISI YANG SAMA UNTUK HITUNGAN TOTAL
           AND b.IDBooking NOT IN (SELECT IDBooking FROM event WHERE IDBooking IS NOT NULL)
         GROUP BY b.IDBooking
     ) AS aktif
@@ -82,7 +99,61 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <link href="../lib/typicons.font/typicons.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/azia.css">
     <style>
-        /* CSS Badge Paket Jasa yang Sudah Diperbaiki */
+        /* --- FIXED LAYOUT --- */
+        .az-body {
+            padding-top: 70px !important;
+        }
+        .az-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1040;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .az-content-left {
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            z-index: 1020;
+            overflow-y: auto;
+            background-color: #fff;
+            padding-top: 30px !important; /* Space dari navbar */
+        }
+        .az-content-left .component-item {
+            padding-top: 10px;
+        }
+        .az-content-left .component-item label {
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        .az-content-left .component-item label:first-child {
+            margin-top: 0;
+        }
+        
+        @media (min-width: 992px) {
+            .az-content-body {
+                padding-top: 0 !important;
+                margin-left: 240px !important;
+            }
+        }
+        @media (max-width: 991.98px) {
+            .az-content-left {
+                position: static;
+                top: auto;
+                bottom: auto;
+                overflow-y: visible;
+            }
+            .az-content-body {
+                margin-left: 0 !important;
+            }
+            .az-body {
+                padding-top: 70px !important;
+            }
+        }
+        
+        /* --- BADGE PAKET JASA --- */
         .badge-paket{
             background:#28a745;
             color:#fff;
@@ -95,15 +166,49 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             white-space: nowrap; 
         }
 
-        /* CSS Lainnya */
-        .table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);margin-bottom:0;}
-        .table thead th{background:#3366ff !important;color:#fff !important;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:0.8px;border:none;padding:16px 20px;}
-        .table tbody td{padding:18px 20px;vertical-align:middle;border-top:1px solid #eef2f7;font-size:14px;color:#2d3748;}
-        .table tbody tr:hover{background:#f8faff;transition:all .2s;}
-        .az-content-title{font-weight:700;color:#1a202c;margin-bottom:25px;}
-        .alert{border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-        .text-durasi{font-size:13px;color:#4a5568;font-weight:500;}
-        .btn-assign{padding: 6px 14px; font-size: 13px;}
+        /* --- TABLE STYLE --- */
+        .table{
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom:0;
+        }
+        .table thead th{
+            background:#3366ff !important;
+            color:#fff !important;
+            font-weight:600;
+            text-transform:uppercase;
+            font-size:13px;
+            letter-spacing:0.8px;
+            border:none;
+            padding:16px 20px;
+        }
+        .table tbody td{
+            padding:18px 20px;
+            vertical-align:middle;
+            border-top:1px solid #eef2f7;
+            font-size:14px;
+            color:#2d3748;
+        }
+        .table tbody tr:hover{
+            background:#f8faff;
+            transition:all .2s;
+        }
+        .az-content-title{
+            font-weight:700;
+            color:#1a202c;
+            margin-bottom:25px;
+        }
+        .alert{
+            border-radius:10px;
+            box-shadow:0 2px 10px rgba(0,0,0,0.1);
+        }
+        .text-durasi{
+            font-size:13px;
+            color:#4a5568;
+            font-weight:500;
+        }
     </style>
 </head>
 <body class="az-body">
@@ -116,7 +221,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             <div class="az-header-menu">
                 <div class="az-header-menu-header">
                     <a href="index.html" class="az-logo"><span></span> Artefax</a>
-                    <a href="" class="close">×</a>
+                    <a href="" class="close">&times;</a>
                 </div>
                 <ul class="nav">
                     <li class="nav-item">
@@ -126,100 +231,42 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <a href="../form-karyawan/form-karyawan.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link">
+                            <i class="fas fa-money-bill-alt" style="margin-right: 8px;"></i> Pembayaran
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-layanan/form-layanan.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
+                        <a href="../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="" class="nav-link with-sub"><i class="typcn typcn-book"></i> Components</a>
-                        <div class="az-menu-sub">
-                            <div class="container">
-                                <div>
-                                    <nav class="nav">
-                                        <a href="../template/elem-buttons.html" class="nav-link">Buttons</a>
-                                        <a href="../template/elem-dropdown.html" class="nav-link">Dropdown</a>
-                                        <a href="../template/elem-icons.html" class="nav-link">Icons</a>
-                                        <a href="../template/table-basic.html" class="nav-link">Table</a>
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link">
+                            <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
+                        </a>
                     </li>
                 </ul>
             </div>
             <div class="az-header-right">
-                <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
-                <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message">
-                    <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div>
-                <div class="dropdown az-header-notification">
-                    <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu">
-                        <div class="az-dropdown-header mg-b-20 d-sm-none">
-                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-                        </div>
-                        <h6 class="az-notification-title">Notifications</h6>
-                        <p class="az-notification-text">You have 2 unread notification</p>
-                        <div class="az-notification-list">
-                            <div class="media new">
-                                <div class="az-img-user"><img src="../img/faces/face2.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
-                                    <span>Mar 15 12:32pm</span>
-                                </div>
-                            </div>
-                            <div class="media new">
-                                <div class="az-img-user online"><img src="../img/faces/face3.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                                    <span>Mar 13 04:16am</span>
-                                </div>
-                            </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face4.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Althea Cabardo</strong> just created a new blog post</p>
-                                    <span>Mar 13 02:56am</span>
-                                </div>
-                            </div>
-                            <div class="media">
-                                <div class="az-img-user"><img src="../img/faces/face5.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Adrian Monino</strong> added new comment on your photo</p>
-                                    <span>Mar 12 10:40pm</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
-                    </div>
-                </div>
                 <div class="dropdown az-profile-menu">
-                    <a href="" class="az-img-user"><img src="../img/faces/face1.jpg" alt=""></a>
+                    <a href="../../View/profile.php" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
                         </div>
                         <div class="az-header-profile">
                             <div class="az-img-user">
-                                <img src="../img/faces/face1.jpg" alt="">
+                                <img src="<?= $defaultProfileImage ?>" alt="">
                             </div>
-                            <h6>Aziana Pechon</h6>
-                            <span>Premium Member</span>
-                        </div><a href="" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-edit"></i> Edit Profile</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-time"></i> Activity Logs</a>
-                        <a href="" class="dropdown-item"><i class="typcn typcn-cog-outline"></i> Account Settings</a>
-                        <a href="page-signin.html" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
+                            <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
+                            <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
+                        </div>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div class="az-content pd-y-20 pd-lg-y-30 pd-xl-y-40">
         <div class="container">
             <div class="az-content-left az-content-left-components d-lg-block d-none">
@@ -231,23 +278,28 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                     <label>Menu Karyawan</label>
                     <a href="form-karyawan.php" class="nav-link">Daftar Karyawan</a>
                     <a href="form-booking-active.php" class="nav-link active">Booking Paket</a>
-                    <a href="form-penugasan.php" class="nav-link">Penugasan</a> </div>
+                    <a href="form-penugasan.php" class="nav-link">Penugasan</a>
+                </div>
             </div>
+
             <div class="az-content-body pd-lg-l-40 d-flex flex-column">
                 <div class="az-content-breadcrumb">
                     <span>Data</span>
-                    <span>Booking Paket</span>
+                    <span>Booking</span>
                 </div>
-                <h2 class="az-content-title">Daftar Booking Paket Aktif</h2>
+
+                <h2 class="az-content-title"><i class="fas fa-calendar-check"></i> Daftar Booking Aktif</h2>
 
                 <?php if ($success): ?>
                     <div class="alert alert-success alert-dismissible fade show">
-                        <?= htmlspecialchars($success) ?><button type="button" class="close" data-dismiss="alert">x</button>
+                        <?= htmlspecialchars($success) ?>
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
                 <?php if ($error): ?>
                     <div class="alert alert-danger alert-dismissible fade show">
-                        <?= htmlspecialchars($error) ?><button type="button" class="close" data-dismiss="alert">x</button>
+                        <?= htmlspecialchars($error) ?>
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
                     </div>
                 <?php endif; ?>
 
@@ -262,7 +314,13 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <table class="table table-hover mg-b-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>No</th><th>Pelanggan</th><th>Paket Jasa</th><th>Mulai</th><th>Selesai</th><th>Durasi</th><th>Total</th>
+                                    <th>No</th>
+                                    <th>Pelanggan</th>
+                                    <th>Paket Jasa</th>
+                                    <th>Mulai</th>
+                                    <th>Selesai</th>
+                                    <th>Durasi</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -314,11 +372,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <?php if ($totalPages > 1): ?>
                             <nav class="mt-4">
                                 <ul class="pagination justify-content-center">
-                                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page-1 ?>">Previous</a></li>
+                                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                                        <a class="page-link" href="?page=<?= $page-1 ?>">Previous</a>
+                                    </li>
                                     <?php for($i = 1; $i <= $totalPages; $i++): ?>
-                                        <li class="page-item <?= $i == $page ? 'active' : '' ?>"><a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a></li>
+                                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                            <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                        </li>
                                     <?php endfor; ?>
-                                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= $page+1 ?>">Next</a></li>
+                                    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                                        <a class="page-link" href="?page=<?= $page+1 ?>">Next</a>
+                                    </li>
                                 </ul>
                             </nav>
                         <?php endif; ?>
@@ -332,13 +396,31 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
             </div>
         </div>
     </div>
+    
     <script src="../lib/jquery/jquery.min.js"></script>
     <script src="../lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/azia.js"></script>
     <script>
-        // Auto fadeout alert
-        setTimeout(() => $('.alert').fadeOut('slow'), 5000);
-
-        // Tidak ada skrip JavaScript lain yang terkait penugasan
+        $(document).ready(function() {
+            // Fix dropdown menu in fixed header
+            $('.az-header .dropdown-menu').appendTo('.az-header-right .dropdown.az-profile-menu');
+            
+            // Menu toggle handlers
+            $('#azMenuShow').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').toggleClass('show');
+                $(this).toggleClass('open');
+            });
+            
+            $('.az-header-menu .close').on('click', function(e) {
+                e.preventDefault();
+                $('.az-header-menu').removeClass('show');
+                $('#azMenuShow').removeClass('open');
+            });
+            
+            // Auto fadeout alert
+            setTimeout(() => $('.alert').fadeOut('slow'), 5000);
+        });
     </script>
 </body>
 </html>

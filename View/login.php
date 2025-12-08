@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $role = strtolower($login['UserRole']);
             switch ($role) {
                 case 'customer':
-                    header("Location: ../index.php"); exit;
+                    header("Location: ../Paket/Services.php"); exit;
                 case 'service':
                     header("Location: ../service/index.php"); exit;
                 case 'karyawan':

@@ -24,7 +24,7 @@ $loggedInUser = [
     'UserNama' => $_SESSION['UserNama'] ?? 'Guest User', 
     'UserRole' => $_SESSION['UserRole'] ?? 'Unknown Role', 
 ];
-$defaultProfileImage = '../../img/faces/face1.jpg';
+$defaultProfileImage = '../../img/faces/artefax.jpg';
 
 $db = new Database();
 $conn = $db->getConnection();
@@ -312,49 +312,21 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <a href="../../form-karyawan/form-user.php" class="nav-link"><i class="typcn typcn-group"></i>User</a>
                     </li>
                     <li class="nav-item active">
-                        <a href="../../form-pembayaran/daftar_pembayaran.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Pembayaran</a>
+                        <a href="../form-pembayaran/daftar_pembayaran.php" class="nav-link">
+                            <i class="fas fa-money-bill-alt" style="margin-right: 8px;"></i> Pembayaran
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a href="../../form-layanan/PaketJasa/form-paketjasa.php" class="nav-link"><i class="typcn typcn-puzzle-outline"></i>Layanan</a>
                     </li>
                     <li class="nav-item">
-                        <a href="../../form-laporan/LaporanKeuangan.php" class="nav-link"><i class="typcn typcn-group-outline"></i>Laporan</a>
+                        <a href="../form-laporan/LaporanKeuangan.php" class="nav-link">
+                            <i class="fas fa-file-alt" style="margin-right: 8px;"></i> Laporan
+                        </a>
                     </li>
                 </ul>
             </div>
             <div class="az-header-right">
-                <a href="https://www.bootstrapdash.com/demo/azia-free/docs/documentation.html" target="_blank" class="az-header-search-link"><i class="far fa-file-alt"></i></a>
-                <a href="" class="az-header-search-link"><i class="fas fa-search"></i></a>
-                <div class="az-header-message">
-                    <a href="#"><i class="typcn typcn-messages"></i></a>
-                </div>
-                <div class="dropdown az-header-notification">
-                    <a href="" class="new"><i class="typcn typcn-bell"></i></a>
-                    <div class="dropdown-menu">
-                        <div class="az-dropdown-header mg-b-20 d-sm-none">
-                            <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
-                        </div>
-                        <h6 class="az-notification-title">Notifications</h6>
-                        <p class="az-notification-text">You have 2 unread notification</p>
-                        <div class="az-notification-list">
-                            <div class="media new">
-                                <div class="az-img-user"><img src="../../img/faces/face2.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p>Congratulate <strong>Socrates Itumay</strong> for work anniversaries</p>
-                                    <span>Mar 15 12:32pm</span>
-                                </div>
-                            </div>
-                            <div class="media new">
-                                <div class="az-img-user online"><img src="../../img/faces/face3.jpg" alt=""></div>
-                                <div class="media-body">
-                                    <p><strong>Joyce Chua</strong> just created a new blog post</p>
-                                    <span>Mar 13 04:16am</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="dropdown-footer"><a href="">View All Notifications</a></div>
-                    </div>
-                </div>
                 <div class="dropdown az-profile-menu">
                     <a href="" class="az-img-user"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
@@ -401,7 +373,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <span>Pembayaran</span>
                     <span>Pelunasan Pembayaran</span>
                 </div>
-                <h2 class="az-content-title">Pelunasan Pembayaran</h2>
+                <h2 class="az-content-title"><i class="fas fa-money-check-alt"></i> Pelunasan Pembayaran</h2>
                 <p class="mg-b-20">Verifikasi pelunasan pembayaran DP dari pelanggan.</p>
 
                 <?php if ($success): ?>

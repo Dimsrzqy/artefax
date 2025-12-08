@@ -14,13 +14,13 @@
 --------------------------------------------------------------*/
 /* Fonts */
 :root {
-  --default-font: "Roboto",  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --heading-font: "Questrial",  sans-serif;
-  --nav-font: "Open Sans",  sans-serif;
+  --default-font: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --heading-font: "Questrial", sans-serif;
+  --nav-font: "Open Sans", sans-serif;
 }
 
 /* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
-:root { 
+:root {
   --background-color: #e4efffff; /* Background color for the entire website, including individual sections */
   --default-color: #535d6b; /* Default color used for the majority of the text content across the entire website */
   --heading-color: #344761; /* Color for headings, subheadings and title throughout the website */
@@ -31,7 +31,7 @@
 
 /* Nav Menu Colors - The following color variables are used specifically for the navigation menu. They are separate from the global colors to allow for more customization options */
 :root {
-  --nav-color: rgba(83, 93, 107, 0.875);  /* The default color of the main navmenu links */
+  --nav-color: rgba(83, 93, 107, 0.875); /* The default color of the main navmenu links */
   --nav-hover-color: #0b1e38; /* Applied to main navmenu links when they are hovered over or active */
   --nav-mobile-background-color: #ffffff; /* Used as the background color for mobile navigation menu */
   --nav-dropdown-background-color: #ffffff; /* Used as the background color for dropdown items that appear when hovering over primary navigation items */
@@ -42,7 +42,7 @@
 /* Color Presets - These classes override global colors when applied to any section or element, providing reuse of the sam color scheme. */
 
 .light-background {
-  --background-color:  #e4efffff;
+  --background-color: #e4efffff;
   --surface-color: #ffffff;
 }
 
@@ -144,6 +144,11 @@ h6 {
 /*--------------------------------------------------------------
 # Global Header
 --------------------------------------------------------------*/
+/* ==================================================
+   PERBAIKAN NAVBAR MOBILE - Tambahkan ke main.css
+   ================================================== */
+
+/* Header Base */
 .header {
   --background-color: rgba(255, 255, 255, 0);
   color: var(--default-color);
@@ -153,165 +158,284 @@ h6 {
   z-index: 997;
 }
 
+.header .container-fluid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+/* Logo */
 .header .logo {
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .header .logo img {
-  max-height: 32px;
+  max-height: 50px;
   margin-right: 8px;
 }
 
-.header .logo h1 {
-  font-size: 24px;
-  margin: 0;
-  font-weight: 700;
-  color: var(--heading-color);
-  line-height: 1;
-}
-
-.scrolled .header {
-  box-shadow: 0px 0 18px rgba(0, 0, 0, 0.1);
-}
-
-/* Global Header on Scroll
-------------------------------*/
-.scrolled .header {
-  --background-color: #ffffff;
-}
-
-/*--------------------------------------------------------------
-# Navigation Menu
---------------------------------------------------------------*/
-/* Desktop Navigation */
+/* Desktop Navigation - Tetap di tengah */
 @media (min-width: 1200px) {
   .navmenu {
-    padding: 0;
-  }
-
-  .navmenu ul {
-    margin: 0;
-    padding: 0;
+    flex: 1;
     display: flex;
-    list-style: none;
+    justify-content: center;
+  }
+}
+
+/* Header Right Section */
+.header .d-flex.align-items-center {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+/* Text Welcome */
+.header .text-black {
+  display: none; /* Hide di mobile */
+}
+
+@media (min-width: 768px) {
+  .header .text-black {
+    display: block;
+  }
+}
+
+/* Profile Icon */
+.bi-person-circle {
+  font-size: 2rem;
+  color: #5c99ee;
+  transition: color 0.3s;
+}
+
+.bi-person-circle:hover {
+  color: #4c89de;
+}
+
+/* Notification Dropdown */
+.dropdown {
+  position: relative;
+}
+
+.dropdown .nav-link {
+  font-size: 1.3rem;
+  color: #5c99ee;
+  position: relative;
+}
+
+/* Mobile Navigation Toggle */
+.mobile-nav-toggle {
+  display: none;
+  font-size: 28px;
+  line-height: 0;
+  cursor: pointer;
+  transition: color 0.3s;
+  color: #5c99ee;
+  order: 1; /* Penting: Hamburger muncul SEBELUM profile */
+}
+
+/* ========================================
+   MOBILE RESPONSIVE (max-width: 1199px)
+   ======================================== */
+@media (max-width: 1199px) {
+  /* Tampilkan hamburger menu di mobile */
+  .mobile-nav-toggle {
+    display: block;
+  }
+
+  /* Sembunyikan desktop menu di mobile */
+  .navmenu {
+    padding: 0;
+    z-index: 9997;
+  }
+
+  /* Atur ulang header layout untuk mobile */
+  .header .container-fluid {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
   }
 
-  .navmenu li {
-    position: relative;
+  /* Logo tetap di kiri */
+  .header .logo {
+    order: 0;
+    flex-shrink: 0;
   }
 
-  .navmenu>ul>li {
-    white-space: nowrap;
-    padding: 15px 14px;
+  /* Welcome text hidden di mobile */
+  .header .text-black {
+    display: none;
   }
 
-  .navmenu>ul>li:last-child {
-    padding-right: 0;
+  /* Right section: Hamburger -> Notification -> Profile */
+  .header .d-flex.align-items-center {
+    order: 2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Hamburger harus PERTAMA di right section */
+  .mobile-nav-toggle {
+    order: 1;
+    margin-right: 0;
+  }
+
+  /* Notification dropdown */
+  .dropdown {
+    order: 2;
+  }
+
+  /* Profile icon */
+  .header a[href="view/profil.php"] {
+    order: 3;
+  }
+
+  /* Mobile menu dropdown */
+  .navmenu ul {
+    display: none;
+    list-style: none;
+    position: absolute;
+    inset: 60px 20px 20px 20px;
+    padding: 10px 0;
+    margin: 0;
+    border-radius: 6px;
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    transition: 0.3s;
+    z-index: 9998;
   }
 
   .navmenu a,
   .navmenu a:focus {
-    color: var(--nav-color);
-    font-size: 14px;
-    padding: 0 2px;
+    color: #535d6b;
+    padding: 10px 20px;
     font-family: var(--nav-font);
-    font-weight: 400;
+    font-size: 17px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: space-between;
     white-space: nowrap;
     transition: 0.3s;
-    position: relative;
   }
 
-  .navmenu a i,
-  .navmenu a:focus i {
-    font-size: 12px;
-    line-height: 0;
-    margin-left: 5px;
-    transition: 0.3s;
-  }
-
-  .navmenu>ul>li>a:before {
-    content: "";
-    position: absolute;
-    height: 1px;
-    bottom: -6px;
-    left: 0;
-    background-color: var(--accent-color);
-    visibility: hidden;
-    width: 0px;
-    transition: all 0.3s ease-in-out 0s;
-  }
-
-  .navmenu a:hover:before,
-  .navmenu li:hover>a:before,
-  .navmenu .active:before {
-    visibility: visible;
-    width: 100%;
-  }
-
-  .navmenu li:hover>a,
+  .navmenu a:hover,
   .navmenu .active,
   .navmenu .active:focus {
-    color: var(--nav-hover-color);
+    color: #5c99ee;
+    background-color: rgba(92, 153, 238, 0.05);
   }
 
-  .navmenu .dropdown ul {
-    margin: 0;
-    padding: 10px 0;
-    background: var(--nav-dropdown-background-color);
-    display: block;
+  /* Mobile nav active state */
+  .mobile-nav-active {
+    overflow: hidden;
+  }
+
+  .mobile-nav-active .mobile-nav-toggle {
+    color: #fff;
     position: absolute;
-    visibility: hidden;
-    left: 14px;
-    top: 130%;
-    opacity: 0;
+    font-size: 32px;
+    top: 15px;
+    right: 15px;
+    margin-right: 0;
+    z-index: 9999;
+  }
+
+  .mobile-nav-active .navmenu {
+    position: fixed;
+    overflow: hidden;
+    inset: 0;
+    background: rgba(33, 37, 41, 0.8);
     transition: 0.3s;
-    border-radius: 4px;
-    z-index: 99;
-    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.1);
   }
 
-  .navmenu .dropdown ul li {
-    min-width: 200px;
+  .mobile-nav-active .navmenu > ul {
+    display: block;
   }
 
-  .navmenu .dropdown ul a {
-    padding: 10px 20px;
-    font-size: 15px;
-    text-transform: none;
-    color: var(--nav-dropdown-color);
-  }
-
-  .navmenu .dropdown ul a i {
-    font-size: 12px;
-  }
-
-  .navmenu .dropdown ul a:hover,
-  .navmenu .dropdown ul .active:hover,
-  .navmenu .dropdown ul li:hover>a {
-    color: var(--nav-dropdown-hover-color);
-  }
-
-  .navmenu .dropdown:hover>ul {
-    opacity: 1;
+  /* Notification dropdown di mobile */
+  .dropdown-menu {
+    position: absolute;
+    right: 0;
+    left: auto;
     top: 100%;
-    visibility: visible;
+    margin-top: 8px;
+  }
+}
+
+/* ========================================
+   EXTRA SMALL DEVICES (max-width: 576px)
+   ======================================== */
+@media (max-width: 576px) {
+  .header .logo img {
+    max-height: 40px;
   }
 
-  .navmenu .dropdown .dropdown ul {
-    top: 0;
-    left: -90%;
-    visibility: hidden;
+  .bi-person-circle {
+    font-size: 1.8rem;
   }
 
-  .navmenu .dropdown .dropdown:hover>ul {
-    opacity: 1;
-    top: 0;
-    left: -100%;
-    visibility: visible;
+  .mobile-nav-toggle {
+    font-size: 24px;
+  }
+
+  .header .d-flex.align-items-center {
+    gap: 10px;
+  }
+
+  /* Notification badge lebih kecil */
+  .dropdown .nav-link {
+    font-size: 1.2rem;
+  }
+}
+
+/* ========================================
+   SCROLLED HEADER STATE
+   ======================================== */
+.scrolled .header {
+  box-shadow: 0px 0 18px rgba(0, 0, 0, 0.1);
+  --background-color: #ffffff;
+}
+
+/* ========================================
+   NOTIFICATION DROPDOWN STYLING
+   ======================================== */
+.dropdown-menu {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 320px;
+}
+
+.dropdown-header {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-item {
+  padding: 12px 20px;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(92, 153, 238, 0.05);
+}
+
+@media (max-width: 576px) {
+  .dropdown-menu {
+    min-width: 280px;
+    right: -10px !important;
+    left: auto !important;
   }
 }
 
@@ -409,7 +533,7 @@ h6 {
     background-color: rgba(33, 37, 41, 0.1);
   }
 
-  .navmenu .dropdown>.dropdown-active {
+  .navmenu .dropdown > .dropdown-active {
     display: block;
     background-color: rgba(33, 37, 41, 0.03);
   }
@@ -436,7 +560,7 @@ h6 {
     transition: 0.3s;
   }
 
-  .mobile-nav-active .navmenu>ul {
+  .mobile-nav-active .navmenu > ul {
     display: block;
   }
 }
@@ -472,7 +596,7 @@ h6 {
     overflow: hidden;
   }
 
-  .navmenu .megamenu-2:hover>.desktop-megamenu {
+  .navmenu .megamenu-2:hover > .desktop-megamenu {
     opacity: 1;
     top: 100%;
     visibility: visible;
@@ -1156,7 +1280,7 @@ h6 {
   box-shadow: 0 2px 10px color-mix(in srgb, var(--default-color), transparent 90%);
 }
 
-.footer .newsletter-form input[type=email] {
+.footer .newsletter-form input[type="email"] {
   flex: 1;
   padding: 12px 20px;
   border: none;
@@ -1165,12 +1289,12 @@ h6 {
   font-size: 14px;
 }
 
-.footer .newsletter-form input[type=email]:focus {
+.footer .newsletter-form input[type="email"]:focus {
   outline: none;
   box-shadow: none;
 }
 
-.footer .newsletter-form input[type=email]::placeholder {
+.footer .newsletter-form input[type="email"]::placeholder {
   color: color-mix(in srgb, var(--default-color), transparent 60%);
 }
 
@@ -1402,8 +1526,8 @@ h6 {
   }
 }
 
-input[type=text],
-input[type=email],
+input[type="text"],
+input[type="email"],
 textarea {
   color: var(--default-color);
   background-color: var(--surface-color);
@@ -1411,14 +1535,14 @@ textarea {
   border-color: color-mix(in srgb, var(--default-color), transparent 80%);
 }
 
-input[type=text]:focus,
-input[type=email]:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
 textarea:focus {
   border-color: var(--accent-color);
 }
 
-input[type=text]::placeholder,
-input[type=email]::placeholder,
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
 textarea::placeholder {
   color: color-mix(in srgb, var(--default-color), transparent 70%);
 }
@@ -1519,11 +1643,11 @@ textarea::placeholder {
   font-weight: 400;
 }
 
-.page-title .breadcrumbs ol li+li {
+.page-title .breadcrumbs ol li + li {
   padding-left: 10px;
 }
 
-.page-title .breadcrumbs ol li+li::before {
+.page-title .breadcrumbs ol li + li::before {
   content: "/";
   display: inline-block;
   padding-right: 10px;
@@ -1543,7 +1667,6 @@ section,
 }
 
 @media (max-width: 1199px) {
-
   section,
   .section {
     scroll-margin-top: 60px;
@@ -1795,7 +1918,6 @@ section,
 }
 
 @keyframes floating {
-
   0%,
   100% {
     transform: translateY(0px);
@@ -1807,7 +1929,6 @@ section,
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     transform: translate(-50%, -50%) scale(1);
@@ -2899,7 +3020,6 @@ section,
 }
 
 @keyframes floatAnimation {
-
   0%,
   100% {
     transform: translateY(0px);
@@ -4934,9 +5054,9 @@ section,
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color), transparent 90%);
 }
 
-.service-details .consultation-form input[type=text],
-.service-details .consultation-form input[type=email],
-.service-details .consultation-form input[type=tel],
+.service-details .consultation-form input[type="text"],
+.service-details .consultation-form input[type="email"],
+.service-details .consultation-form input[type="tel"],
 .service-details .consultation-form select,
 .service-details .consultation-form textarea {
   color: var(--default-color);
@@ -4945,17 +5065,17 @@ section,
   border-color: color-mix(in srgb, var(--default-color), transparent 80%);
 }
 
-.service-details .consultation-form input[type=text]:focus,
-.service-details .consultation-form input[type=email]:focus,
-.service-details .consultation-form input[type=tel]:focus,
+.service-details .consultation-form input[type="text"]:focus,
+.service-details .consultation-form input[type="email"]:focus,
+.service-details .consultation-form input[type="tel"]:focus,
 .service-details .consultation-form select:focus,
 .service-details .consultation-form textarea:focus {
   border-color: var(--accent-color);
 }
 
-.service-details .consultation-form input[type=text]::placeholder,
-.service-details .consultation-form input[type=email]::placeholder,
-.service-details .consultation-form input[type=tel]::placeholder,
+.service-details .consultation-form input[type="text"]::placeholder,
+.service-details .consultation-form input[type="email"]::placeholder,
+.service-details .consultation-form input[type="tel"]::placeholder,
 .service-details .consultation-form select::placeholder,
 .service-details .consultation-form textarea::placeholder {
   color: color-mix(in srgb, var(--default-color), transparent 70%);
