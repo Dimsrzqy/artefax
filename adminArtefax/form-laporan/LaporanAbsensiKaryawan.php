@@ -205,7 +205,6 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
         }
 
 
-
         /* --- BUTTON LIHAT FOTO --- */
         .lihat-foto {
             background: #5d5dfb;
@@ -297,7 +296,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
             </div>
             <div class="az-header-right">
                 <div class="dropdown az-profile-menu">
-                    <a href="#" class="az-img-user" data-toggle="dropdown"><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <a href="#" class="az-img-user" id="profileDropdownToggle"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -425,27 +424,27 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                         $result = $stmt->get_result();
                         if ($result->num_rows === 0 && $totalRows == 0) {
                             echo "<div class='text-center py-5'>
-                                        <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
-                                        <h5 class='mt-3'>Belum ada data absensi</h5>
-                                    </div>";
+                                            <i class='typcn typcn-document-text' style='font-size:5rem;color:#ddd;'></i>
+                                            <h5 class='mt-3'>Belum ada data absensi</h5>
+                                        </div>";
                         } else if ($result->num_rows === 0 && $totalRows > 0) {
                             echo "<div class='text-center py-5'>
-                                        <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
-                                    </div>";
+                                            <h5 class='mt-3'>Tidak ada data absensi yang ditemukan untuk rentang tanggal tersebut.</h5>
+                                        </div>";
                         } else {
                             echo "<table class='custom-table'>
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Nama Karyawan</th>
-                                        <th>Tanggal</th>
-                                        <th>Jam</th>
-                                        <th>Lokasi</th>
-                                        <th>Foto</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>";
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Nama Karyawan</th>
+                                            <th>Tanggal</th>
+                                            <th>Jam</th>
+                                            <th>Lokasi</th>
+                                            <th>Foto</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>";
                             $no = $offset + 1;
                             while ($row = $result->fetch_assoc()) {
                                 $nama = htmlspecialchars($row['UserNama'] ?? 'Tidak Diketahui');
@@ -461,58 +460,83 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                                         ? "data:image/jpeg;base64," . base64_encode($row['PsnFoto'])
                                         : "../../uploads/" . htmlspecialchars($row['PsnFoto']);
                                 } else {
-
                                     $fotoPath = "../../img/no-photo.png";
                                 }
                                 echo "<tr>
-                                        <td data-label='No'>$no</td>
-                                        <td data-label='Nama Karyawan'><strong>$nama</strong></td>
-                                        <td data-label='Tanggal'>$tanggal</td>
-                                        <td data-label='Jam'><strong>$jam</strong></td>
-                                        <td data-label='Lokasi'>$lokasi</td>
-                                        <td data-label='Foto'>
-                                            <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
-                                                style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
-                                                Lihat
-                                            </button>
-                                        </td>
-                                        <td data-label='Status' class='$statusClass'>$statusText</td>
-                                    </tr>";
+                                            <td data-label='No'>$no</td>
+                                            <td data-label='Nama Karyawan'><strong>$nama</strong></td>
+                                            <td data-label='Tanggal'>$tanggal</td>
+                                            <td data-label='Jam'><strong>$jam</strong></td>
+                                            <td data-label='Lokasi'>$lokasi</td>
+                                            <td data-label='Foto'>
+                                                <button class='btn btn-sm lihat-foto' data-foto='$fotoPath'
+                                                    style='background:#5d5dfb;color:white;border:none;padding:7px 14px;border-radius:8px;'>
+                                                    Lihat
+                                                </button>
+                                            </td>
+                                            <td data-label='Status' class='$statusClass'>$statusText</td>
+                                        </tr>";
                                 $no++;
                             }
                             echo "</tbody></table>";
+                            
+                            // --- START: PERBAIKAN PAGINATION ---
                             if ($totalPages > 1) {
                                 echo "<nav class='mt-4'><ul class='pagination justify-content-center'>";
+                                
                                 $query_params = $_GET;
-                                unset($query_params['page']); // Hapus parameter page agar tidak duplikat
-                                if ($page > 1) {
-                                    $query_params['page'] = $page - 1;
-                                    $prev_url = '?' . http_build_query($query_params);
-                                    echo "<li class='page-item'><a class='page-link' href='$prev_url'>«</a></li>";
-                                } else {
+                                unset($query_params['page']); 
+                                $base_query = http_build_query($query_params);
+                                if (!empty($base_query)) $base_query = '&' . $base_query;
 
-                                    echo "<li class='page-item disabled'><span class='page-link'>«</span></li>";
+
+                                // Tombol Previous
+                                if ($page > 1) {
+                                    $prev_url = '?' . http_build_query(array_merge($query_params, ['page' => $page - 1]));
+                                    echo "<li class='page-item'><a class='page-link' href='$prev_url'>« Sebelumnya</a></li>";
+                                } else {
+                                    echo "<li class='page-item disabled'><span class='page-link'>« Sebelumnya</span></li>";
                                 }
+                                
                                 $range = 2; // Jumlah halaman yang ditampilkan di sekitar halaman aktif
-                                for ($i = 1; $i <= $totalPages; $i++) {
-                                    // Tampilkan halaman pertama, halaman terakhir, dan halaman di sekitar halaman 
-                                    if ($i == 1 || $i == $totalPages || ($i >= $page - $range && $i <= $page + $range)) {
-                                        $query_params['page'] = $i;
-                                        $page_url = '?' . http_build_query($query_params);
-                                        $active = ($i == $page) ? "active" : "";
-                                        echo "<li class='page-item $active'><a class='page-link' href='$page_url'>$i</a></li>";
-                                    } elseif ($i == $page - $range - 1 || $i == $page + $range + 1) {
+                                
+                                $start_loop = max(1, $page - $range);
+                                $end_loop = min($totalPages, $page + $range);
+                                
+                                // Halaman pertama dan ellipsis
+                                if ($start_loop > 1) {
+                                    echo "<li class='page-item'><a class='page-link' href='?page=1$base_query'>1</a></li>";
+                                    if ($start_loop > 2) {
                                         echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
                                     }
                                 }
-                                if ($page < $totalPages) {
-                                    $query_params['page'] = $page + 1;
-                                    $next_url = '?' . http_build_query($query_params);
-                                    echo "<li class='page-item'><a class='page-link' href='$next_url'>»</a></li>";
-                                } else {
-                                    echo "<li class='page-item disabled'><span class='page-link'>»</span></li>";
+
+                                // Halaman di tengah
+                                for ($i = $start_loop; $i <= $end_loop; $i++) {
+                                    $active = ($i == $page) ? "active" : "";
+                                    $page_url = '?' . http_build_query(array_merge($query_params, ['page' => $i]));
+                                    echo "<li class='page-item $active'><a class='page-link' href='$page_url'>$i</a></li>";
                                 }
+
+                                // Halaman terakhir dan ellipsis
+                                if ($end_loop < $totalPages) {
+                                    if ($end_loop < $totalPages - 1) {
+                                        echo "<li class='page-item disabled'><span class='page-link'>...</span></li>";
+                                    }
+                                    $last_url = '?' . http_build_query(array_merge($query_params, ['page' => $totalPages]));
+                                    echo "<li class='page-item'><a class='page-link' href='$last_url'>$totalPages</a></li>";
+                                }
+                                
+                                // Tombol Next
+                                if ($page < $totalPages) {
+                                    $next_url = '?' . http_build_query(array_merge($query_params, ['page' => $page + 1]));
+                                    echo "<li class='page-item'><a class='page-link' href='$next_url'>Selanjutnya »</a></li>";
+                                } else {
+                                    echo "<li class='page-item disabled'><span class='page-link'>Selanjutnya »</span></li>";
+                                }
+                                
                                 echo "</ul></nav>";
+                                
                                 // Informasi halaman
                                 $showing_from = $offset + 1;
                                 $showing_to = min($offset + $limit, $totalRows);
@@ -546,17 +570,45 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
     <script src="../js/azia.js"></script>
     <script>
         $(document).ready(function() {
+            // Menu toggle handlers (Mobile menu)
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
                 $(this).toggleClass('open');
             });
+            
             $('.az-header-menu .close').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').removeClass('show');
                 $('#azMenuShow').removeClass('open');
             });
+            
+            // --- CUSTOM DROPDOWN TOGGLE UNTUK PROFILE ---
+            const $profileDropdown = $('#profileDropdownToggle').closest('.dropdown');
+            
+            $('#profileDropdownToggle').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                // Toggle kelas 'show' pada elemen induk .dropdown
+                $profileDropdown.toggleClass('show');
+                
+                // Toggle kelas 'show' pada .dropdown-menu
+                $profileDropdown.find('.dropdown-menu').toggleClass('show');
+            });
+
+            // Tutup dropdown ketika klik di luar elemen .dropdown
+            $(document).on('click', function(e) {
+                if (!$profileDropdown.is(e.target) && $profileDropdown.has(e.target).length === 0) {
+                    $profileDropdown.removeClass('show');
+                    $profileDropdown.find('.dropdown-menu').removeClass('show');
+                }
+            });
+            // ---------------------------------------------
+
         });
+        
+        // Event handler for 'Lihat Foto' button
         $(document).on('click', '.lihat-foto', function() {
             $('#modalFoto').attr('src', $(this).data('foto'));
             $('#fotoModal').modal('show');
@@ -564,6 +616,8 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
         $('#fotoModal').on('hidden.bs.modal', function() {
             $('#modalFoto').attr('src', '');
         });
+
+        // Event handler for Export button
         document.getElementById('exportButton').addEventListener('click', function() {
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;

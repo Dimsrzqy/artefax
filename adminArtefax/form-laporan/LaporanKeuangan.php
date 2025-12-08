@@ -1,5 +1,7 @@
 <?php
+
 session_start();
+
 require_once __DIR__ . "/../../config/koneksi.php";
 require_once __DIR__ . "/../../class/pembayaran.php";
 
@@ -12,7 +14,7 @@ if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
 
 if (!isset($_SESSION['IDUser']) || empty($_SESSION['IDUser'])) {
     // Path relatif dari /adminArtefax/form-laporan/LaporanKeuangan.php ke /adminArtefax/view/login.php
-    header("Location: ../../view/login.php"); 
+    header("Location: ../../View/login.php"); 
     exit;
 }
 // --- END: VERIFIKASI SESI KRITIS ---
@@ -42,8 +44,6 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     ob_clean(); // Bersihkan output buffer sebelum header
 
     // >>> SOLUSI: INISIALISASI VARIABEL DISPLAY DARI $_GET DI SINI <<<
-    // Kita inisialisasi display variables langsung dari $_GET 
-    // agar selalu tersedia untuk header laporan di bawah.
     $displayStartDate = $_GET['start_date'] ?? ''; 
     $displayEndDate = $_GET['end_date'] ?? '';
     // >>> END SOLUSI <<<
@@ -133,7 +133,6 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     fclose($out);
     exit();
 }
-/* ============== AKHIR DARI EXPORT CSV (DIPERBAIKI) ============== */
 /* ============== AKHIR DARI EXPORT CSV (DIPERBARUI) ============== */
 
 /* ============== PAGINATION ============== */
@@ -278,33 +277,37 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
             border-bottom: none
         }
 
+        /* PERBAIKAN BADGE: Menambahkan status Lunas DP dan menyesuaikan padding/font size */
+        .badge-base {
+            padding: 6px 8px; /* Mengurangi padding horizontal sedikit */
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: .75rem; /* Mengurangi ukuran font agar teks panjang muat */
+            white-space: nowrap; /* Mencegah wrap */
+        }
+
         .badge-sukses {
             background: #d4edda;
             color: #155724;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
         }
         
         .badge-pending {
             background: #ffc107;
             color: #383d41;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
+        }
+        
+        /* STATUS BARU: Lunas DP */
+        .badge-lunas-dp {
+            background: #00bcd4; /* Warna Biru Muda */
+            color: #fff;
         }
         
         .badge-gagal { 
             background: #dc3545;
             color: #fff;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: .8rem
         }
-        
+        /* AKHIR PERBAIKAN BADGE */
+
         /* Button style dasar */
         .btn {
             padding: 10px 20px;
@@ -470,7 +473,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
             </div>
             <div class="az-header-right">
                 <div class="dropdown az-profile-menu">
-                    <a href="#" class="az-img-user" **data-toggle="dropdown"**><img src="<?= $defaultProfileImage ?>" alt=""></a>
+                    <a href="#" class="az-img-user" id="profileDropdownToggle"><img src="<?= $defaultProfileImage ?>" alt=""></a>
                     <div class="dropdown-menu">
                         <div class="az-dropdown-header d-sm-none">
                             <a href="" class="az-header-arrow"><i class="icon ion-md-arrow-back"></i></a>
@@ -482,7 +485,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                             <h6><?= htmlspecialchars($loggedInUser['UserNama']) ?></h6>
                             <span><?= htmlspecialchars($loggedInUser['UserRole']) ?></span>
                         </div>
-                        <a href="../../view/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
+                        <a href="../../View/profile.php" class="dropdown-item"><i class="typcn typcn-user-outline"></i> My Profile</a>
                         <a href="../../logout.php" class="dropdown-item"><i class="typcn typcn-power-outline"></i> Sign Out</a>
                     </div>
                 </div>
@@ -558,7 +561,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                     <?php if ($daftarPembayaran): ?>
                         
                         <div class="total-box mb-3">
-                            Total Pendapatan Bersih (Periode Filter): 
+                            Total Pendapatan Bersih: 
                             <strong style="color: <?= $grandTotalPendapatan < 0 ? '#dc3545' : '#0f8f4f' ?>;">
                                 Rp <?= number_format($grandTotalPendapatan, 0, ',', '.') ?>
                             </strong>
@@ -586,21 +589,25 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                                     $hargaAwalBooking = ($pendapatanBersih + $refundJumlah); // Hitung mundur harga awal
 
                                     // Tentukan badge status
-                                    $statusBadgeClass = 'badge-sukses';
+                                    $statusBadgeClass = 'badge-base badge-sukses';
                                     $statusText = $p['PbrStatus'] ?? 'Lunas';
                                     
                                     if (isset($p['BkgStatus']) && $p['BkgStatus'] == 'Batal') {
-                                        $statusBadgeClass = 'badge-gagal';
+                                        $statusBadgeClass = 'badge-base badge-gagal';
                                         $statusText = 'Batal';
                                     } elseif (isset($p['PbrStatus'])) {
-                                        if ($p['PbrStatus'] == 'Pending' || $p['PbrStatus'] == 'Lunas DP') {
-                                            $statusBadgeClass = 'badge-pending';
-                                            $statusText = $p['PbrStatus'];
+                                        if ($p['PbrStatus'] == 'Pending') {
+                                            $statusBadgeClass = 'badge-base badge-pending';
+                                            $statusText = 'Pending';
+                                        } elseif ($p['PbrStatus'] == 'Lunas DP') {
+                                            // Status Baru
+                                            $statusBadgeClass = 'badge-base badge-lunas-dp'; 
+                                            $statusText = 'Lunas DP';
                                         } elseif ($p['PbrStatus'] == 'Gagal') {
-                                            $statusBadgeClass = 'badge-gagal';
+                                            $statusBadgeClass = 'badge-base badge-gagal';
                                             $statusText = 'Gagal';
                                         } else {
-                                            $statusBadgeClass = 'badge-sukses';
+                                            $statusBadgeClass = 'badge-base badge-sukses';
                                             $statusText = 'Lunas';
                                         }
                                     }
@@ -630,9 +637,11 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                         <nav class="mt-4">
                             <ul class="pagination justify-content-center">
                                 <?php
-                                $pagination_query = '';
-                                if (isset($_GET['start_date'])) $pagination_query .= '&start_date=' . urlencode($_GET['start_date']);
-                                if (isset($_GET['end_date'])) $pagination_query .= '&end_date=' . urlencode($_GET['end_date']);
+                                $pagination_query_params = [];
+                                if (isset($_GET['start_date'])) $pagination_query_params['start_date'] = $_GET['start_date'];
+                                if (isset($_GET['end_date'])) $pagination_query_params['end_date'] = $_GET['end_date'];
+                                $pagination_query = http_build_query($pagination_query_params);
+                                if (!empty($pagination_query)) $pagination_query = '&' . $pagination_query;
 
                                 $prev_page = $page - 1;
                                 $prev_class = ($page <= 1) ? 'disabled' : '';
@@ -695,7 +704,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
         <div style="background:white;border-radius:12px;max-width:500px;width:90%;padding:20px;position:relative;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
                 <h5>Detail Pembayaran</h5>
-                <button onclick="document.getElementById('detailModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+                <button onclick="document.getElementById('detailModal').style.display='none'" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
             </div>
             <div id="detailContent"></div>
         </div>
@@ -725,15 +734,22 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                 return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number).replace('IDR', 'Rp').trim();
             }
 
-            // Tentukan badge status untuk modal
-            let statusBadgeClass = 'badge-sukses';
+            // Tentukan badge status untuk modal (menggunakan kelas CSS yang baru)
+            let statusBadgeClass = 'badge-base badge-sukses';
             let statusText = data.PbrStatus || 'Lunas';
+            
             if (data.BkgStatus == 'Batal' || data.PbrStatus == 'Gagal') {
-                statusBadgeClass = 'badge-gagal';
+                statusBadgeClass = 'badge-base badge-gagal';
                 statusText = data.BkgStatus == 'Batal' ? 'Batal' : 'Gagal';
-            } else if (data.PbrStatus == 'Pending' || data.PbrStatus == 'Lunas DP') {
-                statusBadgeClass = 'badge-pending';
-                statusText = data.PbrStatus;
+            } else if (data.PbrStatus == 'Pending') {
+                statusBadgeClass = 'badge-base badge-pending';
+                statusText = 'Pending';
+            } else if (data.PbrStatus == 'Lunas DP') {
+                statusBadgeClass = 'badge-base badge-lunas-dp';
+                statusText = 'Lunas DP';
+            } else if (data.PbrStatus == 'Lunas') {
+                statusBadgeClass = 'badge-base badge-sukses';
+                statusText = 'Lunas';
             }
             
             let detailHtml = `
@@ -779,7 +795,7 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
         }
 
         $(document).ready(function() {
-            // Menu toggle handlers
+            // Menu toggle handlers (Mobile menu)
             $('#azMenuShow').on('click', function(e) {
                 e.preventDefault();
                 $('.az-header-menu').toggleClass('show');
@@ -792,9 +808,30 @@ $defaultProfileImage = '../img/faces/artefax.jpg';
                 $('#azMenuShow').removeClass('open');
             });
 
-            // FIX DROPDOWN PROFILE (TERAKHIR): Inisialisasi ulang Bootstrap dropdown
-            // Solusi ini mengandalkan data-toggle yang sudah dipasang di HTML.
-            $('[data-toggle="dropdown"]').dropdown();
+            // CUSTOM DROPDOWN TOGGLE UNTUK PROFILE
+            const $profileDropdown = $('#profileDropdownToggle').closest('.dropdown');
+            
+            $('#profileDropdownToggle').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                // Toggle kelas 'show' pada elemen induk .dropdown
+                $profileDropdown.toggleClass('show');
+                
+                // Toggle kelas 'show' pada .dropdown-menu
+                $profileDropdown.find('.dropdown-menu').toggleClass('show');
+            });
+
+            // Tutup dropdown ketika klik di luar elemen .dropdown
+            $(document).on('click', function(e) {
+                if (!$profileDropdown.is(e.target) && $profileDropdown.has(e.target).length === 0) {
+                    $profileDropdown.removeClass('show');
+                    $profileDropdown.find('.dropdown-menu').removeClass('show');
+                }
+            });
+            
+            // JANGAN INISIALISASI BOOTSTRAP DROPDOWN, karena kita menggunakan custom toggle.
+            // Baris berikut dinonaktifkan: $('[data-toggle="dropdown"]').dropdown();
         });
     </script>
 </body>
