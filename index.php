@@ -1,28 +1,18 @@
 <?php
-
-// âœ… PERBAIKAN: ob_start() sudah ada, pastikan tidak ada output sebelum header redirect
-
 ob_start();
 
 session_start();
 
 date_default_timezone_set('Asia/Jakarta');
 
-
-
-// Pastikan file koneksi dan kelas user/lainnya ada
-
 require_once "config/koneksi.php";
 
 require_once "class/users.php";
 
-// require_once "class/notification.php"; // Asumsi jika ada kelas terpisah
 
 
 
 $database = new Database();
-
-// Asumsi: $conn mengembalikan objek PDO (PHP Data Objects)
 
 $conn = $database->getConnection(); 
 
@@ -31,11 +21,7 @@ $user = new User($conn);
 
 
 $message = "";
-
-$showModal = false; // Flag untuk menampilkan modal
-
-
-
+$showModal = false; 
 // === LOGOUT ===
 
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
@@ -177,14 +163,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
     }
 
 }
-
-
-
-// =================================================================
-
-// ðŸ”” Logika Ambil Notifikasi dari Database
-
-// =================================================================
 
 $notifications = []; // Array untuk menyimpan notifikasi
 
@@ -342,9 +320,6 @@ if ($userID) {
 
 
 
-// =================================================================
-
-
 
 // âœ… Flush output buffer untuk halaman normal
 
@@ -381,9 +356,7 @@ if (ob_get_level() > 0) {
     <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
 
     <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
-
-    <link href="assets/css/main.css" rel="stylesheet" />
-
+    <link href="assets/css/main.css?v=<?= time(); ?>" rel="stylesheet" />
 </head>
 
 
@@ -559,9 +532,10 @@ if (ob_get_level() > 0) {
                     <div class="col-lg-6">
 
                         <div class="hero-content">
-
-                            <h1>Menciptakan Momen, <span>Mengabadikan Kenangan</span></h1>
-
+                            <h1>
+                            Menciptakan Momen, <br> 
+                            <span class="typing-text">Mengabadikan Kenangan</span>
+                        </h1>
                             <p>
 
                                 ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan.
@@ -606,52 +580,38 @@ if (ob_get_level() > 0) {
 
         </section>
 
+       <section id="services" class="services section">
+    <div class="container section-title">
+        <h2>Layanan Kami</h2>
+        <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
+    </div>
 
-
-        <section id="services" class="services section">
-
-            <div class="container section-title">
-
-                <h2>Layanan Kami</h2>
-
-                <p>Kami menyediakan layanan lengkap mulai dari event organizer, dokumentasi visual, hingga multimedia terintegrasi yang membantu mewujudkan acara impian Anda.</p>
-
+    <div class="container">
+        <div class="row gy-4 align-items-center">
+            
+            <div class="col-lg-6 text-center">
+                <img src="assets/img/animasi.png" class="img-fluid rounded" alt="Ilustrasi Layanan" style="max-height: 400px;">
             </div>
 
-
-
-            <div class="container">
-
-                <div class="row justify-content-center gy-4">
-
-
-
-                    <div class="col-lg-6 col-md-8">
-
-                        <div class="service-card">
-
-                            <div class="service-icon"><i class="bi bi-palette"></i></div>
-
-                            <h3>Jasa Event</h3>
-
-                            <p>Kami siap membantu merancang dan menjalankan acara kamu dengan konsep terbaik dan hasil yang maksimal.</p>
-
-                            <?php if (isset($_SESSION['user'])): ?>
-
-                                <a href="Paket/Services.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-
-                            <?php else: ?>
-
-                                <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
-
-                            <?php endif; ?>
-
-                        </div>
-
+            <div class="col-lg-6">
+                
+                <div class="service-card mb-4"> <div class="service-icon">
+                        <i class="bi bi-palette"></i>
                     </div>
+                    <h3>Sewa Alat & Paket Jasa</h3>
+                    <p>Temukan paket dokumentasi terbaik atau sewa peralatan multimedia satuan sesuai kebutuhan acara Anda.</p>
+                    
+                    <?php if (isset($_SESSION['user'])): ?>
+                        <a href="Paket/Services.php" class="service-link">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+                    <?php else: ?>
+                        <a href="#" class="service-link" data-bs-toggle="modal" data-bs-target="#loginModal">Pesan Sekarang <i class="bi bi-arrow-right"></i></a>
+                    <?php endif; ?>
+                </div>
 
-
-
+                </div>
+        </div>
+    </div>
+</section>
                     </div>
 
             </div>
@@ -847,7 +807,7 @@ if (ob_get_level() > 0) {
   <section id="features" class="features section">
 
       <div class="container">
-
+          <h2 class="section-title text-center mb-5">Kenapa Memilih Artefax?</h2>
         <div class="features-grid">
 
           <div class="features-card">
@@ -2110,10 +2070,7 @@ if (ob_get_level() > 0) {
 
                   </div>
 
-
-
-                  <form action="forms/contact.php" method="post" class="php-email-form contact-form">
-
+                  <form action="contact.php" method="post" class="php-email-form contact-form">
                     <div class="row">
 
                       <div class="col-md-6">
@@ -2217,370 +2174,190 @@ if (ob_get_level() > 0) {
 
 
               <div class="col-lg-5 order-lg-2 order-1">
-
-                <div class="contact-sidebar">
-
-                  <div class="contact-header">
-
-                    <h3>Kontak Langsung</h3>
-
-                    <p>Anda juga bisa menghubungi kami langsung melalui kontak berikut untuk konsultasi, pemesanan layanan, atau penawaran khusus.</p>
-
-                  </div>
-
-
-
-                  <div class="contact-methods">
-
-                    <div class="contact-method">
-
-                      <div class="contact-icon">
-
-                        <i class="bi bi-geo-alt"></i>
-
-                      </div>
-
-                      <div class="contact-details">
-
-                        <span class="method-label">Alamat</span>
-
-                        <p>Patrang, Jember, Jawa Timur</p>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div class="contact-method">
-
-                      <div class="contact-icon">
-
-                        <i class="bi bi-envelope"></i>
-
-                      </div>
-
-                      <div class="contact-details">
-
-                        <span class="method-label">Email</span>
-
-                        <p>artefaxm@gmail.com</p>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div class="contact-method">
-
-                      <div class="contact-icon">
-
-                        <i class="bi bi-telephone"></i>
-
-                      </div>
-
-                      <div class="contact-details">
-
-                        <span class="method-label">Telepon</span>
-
-                        <p>+62 812-3456-7890</p>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div class="contact-method">
-
-                      <div class="contact-icon">
-
-                        <i class="bi bi-clock"></i>
-
-                      </div>
-
-                      <div class="contact-details">
-
-                        <span class="method-label">Jam Operasional</span>
-
-                        <p>Senin - Jumat: 09.00 - 18.00<br />Sabtu: 10.00 - 16.00</p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-
-
-                  <div class="connect-section">
-
-                    <span class="connect-label">Terhubung dengan Kami</span>
-
-                    <div class="social-links">
-
-                      <a href="#" class="social-link"><i class="bi bi-instagram"></i></a>
-
-                      <a href="#" class="social-link"><i class="bi bi-facebook"></i></a>
-
-                      <a href="#" class="social-link"><i class="bi bi-tiktok"></i></a>
-
-                      <a href="#" class="social-link"><i class="bi bi-whatsapp"></i></a>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
+  <div class="contact-sidebar">
+    <div class="contact-header">
+      <h3>Kontak Langsung</h3>
+      <p>Anda juga bisa menghubungi kami langsung melalui kontak berikut untuk konsultasi, pemesanan layanan, atau penawaran khusus.</p>
+    </div>
+
+    <div class="contact-methods">
+      <div class="contact-method">
+        <div class="contact-icon">
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="contact-details">
+          <span class="method-label">Alamat</span>
+          <p>Patrang, Jember, Jawa Timur</p>
+        </div>
+      </div>
+
+      <div class="contact-method">
+        <div class="contact-icon">
+          <i class="bi bi-envelope"></i>
+        </div>
+        <div class="contact-details">
+          <span class="method-label">Email</span>
+          <p>artefaxm@gmail.com</p>
+        </div>
+      </div>
+
+      <div class="contact-method">
+        <div class="contact-icon">
+          <i class="bi bi-telephone"></i>
+        </div>
+        <div class="contact-details">
+          <span class="method-label">Telepon</span>
+          <p>+62 896-5352-1667</p>
+        </div>
+      </div>
+
+      <div class="contact-method">
+        <div class="contact-icon">
+          <i class="bi bi-clock"></i>
+        </div>
+        <div class="contact-details">
+          <span class="method-label">Jam Operasional</span>
+          <p>Senin - Jumat: 08.00 - 21.00<br />Sabtu - Minggu : 10.00 - 21.00</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="connect-section">
+      <span class="connect-label">Terhubung dengan Kami</span>
+      <div class="social-links">
+        <a href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" class="social-link" target="_blank">
+            <i class="bi bi-instagram"></i>
+        </a>
+        
+        <a href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" class="social-link" target="_blank">
+            <i class="bi bi-tiktok"></i>
+        </a>
+
+        <a href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" class="social-link" target="_blank">
+            <i class="bi bi-youtube"></i>
+        </a>
+
+        <a href="https://wa.me/6289653521667" class="social-link" target="_blank">
+            <i class="bi bi-whatsapp"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
         </section>
-
         </main>
 
+              </div>
 
+            </div>
+
+.map-title {
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+.map-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: cover; /* biar full area */
+}
+.map-wrapper {
+  width: 100%;
+  height: 400px; /* --- ukuran BESAR --- */
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+</style>
 
   <footer id="footer" class="footer position-relative light-background">
+    <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
+        <div class="container py-5">
+            
+            <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
+                <div class="row g-4 align-items-center">
+                    <div class="col-lg-3">
+                        <a href="index.php" class="text-decoration-none">
+                            <h1 class="text-info mb-0">ARTEFAX.ID</h1>
+                            <p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
+                        </a>
+                    </div>
+                    <div class="col-lg-9">
+                        <div class="d-flex justify-content-lg-end justify-content-center pt-3">
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" target="_blank"><i class="bi bi-instagram"></i></a>
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" target="_blank"><i class="bi bi-tiktok"></i></a>
+                            <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" target="_blank"><i class="bi bi-youtube"></i></a>
+                            <a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank"><i class="bi bi-whatsapp"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-    <div class="container">
-
-      <div class="row gy-5">
-
-        <div class="col-lg-4">
-
-          <div class="footer-content">
-
-            <a href="index.html" class="logo d-flex align-items-center mb-4">
-
-              <span class="sitename">Artefax.id</span>
-
-            </a>
-
-            <p class="mb-4">
-
-              Artefax.id adalah penyedia layanan event dan persewaan alat profesional yang berlokasi di Jember, Jawa Timur. Kami siap membantu mewujudkan acara terbaik Anda dengan layanan cepat, fleksibel, dan berkualitas.
-
-            </p>
-
-
-
-            <div class="newsletter-form">
-
-              <h5>Berlangganan Info & Promo</h5>
-
-              <form action="forms/newsletter.php" method="post" class="php-email-form">
-
-                <div class="input-group">
-
-                  <input type="email" name="email" class="form-control" placeholder="Masukkan email Anda" required />
-
-                  <button type="submit" class="btn-subscribe">
-
-                    <i class="bi bi-send"></i>
-
-                  </button>
-
+            <div class="row g-5">
+                
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-item">
+                        <h4 class="text-light mb-3">Tentang Kami</h4>
+                        <p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional untuk menunjang kesuksesan acara Anda.</p>
+                        <a href="Paket/Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-info text-decoration-none">Lihat Layanan</a>
+                    </div>
                 </div>
 
-                <div class="loading">Mengirim...</div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="d-flex flex-column text-start footer-item">
+                        <h4 class="text-light mb-3">Menu Cepat</h4>
+                        <a class="btn-link text-info text-decoration-none mb-2" href="index.php"><i class="bi bi-chevron-right me-2"></i>Home</a>
+                        <a class="btn-link text-info text-decoration-none mb-2" href="Paket/shop.php"><i class="bi bi-chevron-right me-2"></i>Shop</a>
+                        <a class="btn-link text-info text-decoration-none mb-2" href="Paket/Services.php"><i class="bi bi-chevron-right me-2"></i>Layanan</a>
+                        <a class="btn-link text-info text-decoration-none" href="#contact"><i class="bi bi-chevron-right me-2"></i>Hubungi Kami</a>
+                    </div>
+                </div>
 
-                <div class="error-message"></div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="d-flex flex-column text-start footer-item">
+                        <h4 class="text-light mb-3">Akun Saya</h4>
+                        <?php if (isset($_SESSION['user'])): ?>
+                            <a class="btn-link text-info text-decoration-none mb-2" href="view/profil.php"><i class="bi bi-chevron-right me-2"></i>Profil</a>
+                            <a class="btn-link text-info text-decoration-none mb-2" href="Paket/cart.php"><i class="bi bi-chevron-right me-2"></i>Keranjang</a>
+                            <a class="btn-link text-info text-decoration-none" href="view/riwayat.php"><i class="bi bi-chevron-right me-2"></i>Riwayat Booking</a>
+                        <?php else: ?>
+                             <a class="btn-link text-info text-decoration-none mb-2" href="view/login.php"><i class="bi bi-chevron-right me-2"></i>Login</a>
+                             <a class="btn-link text-info text-decoration-none" href="view/register.php"><i class="bi bi-chevron-right me-2"></i>Daftar</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
-                <div class="sent-message">Terima kasih telah berlangganan!</div>
-
-              </form>
-
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-item">
+                        <h4 class="text-light mb-3">Kontak</h4>
+                        <p class="mb-2"><i class="bi bi-geo-alt me-2"></i>Patrang, Jember, Jawa Timur</p>
+                        <p class="mb-2"><i class="bi bi-envelope me-2"></i>artefaxm@gmail.com</p>
+                        <p class="mb-2"><i class="bi bi-whatsapp me-2"></i>+62 896-5352-1667</p>
+                        
+                        <h4 class="text-light mt-4 mb-2">Pembayaran</h4>
+                        <p class="mb-2">Transfer Bank (BCA/BRI)</p>
+                        <img src="Paket/img/pembayaran.png" class="img-fluid bg-light rounded p-1" alt="Metode Pembayaran" style="max-width: 150px;">
+                    </div>
+                </div>
             </div>
-
-          </div>
-
         </div>
 
-
-
-        <div class="col-lg-2 col-6">
-
-          <div class="footer-links">
-
-            <h4>Perusahaan</h4>
-
-            <ul>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Tentang Kami</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Layanan</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Galeri</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Testimoni</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Hubungi Kami</a></li>
-
-            </ul>
-
-          </div>
-
+        <div class="container-fluid copyright bg-dark py-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                        <span class="text-light">&copy; 2025 <strong class="text-info">Artefax.id</strong>. All Rights Reserved.</span>
+                    </div>
+                    <div class="col-md-6 text-center text-md-end">
+                        <span class="text-light">Designed By <a href="#" class="text-decoration-none text-info">Artefax Creative Team</a></span>
+                    </div>
+                </div>
+            </div>
         </div>
-
-
-
-        <div class="col-lg-2 col-6">
-
-          <div class="footer-links">
-
-            <h4>Layanan Kami</h4>
-
-            <ul>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Dekorasi Acara</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Sewa Sound System</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Sewa Lighting & Panggung</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Wedding & Event Organizer</a></li>
-
-              <li><a href="#"><i class="bi bi-chevron-right"></i> Dokumentasi Acara</a></li>
-
-            </ul>
-
-          </div>
-
-        </div>
-
-
-
-        <div class="col-lg-4">
-
-          <div class="footer-contact">
-
-            <h4>Hubungi Kami</h4>
-
-            <div class="contact-item">
-
-              <div class="contact-icon">
-
-                <i class="bi bi-geo-alt"></i>
-
-              </div>
-
-              <div class="contact-info">
-
-                <p>Patrang, Kabupaten Jember<br />Jawa Timur, Indonesia</p>
-
-              </div>
-
-            </div>
-
-
-
-            <div class="contact-item">
-
-              <div class="contact-icon">
-
-                <i class="bi bi-telephone"></i>
-
-              </div>
-
-              <div class="contact-info">
-
-                <p>+62 856 4581 9510</p>
-
-              </div>
-
-            </div>
-
-
-
-            <div class="contact-item">
-
-              <div class="contact-icon">
-
-                <i class="bi bi-envelope"></i>
-
-              </div>
-
-              <div class="contact-info">
-
-                <p>artefaxm@gmail.com</p>
-
-              </div>
-
-            </div>
-
-
-
-            <div class="social-links">
-
-              <a href="#"><i class="bi bi-instagram"></i></a>
-
-              <a href="#"><i class="bi bi-facebook"></i></a>
-
-              <a href="#"><i class="bi bi-tiktok"></i></a>
-
-              <a href="#" class="social-link"><i class="bi bi-whatsapp"></i></a>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
     </div>
-
-
-
-    <div class="footer-bottom">
-
-      <div class="container">
-
-        <div class="row align-items-center">
-
-          <div class="col-lg-6">
-
-            <div class="copyright">
-
-              <p>Â© <span>2025</span> <strong class="px-1 sitename">Artefax.id</strong> <span>All Rights Reserved</span></p>
-
-            </div>
-
-          </div>
-
-          <div class="col-lg-6">
-
-            <div class="footer-bottom-links">
-
-              <a href="#">Kebijakan Privasi</a>
-
-              <a href="#">Syarat & Ketentuan</a>
-
-              <a href="#">FAQ</a>
-
-            </div>
-
-            <div class="credits">
-
-              Dirancang oleh <a href="#">Artefax Creative Team</a>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </footer>
+</footer>
 
 
 

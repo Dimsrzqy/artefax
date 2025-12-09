@@ -33,6 +33,11 @@ h6 {
   font-weight: 700;
 }
 
+
+.text-primary {
+  color: var(--bs-primary) !important;
+}
+
 /* Spinner Loading */
 #spinner {
   opacity: 1;
@@ -457,6 +462,7 @@ h6 {
   box-shadow: 0 10px 25px rgba(255, 180, 0, 0.4);
 }
 
+
 /* ==================================================================
    6. FOOTER & BUTTONS GENERAL
    ================================================================== */
@@ -558,4 +564,37 @@ h6 {
   .pembayaran-card-header h4 {
     font-size: 1rem;
   }
+}
+
+/* 1. INPUT TEXT & TANGGAL (Garis Pinggir) */
+.form-control:focus,
+.form-control.is-valid, 
+.was-validated .form-control:valid {
+    border-color: #008ac0 !important; /* Paksa Border Biru */
+    box-shadow: 0 0 0 0.25rem rgba(0, 138, 192, 0.25) !important; /* Glow Biru */
+    background-image: none !important; /* Hapus centang hijau bawaan validasi */
+}
+
+/* 2. RADIO BUTTON (Bulatan Pilihan) */
+.form-check-input:checked {
+    background-color: #008ac0 !important; /* Isi Biru */
+    border-color: #008ac0 !important; /* Garis Biru */
+}
+
+/* Radio button saat valid (biasanya jadi hijau, kita paksa biru) */
+.form-check-input.is-valid:checked,
+.was-validated .form-check-input:valid:checked {
+    background-color: #008ac0 !important;
+    border-color: #008ac0 !important;
+    box-shadow: 0 0 0 0.25rem rgba(0, 138, 192, 0.25) !important; 
+}
+
+/* 3. PERBAIKAN IKON KALENDER (Agar tidak kecil & warna biru) */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    /* Filter warna hitam jadi Biru Artefax */
+    filter: invert(43%) sepia(68%) saturate(1600%) hue-rotate(168deg) brightness(95%) contrast(101%);
+    cursor: pointer;
+    width: 20px;   /* Ukuran pas */
+    height: 20px;  /* Ukuran pas */
+    margin-right: 5px;
 }
