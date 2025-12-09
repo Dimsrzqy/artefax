@@ -378,7 +378,7 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                         <td><?= htmlspecialchars($userItem['UserAlamat']) ?></td>
                                         <td><span class="badge <?= $badgeClass ?>"><?= $role ?></span></td>
                                         <td>
-                                            <form action="hapus_karyawan.php" method="POST" style="display:inline;"
+                                            <form action="hapus_user.php" method="POST" style="display:inline;"
                                                 onsubmit="return confirm('Yakin hapus <?= htmlspecialchars($userItem['UserNama']) ?>?');">
                                                 <input type="hidden" name="id" value="<?= $userItem['IDUser'] ?>">
                                                 <button type="submit" class="btn btn-sm btn-danger">
