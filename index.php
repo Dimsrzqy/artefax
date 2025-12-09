@@ -1,22 +1,19 @@
 <?php
-// ✅ PERBAIKAN: ob_start() sudah ada, pastikan tidak ada output sebelum header redirect
 ob_start();
 session_start();
 date_default_timezone_set('Asia/Jakarta');
 
-// Pastikan file koneksi dan kelas user/lainnya ada
 require_once "config/koneksi.php";
 require_once "class/users.php";
-// require_once "class/notification.php"; // Asumsi jika ada kelas terpisah
+
 
 $database = new Database();
-// Asumsi: $conn mengembalikan objek PDO (PHP Data Objects)
+
 $conn = $database->getConnection(); 
 $user = new User($conn);
 
 $message = "";
-$showModal = false; // Flag untuk menampilkan modal
-
+$showModal = false; 
 // === LOGOUT ===
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     session_unset();
@@ -167,7 +164,6 @@ if ($userID) {
     $notifications = getBookingNotifications($conn, $userID);
 }
 
-// =================================================================
 
 // ✅ Flush output buffer untuk halaman normal
 if (ob_get_level() > 0) {

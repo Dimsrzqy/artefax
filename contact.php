@@ -1,31 +1,26 @@
 <?php
-// Ganti dengan email penerima (email kamu)
 $receiving_email_address = 'artefaxm@gmail.com';
 
-// Cek apakah ada data yang dikirim via POST
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    // Ambil data dan bersihkan dari karakter berbahaya
     $name = strip_tags(trim($_POST["name"]));
     $email = filter_var(trim($_POST["email"]), FILTER_SANITIZE_EMAIL);
     $subject = trim($_POST["subject"]);
     $message = trim($_POST["message"]);
     $phone = isset($_POST["phone"]) ? trim($_POST["phone"]) : '-';
 
-    // Validasi sederhana
     if ( empty($name) OR empty($message) OR !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
         echo "Mohon lengkapi formulir dengan benar.";
         exit;
     }
 
-    // Format isi email
     $email_content = "Nama: $name\n";
     $email_content .= "Email: $email\n";
     $email_content .= "Telepon: $phone\n\n";
     $email_content .= "Pesan:\n$message\n";
 
-    // Header email
+
     $email_headers = "From: $name <$email>";
 
     // Kirim Email

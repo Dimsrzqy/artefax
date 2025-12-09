@@ -1,5 +1,4 @@
 <?php
-// shop.php - FINAL VERSION: PAKET JASA GLOBAL MAKSIMAL 2 BOOKING (CEK OVERLAP RENTANG) + TANGGAL MIN HARI INI
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
 $db = new Database();
@@ -9,7 +8,7 @@ if (!$conn) die("Koneksi database gagal.");
 // TANGGAL HARI INI (real-time device/server)
 $today = date('Y-m-d');
 
-// Filter tanggal: minimal hari ini, tidak boleh tanggal lama
+// Filter tanggal
 $filter_date = $_GET['date'] ?? $today;
 if ($filter_date < $today) {
     $filter_date = $today;

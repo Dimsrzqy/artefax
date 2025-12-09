@@ -1,5 +1,4 @@
 <?php
-// Services.php - FINAL VERSION WITH GLOBAL PAKET JASA 2 SLOT PER DAY
 session_start();
 require_once __DIR__ . '/../config/koneksi.php';
 
