@@ -324,39 +324,48 @@ document.addEventListener('DOMContentLoaded', ()=> {
         </div>
 
        <div class="row g-3 mt-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold text-primary">Tanggal Mulai <span class="text-danger">*</span></label>
-            <input type="datetime-local" 
-                  id="inputTglMulai" 
-                  name="tgl_mulai" 
-                  class="form-control border-primary" 
-                  value="<?= htmlspecialchars($autoDateValue) ?>" 
-                  required>
-            
-            <?php if (!empty($autoDateValue)): ?>
-                <small class="text-muted"><i class="fas fa-check-circle text-success"></i> Sesuai pilihan di Shop.</small>
-            <?php endif; ?>
-          </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold" style="color: #008ac0;">Tanggal Mulai <span class="text-danger">*</span></label>
+    
+    <input type="datetime-local" 
+           id="inputTglMulai" 
+           name="tgl_mulai" 
+           class="form-control" 
+           style="border-color: #008ac0;"
+           value="<?= htmlspecialchars($autoDateValue) ?>" 
+           required>
+    
+    <?php if (!empty($autoDateValue)): ?>
+        <small class="text-muted">
+            <i class="fas fa-check-circle" style="color: #008ac0;"></i> Sesuai pilihan di Shop.
+        </small>
+    <?php endif; ?>
+  </div>
 
-          <div class="col-md-6">
-            <label class="form-label fw-bold text-primary">Tanggal Selesai <span class="text-danger">*</span></label>
-            <input type="datetime-local" id="inputTglSelesai" name="tgl_selesai" class="form-control border-primary" required>
-          </div>
-        </div>
-        
-        <div class="mt-4 p-3 bg-light rounded border">
-          <label class="form-label fw-bold mb-2">Metode Pembayaran</label>
-          <div class="d-flex gap-4">
-              <div class="form-check">
-                <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_dp" value="dp" checked>
-                <label class="form-check-label fw-bold" for="pay_dp">DP 50% <span class="text-muted fw-normal">(Sisanya saat acara)</span></label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_full" value="lunas">
-                <label class="form-check-label fw-bold" for="pay_full">Lunas (Full Payment)</label>
-              </div>
-          </div>
-        </div>
+  <div class="col-md-6">
+    <label class="form-label fw-bold" style="color: #008ac0;">Tanggal Selesai <span class="text-danger">*</span></label>
+    <input type="datetime-local" 
+           id="inputTglSelesai" 
+           name="tgl_selesai" 
+           class="form-control" 
+           style="border-color: #008ac0;"
+           required>
+  </div>
+</div>
+
+<div class="mt-4 p-3 bg-light rounded border">
+  <label class="form-label fw-bold mb-2">Metode Pembayaran</label>
+  <div class="d-flex gap-4">
+      <div class="form-check">
+        <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_dp" value="dp" checked>
+        <label class="form-check-label fw-bold" for="pay_dp">DP 50% <span class="text-muted fw-normal">(Sisanya saat acara)</span></label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_full" value="lunas">
+        <label class="form-check-label fw-bold" for="pay_full">Lunas (Full Payment)</label>
+      </div>
+  </div>
+</div>
 
         <div class="mt-4">
           <label class="form-label">Catatan Tambahan (opsional)</label>
@@ -425,13 +434,14 @@ document.addEventListener('DOMContentLoaded', ()=> {
 </div>
 
 <!-- FOOTER -->
+
 <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
     <div class="container py-5">
         <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
             <div class="row g-4">
                 <div class="col-lg-3">
                     <a href="#">
-                        <h1 class="text-primary mb-0">ARTEFAX.ID</h1>
+                        <h1 class="text-info mb-0">ARTEFAX.ID</h1>
                         <p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
                     </a>
                 </div>
@@ -450,23 +460,23 @@ document.addEventListener('DOMContentLoaded', ()=> {
                 <div class="footer-item">
                     <h4 class="text-light mb-3">Tentang Kami</h4>
                     <p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional untuk menunjang kesuksesan acara Anda.</p>
-                    <a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-primary">Lihat Layanan</a>
+                    <a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-info">Lihat Layanan</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="d-flex flex-column text-start footer-item">
                     <h4 class="text-light mb-3">Menu Cepat</h4>
-                    <a class="btn-link" href="../index.php">Landing Page</a>
-                    <a class="btn-link" href="shop.php">Shop</a>
-                    <a class="btn-link" href="Services.php">Home</a>
+                    <a class="btn-link text-info" href="../index.php">Landing Page</a>
+                    <a class="btn-link text-info" href="shop.php">Shop</a>
+                    <a class="btn-link text-info" href="Services.php">Home</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="d-flex flex-column text-start footer-item">
                     <h4 class="text-light mb-3">Akun Saya</h4>
-                    <a class="btn-link" href="../View/profil.php">Profil</a>
-                    <a class="btn-link" href="cart.php">Contact</a>
-                    <a class="btn-link" href="../RiwayatBooking.php">Riwayat Booking</a>
+                    <a class="btn-link text-info" href="../View/profil.php">Profil</a>
+                    <a class="btn-link text-info" href="cart.php">Keranjang</a>
+                    <a class="btn-link text-info" href="../RiwayatBooking.php">Riwayat Booking</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">

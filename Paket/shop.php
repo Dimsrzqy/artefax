@@ -167,8 +167,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         <input type="text" name="q" class="form-control bg-light border-0" placeholder="Kamera, Dokumentasi..." value="<?= htmlspecialchars($q) ?>">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-bold text-primary small">Tanggal Sewa:</label>
-                        <input type="date" id="bookingDate" name="date" class="form-control border-primary fw-bold text-primary" 
+                        <label class="form-label fw-bold text-info small">Tanggal Sewa:</label>
+                        <input type="date" id="bookingDate" name="date" class="form-control border-info fw-bold text-info" 
                                value="<?= htmlspecialchars($filter_date) ?>" 
                                min="<?= $today ?>" required onchange="this.form.submit()">
                     </div>
@@ -182,7 +182,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm">Cek</button>
+                        <button type="submit" class="btn btn-info w-100 fw-bold rounded-pill shadow-sm text-white">Cek</button>
                     </div>
                 </form>
             </div>
@@ -192,21 +192,21 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     <div class="row g-4">
         <div class="col-lg-3">
             <div class="mb-4">
-                <h4 class="mb-3 text-primary fw-bold">Kategori</h4>
+                <h4 class="mb-3 text-info fw-bold">Kategori</h4>
                 <div class="list-group shadow-sm border-0 rounded-3 overflow-hidden">
                     <a href="shop.php?date=<?= $filter_date ?>" class="list-group-item list-group-item-action <?= $type===''?'active':'' ?>">Semua</a>
                     <a href="shop.php?type=alat&date=<?= $filter_date ?>" class="list-group-item list-group-item-action <?= $type==='alat'?'active':'' ?>">Alat Only</a>
                     <a href="shop.php?type=paket&date=<?= $filter_date ?>" class="list-group-item list-group-item-action <?= $type==='paket'?'active':'' ?>">Paket Jasa Only</a>
                 </div>
             </div>
-           
+            
             <div class="d-none d-lg-block">
                 <?php if ($type === '' || $type === 'alat'): ?>
                 <div class="mb-3">
                     <h6 class="fw-bold text-muted">Kategori Alat</h6>
                     <ul class="list-unstyled ps-2 small">
                         <?php foreach($alatSub as $k => $c): ?>
-                            <li class="mb-2"><a href="shop.php?type=alat&kategori=<?= urlencode($k) ?>&date=<?= $filter_date ?>" class="text-decoration-none text-dark d-flex justify-content-between align-items-center"><span><i class="fa fa-angle-right me-2 text-muted"></i><?= $k ?></span> <span class="badge bg-light text-primary rounded-pill border border-primary"><?= $c ?></span></a></li>
+                            <li class="mb-2"><a href="shop.php?type=alat&kategori=<?= urlencode($k) ?>&date=<?= $filter_date ?>" class="text-decoration-none text-dark d-flex justify-content-between align-items-center"><span><i class="fa fa-angle-right me-2 text-muted"></i><?= $k ?></span> <span class="badge bg-light text-info rounded-pill border border-info"><?= $c ?></span></a></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
@@ -216,7 +216,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                     <h6 class="fw-bold text-muted">Kategori Paket</h6>
                     <ul class="list-unstyled ps-2 small">
                         <?php foreach($paketSub as $k => $c): ?>
-                            <li class="mb-2"><a href="shop.php?type=paket&kategori=<?= urlencode($k) ?>&date=<?= $filter_date ?>" class="text-decoration-none text-dark d-flex justify-content-between align-items-center"><span><i class="fa fa-angle-right me-2 text-muted"></i><?= $k ?></span> <span class="badge bg-light text-primary rounded-pill border border-primary"><?= $c ?></span></a></li>
+                            <li class="mb-2"><a href="shop.php?type=paket&kategori=<?= urlencode($k) ?>&date=<?= $filter_date ?>" class="text-decoration-none text-dark d-flex justify-content-between align-items-center"><span><i class="fa fa-angle-right me-2 text-muted"></i><?= $k ?></span> <span class="badge bg-light text-info rounded-pill border border-info"><?= $c ?></span></a></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
@@ -225,11 +225,11 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         </div>
 
         <div class="col-lg-9">
-            <div class="alert alert-primary py-2 mb-4 d-flex align-items-center bg-white shadow-sm border-0 rounded-3 border-start border-5 border-primary">
-                <i class="fa fa-info-circle me-3 text-primary fa-2x"></i>
+            <div class="alert alert-info py-2 mb-4 d-flex align-items-center bg-white shadow-sm border-0 rounded-3 border-start border-5 border-info">
+                <i class="fa fa-info-circle me-3 text-info fa-2x"></i>
                 <div>
                     <small class="text-muted d-block">Status Ketersediaan untuk tanggal:</small>
-                    <strong class="text-primary fs-5"><?= date('d F Y', strtotime($filter_date)) ?></strong>
+                    <strong class="text-info fs-5"><?= date('d F Y', strtotime($filter_date)) ?></strong>
                 </div>
             </div>
 
@@ -247,8 +247,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
                         $isStockEmpty = ($stokFisik <= 0);
                         $isDateFull = ($p['tipe'] === 'alat')
-                                        ? ($bookedCount >= $limitBookingHarian)
-                                        : $isPaketFullToday; // Pakai cek global overlap
+                                             ? ($bookedCount >= $limitBookingHarian)
+                                             : $isPaketFullToday; // Pakai cek global overlap
 
                         $isUnavailable = ($isStockEmpty || $isDateFull);
 
@@ -264,7 +264,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                             $statusBadgeClass = "badge-bestseller text-dark";
                         }
                         $imgUrl = (!empty($p['image']) && file_exists(__DIR__ . '/img/produk/' . $p['image']))
-                                  ? 'img/produk/' . $p['image'] : 'img/noimage.png';
+                                     ? 'img/produk/' . $p['image'] : 'img/noimage.png';
                     ?>
                     <div class="col-md-6 col-lg-6 col-xl-4">
                         <div class="product-card h-100 <?= $isUnavailable ? 'unavailable' : '' ?>">
@@ -283,11 +283,11 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                     <span class="chip-category tipe"><?= htmlspecialchars($p['tipe']) ?></span>
                                     <span class="chip-category"><?= htmlspecialchars($p['kategori']) ?></span>
                                 </div>
-                               
+                                
                                 <h5 class="fw-bold text-dark mb-2" style="font-size: 1.1rem; height: 2.5em; overflow: hidden; line-height: 1.3;">
                                     <?= htmlspecialchars($p['name']) ?>
                                 </h5>
-                               
+                                
                                 <div class="small mb-3">
                                     <?php if ($isUnavailable): ?>
                                         <span class="text-danger fw-bold">Tidak Tersedia</span>
@@ -312,7 +312,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                         </button>
                                     <?php else: ?>
                                         <h5 class="product-price mb-0"><?= rupiah($p['price']) ?></h5>
-                                        <button class="btn-action openDetailBtn"
+                                        <button class="btn btn-outline-info fw-bold openDetailBtn"
                                             data-id="<?= $p['id'] ?>" data-tipe="<?= $p['tipe'] ?>" data-name="<?= htmlspecialchars($p['name']) ?>"
                                             data-price="<?= $p['price'] ?>" data-desc="<?= htmlspecialchars($p['description']) ?>"
                                             data-img="<?= $imgUrl ?>" data-date="<?= $filter_date ?>">
@@ -330,7 +330,6 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     </div>
 </div>
 
-<!-- Modal Detail Produk -->
 <div class="modal fade" id="productModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -347,7 +346,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         <h3 id="modalName" class="fw-bold mb-2"></h3>
                         <h4 class="fw-bold mb-4 text-warning" id="modalPrice"></h4>
                         <div class="alert alert-light border d-flex align-items-center mb-3">
-                            <i class="fa fa-calendar-alt fa-2x me-3 text-primary"></i>
+                            <i class="fa fa-calendar-alt fa-2x me-3 text-info"></i>
                             <div>
                                 <small class="text-muted">Tanggal Booking:</small><br>
                                 <strong id="modalDateDisplay" class="fs-5 text-dark"></strong>
@@ -359,7 +358,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         <input type="hidden" id="modalDateInput">
                         <div class="d-flex gap-3">
                             <input type="number" id="modalQty" class="form-control w-25 text-center fw-bold" value="1" min="1">
-                            <button id="btnAddToCart" class="btn btn-primary w-100 fw-bold text-white shadow-sm">Masuk Keranjang</button>
+                            <button id="btnAddToCart" class="btn btn-info w-100 fw-bold text-white shadow-sm">Masuk Keranjang</button>
                         </div>
                     </div>
                 </div>
@@ -368,14 +367,13 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     </div>
 </div>
 
-<!-- Footer tetap sama -->
 <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
     <div class="container py-5">
         <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
             <div class="row g-4">
                 <div class="col-lg-3">
                     <a href="#">
-                        <h1 class="text-primary mb-0">ARTEFAX.ID</h1>
+                        <h1 class="text-info mb-0">ARTEFAX.ID</h1>
                         <p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
                     </a>
                 </div>
@@ -394,23 +392,23 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                 <div class="footer-item">
                     <h4 class="text-light mb-3">Tentang Kami</h4>
                     <p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional untuk menunjang kesuksesan acara Anda.</p>
-                    <a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-primary">Lihat Layanan</a>
+                    <a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-info">Lihat Layanan</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="d-flex flex-column text-start footer-item">
                     <h4 class="text-light mb-3">Menu Cepat</h4>
-                    <a class="btn-link" href="../index.php">Landing Page</a>
-                    <a class="btn-link" href="shop.php">Shop</a>
-                    <a class="btn-link" href="Services.php">Home</a>
+                    <a class="btn-link text-info" href="../index.php">Landing Page</a>
+                    <a class="btn-link text-info" href="shop.php">Shop</a>
+                    <a class="btn-link text-info" href="Services.php">Home</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="d-flex flex-column text-start footer-item">
                     <h4 class="text-light mb-3">Akun Saya</h4>
-                    <a class="btn-link" href="../View/profil.php">Profil</a>
-                    <a class="btn-link" href="cart.php">Keranjang</a>
-                    <a class="btn-link" href="../RiwayatBooking.php">Riwayat Booking</a>
+                    <a class="btn-link text-info" href="../View/profil.php">Profil</a>
+                    <a class="btn-link text-info" href="cart.php">Keranjang</a>
+                    <a class="btn-link text-info" href="../RiwayatBooking.php">Riwayat Booking</a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -482,7 +480,7 @@ $(document).ready(function() {
             }
         });
     });
-   
+    
     $(document).on('click', 'a[href*="checkout.php"]', function(e) {
         e.preventDefault();
         var valDate = $('input[name="date"]').val() || new Date().toISOString().split('T')[0];
