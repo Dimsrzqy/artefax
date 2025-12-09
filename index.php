@@ -1,302 +1,583 @@
 <?php
 ob_start();
+
 session_start();
+
 date_default_timezone_set('Asia/Jakarta');
 
 require_once "config/koneksi.php";
+
 require_once "class/users.php";
+
+
 
 
 $database = new Database();
 
 $conn = $database->getConnection(); 
+
 $user = new User($conn);
+
+
 
 $message = "";
 $showModal = false; 
 // === LOGOUT ===
+
 if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+
     session_unset();
+
     session_destroy();
+
     // Redirect ke index dengan status logout untuk memunculkan pesan di modal
+
     header("Location: index.php?logout=success");
+
     exit;
+
 }
+
+
 
 // === Tampilkan pesan sukses logout di modal jika ada parameter
+
 if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
+
     $message = "Anda berhasil logout.";
+
     $showModal = true; 
+
 }
 
+
+
 // === PROSES LOGIN DARI MODAL ===
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['login_submit'])) {
+
     $email    = trim($_POST['email'] ?? '');
+
     $password = trim($_POST['password'] ?? '');
 
+
+
     if (empty($email) || empty($password)) {
+
         $message = "Email dan password wajib diisi!";
+
         $showModal = true;
+
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
         $message = "Format email tidak valid!";
+
         $showModal = true;
+
     } else {
+
         $user->UserEmail = $email;
+
         $user->UserPassword = $password;
+
         $login = $user->login();
 
+
+
         if ($login) {
-            // ✅ PERBAIKAN: Clear output buffer sebelum redirect
+
+            // âœ… PERBAIKAN: Clear output buffer sebelum redirect
+
             ob_end_clean();
+
             
+
             session_regenerate_id(true);
+
             $_SESSION['user'] = [
+
                 'IDUser'    => $login['IDUser'],
+
                 'UserNama'  => $login['UserNama'],
+
                 'UserEmail' => $login['UserEmail'],
+
                 'UserRole'  => $login['UserRole'] // Memastikan role ada
+
             ];
+
             
+
             // Logika Redirect Berdasarkan Role
+
             $role = strtolower($login['UserRole']);
+
             switch ($role) {
+
                 case 'customer':
+
                     // Customer diarahkan ke services
+
                     header("Location: Paket/Services.php"); 
+
                     break;
+
                 case 'service':
+
                     // Redirect ke menu service
+
                     header("Location: service/index.php"); 
+
                     break;
+
                 case 'karyawan':
+
                     // Redirect ke dashboard karyawan
+
                     header("Location: dasboardKaryawan/index.html"); 
+
                     break;
+
                 case 'admin':
+
                 default:
+
                     // Redirect ke dashboard admin
+
                     header("Location: adminArtefax/index.html"); 
+
                     break;
+
             }
+
             exit;
+
         } else {
+
             $message = "Email atau password salah!";
+
             $showModal = true;
+
         }
+
     }
+
 }
 
 $notifications = []; // Array untuk menyimpan notifikasi
+
 $userID = $_SESSION['user']['IDUser'] ?? null;
 
+
+
 /**
+
  * Mengambil notifikasi terkait booking dan refund untuk user tertentu.
+
  */
+
 function getBookingNotifications($conn, $userID) {
+
     if (!$userID) return [];
 
+
+
     $notifs = [];
+
     
+
     // Pastikan koneksi yang digunakan adalah PDO
+
     if (!$conn instanceof PDO) {
+
         error_log("Error: Koneksi database bukan objek PDO. Periksa config/koneksi.php.");
+
         return [];
+
     }
+
     
+
     try {
+
         // 1. Notifikasi Booking Diterima (BkgStatus = 'Diterima')
+
         $queryBooking = "SELECT 
+
                             IDBooking, BkgTglMulai, BkgTglSelesai, UpdatedAt
+
                          FROM 
+
                             booking
+
                          WHERE 
+
                             IDUser = :userID AND BkgStatus = 'Diterima'
+
                          LIMIT 5"; 
+
         
+
         $stmtBooking = $conn->prepare($queryBooking);
-        // ✅ Perbaikan sintaks PDO: Menggunakan execute([array])
+
+        // âœ… Perbaikan sintaks PDO: Menggunakan execute([array])
+
         $stmtBooking->execute([':userID' => $userID]);
+
         
+
         while ($row = $stmtBooking->fetch(PDO::FETCH_ASSOC)) {
+
             $notifs[] = [
+
                 'type' => 'success',
+
                 'icon' => 'bi-check-circle-fill',
+
                 'title' => 'Booking Diterima',
+
                 'message' => "Booking #{$row['IDBooking']} untuk tgl " . date('d M', strtotime($row['BkgTglMulai'])) . " telah **Diterima**. Segera lakukan pembayaran!",
+
                 'time' => date('H:i, d M', strtotime($row['UpdatedAt']))
+
             ];
+
         }
+
         
+
         // 2. Notifikasi Pengajuan Pembatalan Disetujui (RefundStatus = 'Disetujui')
+
         $queryRefund = "SELECT 
+
                             r.IDRefund, r.IDBooking, r.RefundWaktu, b.BkgTglMulai 
+
                         FROM 
+
                             refund r
+
                         JOIN 
+
                             booking b ON r.IDBooking = b.IDBooking
+
                         WHERE 
+
                             b.IDUser = :userID AND r.RefundStatus = 'Disetujui'
+
                         LIMIT 5"; 
 
+
+
         $stmtRefund = $conn->prepare($queryRefund);
-        // ✅ Perbaikan sintaks PDO: Menggunakan execute([array])
+
+        // âœ… Perbaikan sintaks PDO: Menggunakan execute([array])
+
         $stmtRefund->execute([':userID' => $userID]);
 
+
+
         while ($row = $stmtRefund->fetch(PDO::FETCH_ASSOC)) {
+
             $notifs[] = [
+
                 'type' => 'info',
+
                 'icon' => 'bi-wallet2',
+
                 'title' => 'Refund Disetujui',
+
                 'message' => "Pengajuan pembatalan (Booking ID #{$row['IDBooking']}) telah **Disetujui**. Dana sedang diproses.",
+
                 'time' => date('H:i, d M', strtotime($row['RefundWaktu']))
+
             ];
+
         }
+
     } catch (PDOException $e) {
+
         // Log error database
+
         error_log("Database Error in notifications: " . $e->getMessage());
+
         return [];
+
     }
 
+
+
     return $notifs;
+
 }
+
+
 
 if ($userID) {
+
     $notifications = getBookingNotifications($conn, $userID);
+
 }
 
 
-// ✅ Flush output buffer untuk halaman normal
+
+
+// âœ… Flush output buffer untuk halaman normal
+
 if (ob_get_level() > 0) {
+
     ob_end_flush();
+
 }
+
 ?>
 
+
+
 <!DOCTYPE html>
+
 <html lang="id">
 
+
+
 <head>
+
     <meta charset="utf-8" />
+
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+
     <title>Index - Artefax</title>
+
     
+
     <link href="assets/img/logo Artefax1.png" rel="icon" />
+
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
     <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+
     <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
     <link href="assets/css/main.css?v=<?= time(); ?>" rel="stylesheet" />
 </head>
 
+
+
 <body class="index-page">
 
+
+
 <header id="header" class="header d-flex align-items-center fixed-top">
+
     <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+
         <a href="index.php" class="logo d-flex align-items-center">
+
             <img src="assets/img/logo Artefax.png" alt="Logo Artefax" style="max-height: 70px" />
+
         </a>
 
+
+
         <nav id="navmenu" class="navmenu">
+
             <ul>
+
                 <li><a href="#hero" class="active">Home</a></li>
+
                 <li><a href="#services">Layanan</a></li>
+
                 <li><a href="#portfolio">Portfolio</a></li>
+
                 <li><a href="#contact">Contact</a></li>
+
             </ul>
+
             <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+
         </nav>
 
+
+
         <div class="d-flex align-items-center gap-3">
+
             <span class="text-black fw-medium">
+
                 Hi, <strong><?= htmlspecialchars($_SESSION['user']['UserNama'] ?? 'Guest') ?></strong>
+
             </span>
+
             
+
             <?php if (isset($_SESSION['user'])): ?>
+
             <div class="dropdown">
+
                 <a class="nav-link dropdown-toggle" href="#" role="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi" style="font-size: 1.5rem; color: black; position: relative;">
+
                     <i class="bi bi-bell-fill"></i>
+
                     <?php if (!empty($notifications)): ?>
+
                         <span class="position-absolute translate-middle p-1 bg-danger border border-light rounded-circle" 
+
                               style="top: 10px; right: -5px; height: 10px; width: 10px;">
+
                             <span class="visually-hidden">New alerts</span>
+
                         </span>
+
                     <?php endif; ?>
+
                 </a>
 
+
+
                 <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notificationsDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+
                     <li class="dropdown-header">
+
                         <h6 class="mb-0 fw-bold">Pemberitahuan (<?= count($notifications) ?>)</h6>
+
                     </li>
+
                     <li><hr class="dropdown-divider"></li>
 
+
+
                     <?php if (empty($notifications)): ?>
+
                         <li class="text-center py-4 text-muted">Tidak ada notifikasi baru.</li>
+
                     <?php else: ?>
+
                         <?php foreach ($notifications as $notif): ?>
+
                         <li>
+
                             <a class="dropdown-item d-flex align-items-start py-2" href="view/notifications.php" title="<?= htmlspecialchars($notif['title']) ?>">
+
                                 <div class="flex-shrink-0 me-3 mt-1">
+
                                     <i class="bi <?= $notif['icon'] ?> text-<?= $notif['type'] ?>" style="font-size: 1.2rem;"></i>
+
                                 </div>
+
                                 <div class="flex-grow-1">
+
                                     <h6 class="mb-1 fw-bold"><?= htmlspecialchars($notif['title']) ?></h6>
+
                                     <small class="text-muted"><?= $notif['message'] ?></small>
+
                                     <div class="small text-end text-secondary mt-1"><?= $notif['time'] ?></div>
+
                                 </div>
+
                             </a>
+
                         </li>
+
                         <li><hr class="dropdown-divider my-0"></li>
+
                         <?php endforeach; ?>
+
                     <?php endif; ?>
+
                     
+
                     <?php if (!empty($notifications)): ?>
+
                     <li class="text-center mt-2">
+
                          <a href="view/notifications.php" class="btn btn-sm btn-outline-secondary w-75 rounded-pill">Lihat Semua</a>
+
                     </li>
+
                     <?php endif; ?>
+
                 </ul>
+
             </div>
+
             <?php endif; ?>
-            <a href="view/profil.php" title="Profil Saya">
+
+            <a href="View/profil.php" title="Profil Saya">
+
                 <i class="bi bi-person-circle" style="font-size: 2.2rem; color: black;"></i>
+
             </a>
+
             
+
             <?php if (isset($_SESSION['user'])): ?>
+
                 <?php endif; ?>
+
             
+
         </div>
+
     </div>
+
 </header>
 
+
+
       <main class="main">
+
         <section id="hero" class="hero section">
+
             <div class="container">
+
                 <div class="row align-items-center">
+
                     <div class="col-lg-6">
+
                         <div class="hero-content">
                             <h1>
                             Menciptakan Momen, <br> 
                             <span class="typing-text">Mengabadikan Kenangan</span>
                         </h1>
                             <p>
+
                                 ARTEFAX.ID adalah partner kreatif Anda dalam menghadirkan acara berkesan.
+
                                 Dari perencanaan hingga dokumentasi, kami menawarkan solusi event organizer
+
                                 dan multimedia yang inovatif, profesional, dan terintegrasi.
+
                             </p>
+
                             <div class="hero-actions justify-content-center justify-content-lg-start">
+
                                 <?php if (isset($_SESSION['user'])): ?>
+
                                     <a href="Paket/Services.php" class="btn-primary scrollto">Pesan Sekarang</a>
+
                                 <?php else: ?>
-                                    <a href="view/login.php" class="btn-primary scrollto">Login Here</a>
+
+                                    <a href="View/login.php" class="btn-primary scrollto">Login Here</a>
+
                                 <?php endif; ?>
+
                             </div>
+
                         </div>
+
                     </div>
+
                     <div class="col-lg-6">
+
                         <div class="hero-image">
+
                             <img src="assets/img/animasi.png" class="img-fluid floating" alt="Hero Image" />
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </section>
 
        <section id="services" class="services section">
@@ -332,787 +613,1565 @@ if (ob_get_level() > 0) {
     </div>
 </section>
                     </div>
+
             </div>
+
         </section>
+
         </main>
+
     
+
         <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+
       <div class="modal-dialog modal-dialog-centered">
+
         <div class="modal-content overflow-hidden border-0" style="border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+
           <div class="modal-header text-white text-center position-relative" style="background: linear-gradient(135deg, #5c99ee, #4c89de); padding: 2.5rem 1rem;">
+
             <h4 class="modal-title w-100 fw-bold mb-0" id="loginModalLabel" style="font-size: 1.75rem; color: white !important; letter-spacing: 0.5px;">
+
               Login ke Artefax
+
             </h4>
+
             <button type="button" class="btn-close btn-close-white position-absolute end-0 me-4 top-50 translate-middle-y" data-bs-dismiss="modal"></button>
+
           </div>
+
           <div class="modal-body p-4">
+
             <?php if (!empty($message)): ?>
+
                 <?php 
+
                     // Tentukan class alert berdasarkan apakah itu sukses logout atau error login
+
                     $alert_class = (isset($_GET['logout']) && $_GET['logout'] === 'success') ? 'alert-success' : 'alert-danger';
+
                 ?>
+
                 <div class="alert <?= $alert_class ?> alert-dismissible fade show">
+
                     <?= htmlspecialchars($message) ?>
+
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
                 </div>
+
             <?php endif; ?>
 
+
+
             <form method="POST" action="" novalidate>
+
               <input type="hidden" name="login_submit" value="1">
+
               
+
               <div class="mb-3">
+
                 <input type="email" name="email" class="form-control form-control-lg" 
+
                         placeholder="Email" required autocomplete="email"
+
                         value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+
                         style="font-size: 1.25rem;"> 
+
               </div>
+
               
+
               <div class="mb-4">
+
                 <div class="password-wrapper position-relative">
+
                   <input type="password" name="password" id="modalPassword" class="form-control form-control-lg" 
+
                               placeholder="Password" required autocomplete="current-password"
+
                               style="font-size: 1.25rem; padding-right: 3.5rem;"> 
+
                               
+
                   <button type="button" class="btn toggle-password position-absolute end-0 top-50 translate-middle-y me-3" 
+
                               onclick="toggleModalPass()" 
+
                               style="padding: 0; width: 2.5rem; height: 100%; color: #6c757d;">
+
                     <i class="bi bi-eye" style="font-size: 1.5rem;"></i>
+
                   </button>
+
                 </div>
+
               </div>
+
+
 
               <button type="submit" class="btn btn-primary w-100 fw-bold py-3" style="border-radius: 50px; background: linear-gradient(135deg, #5c99ee, #4c89de); border: none; font-size: 1.1rem;">
+
                 Login Sekarang
+
               </button>
+
             </form>
 
+
+
             <div class="text-center mt-4">
+
               <p class="mb-2">Belum punya akun? 
+
                 <a href="view/register.php" class="text-primary fw-bold">Daftar di sini</a>
+
               </p>
+
               <a href="view/forgot_password.php" class="text-muted small">Lupa Password?</a>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </div>
+
     <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
     <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+
     <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
     <script src="assets/js/main.js"></script>
+
     <script>
+
         // Pastikan fungsi toggleModalPass tersedia
+
         function toggleModalPass() {
+
             var x = document.getElementById("modalPassword");
+
             var icon = document.querySelector("#loginModal .toggle-password i");
 
+
+
             if (x.type === "password") {
+
                 x.type = "text";
+
                 // Ganti ikon menjadi mata tertutup
+
                 icon.classList.remove('bi-eye');
+
                 icon.classList.add('bi-eye-slash');
+
             } else {
+
                 x.type = "password";
+
                 // Ganti ikon kembali menjadi mata terbuka
+
                 icon.classList.remove('bi-eye-slash');
+
                 icon.classList.add('bi-eye');
+
             }
+
         }
+
         
+
         // Tambahkan fungsi untuk menampilkan modal jika ada pesan error atau sukses logout
+
         <?php if ($showModal): ?>
+
             var loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+
             loginModal.show();
+
         <?php endif; ?>
+
     </script>
+
 </body>
+
 </html>
+
   <section id="features" class="features section">
+
       <div class="container">
           <h2 class="section-title text-center mb-5">Kenapa Memilih Artefax?</h2>
         <div class="features-grid">
+
           <div class="features-card">
+
             <div class="icon-wrapper">
+
               <i class="bi bi-lightbulb"></i>
+
             </div>
+
             <h3>Creative & Innovative Team</h3>
+
             <p>Kami memiliki tim kreatif yang selalu menghadirkan ide dan konsep segar untuk setiap proyek agar hasilnya unik dan berkarakter.</p>
+
             <div class="features-list">
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Konsep desain orisinal</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Solusi kreatif sesuai kebutuhan klien</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Sentuhan profesional di setiap detail</span>
+
               </div>
+
             </div>
+
             <div class="image-container">
+
               <img src="assets/img/At the office-amico.png" class="img-fluid" alt="Creative Team" />
+
             </div>
+
           </div>
 
+
+
           <div class="features-card">
+
             <div class="icon-wrapper">
+
               <i class="bi bi-camera-reels"></i>
+
             </div>
+
             <h3>Complete Multimedia Services</h3>
+
             <p>Artefax menyediakan layanan lengkap mulai dari event organizer, dokumentasi, hingga penyewaan alat multimedia.</p>
+
             <div class="features-list">
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Layanan terintegrasi satu pintu</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Peralatan modern dan berkualitas</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Tim teknis berpengalaman</span>
+
               </div>
+
             </div>
+
             <div class="image-container">
+
               <img src="assets/img/Studio photographer-amico.png" class="img-fluid" alt="Multimedia Services" />
+
             </div>
+
           </div>
 
+
+
           <div class="features-card">
+
             <div class="icon-wrapper">
+
               <i class="bi bi-gear-wide-connected"></i>
+
             </div>
+
             <h3>Professional Workflow</h3>
+
             <p>Kami bekerja dengan sistem terencana agar setiap proyek berjalan lancar, tepat waktu, dan sesuai standar kualitas tinggi.</p>
+
             <div class="features-list">
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Manajemen waktu dan tim yang solid</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Proses kerja transparan</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Evaluasi hasil setiap tahap produksi</span>
+
               </div>
+
             </div>
+
             <div class="image-container">
+
               <img src="assets/img/Events-amico.png" class="img-fluid" alt="Professional Workflow" />
+
             </div>
+
           </div>
 
+
+
           <div class="features-card">
+
             <div class="icon-wrapper">
+
               <i class="bi bi-people"></i>
+
             </div>
+
             <h3>Client Satisfaction Focus</h3>
+
             <p>Kepuasan klien adalah prioritas utama kami, dengan pelayanan yang fleksibel, ramah, dan selalu terbuka terhadap ide baru.</p>
+
             <div class="features-list">
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Komunikasi dua arah yang responsif</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Penyesuaian konsep sesuai permintaan</span>
+
               </div>
+
               <div class="feature-item">
+
                 <i class="bi bi-check-circle-fill"></i>
+
                 <span>Layanan after-project yang siap membantu</span>
+
               </div>
+
             </div>
+
             <div class="image-container">
+
               <img src="assets/img/Partnership-amico.png" class="img-fluid" alt="Client Focus" />
+
             </div>
+
           </div>
+
+
 
         </div>
+
       </div>
+
     </section>
+
     <section id="portfolio" class="portfolio section">
+
       <div class="container section-title">
+
         <h2>Portfolio</h2>
+
         <p>Kumpulan hasil karya terbaik kami yang mencerminkan kreativitas, kualitas, dan komitmen dalam setiap proyek.</p>
+
       </div>
+
       <div class="container">
+
         <div class="isotope-layout" data-default-filter="*" data-layout="fitRows" data-sort="original-order">
+
           <div class="portfolio-filters-wrapper">
+
             <ul class="portfolio-filters isotope-filters">
+
               <li data-filter="*" class="filter-active">All Projects</li>
+
               <li data-filter=".filter-wedding">Wedding</li>
+
               <li data-filter=".filter-yearbook">Year Book</li>
+
               <li data-filter=".filter-graduation">Graduation</li>
+
             </ul>
+
           </div>
+
+
 
           <div class="row gy-4 portfolio-grid isotope-container">
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-graduation">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (1)_2_11zon.webp" class="img-fluid" alt="Brand Identity" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (1)_2_11zon.webpp" class="glightbox zoom-link" title="Brand Identity Project">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Wedding</h3>
+
                   <p>Corporate branding and visual identity system</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-graduation">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (2)_3_11zon.webp" class="img-fluid" alt="E-commerce Platform" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (2)_3_11zon.webp" class="glightbox zoom-link" title="E-commerce Platform">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>E-commerce Platform</h3>
+
                   <p>Modern online shopping experience</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (3)_4_11zon.webp" class="img-fluid" alt="Magazine Design" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (3)_4_11zon.webp" class="glightbox zoom-link" title="Magazine Design">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Wedding</h3>
+
                   <p>Dokumentasi dan konsep acara pernikahan dengan sentuhan artistik dan detail yang berkelas.</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (4)_5_11zon.webp" class="img-fluid" alt="Motion Graphics" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (4)_5_11zon.webp" class="glightbox zoom-link" title="Motion Graphics">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Wedding</h3>
+
                   <p>Dari dekorasi hingga dokumentasi, kami siap bikin hari bahagiamu jadi tak terlupakan.</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-wedding">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (5)_6_11zon.webp" class="img-fluid" alt="Logo Collection" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (5)_6_11zon.webp" class="glightbox zoom-link" title="Logo Collection">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Wedding</h3>
+
                   <p>Kami bantu wujudkan pernikahan impianmu dengan konsep visual yang menawan dan penuh cerita.</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (7)_8_11zon.webp" class="img-fluid" alt="Mobile App Design" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (7)_8_11zon.webp" class="glightbox zoom-link" title="Mobile App Design">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Mobile App Design</h3>
+
                   <p>User-centered interface design</p>
+
                 </div>
+
               </div>
+
             </div>
+
             <div class="col-lg-4 col-md-6 portfolio-item isotope-item filter-yearbook">
+
               <div class="portfolio-card">
+
                 <div class="image-container">
+
                   <img src="assets/img/portfolio/foto (6)_7_11zon.webp" class="img-fluid" alt="Packaging Design" loading="lazy" />
+
                   <div class="overlay">
+
                     <div class="overlay-content">
+
                       <a href="assets/img/portfolio/foto (6)_7_11zon.webp" class="glightbox zoom-link" title="Packaging Design">
+
                         <i class="bi bi-zoom-in"></i>
+
                       </a>
+
                       <a href="portfolio-details.html" class="details-link" title="View Project Details">
+
                         <i class="bi bi-arrow-right"></i>
+
                       </a>
+
                     </div>
+
                   </div>
+
                 </div>
+
                 <div class="content">
+
                   <h3>Packaging Design</h3>
+
                   <p>Sustainable product packaging solutions</p>
+
                 </div>
+
               </div>
+
             </div>
+
             </div>
+
           </div>
+
       </div>
+
     </section>
+
     <section id="how-we-work" class="how-we-work section">
+
       <div class="container section-title">
+
         <h2>Langkah Kami</h2>
+
         <p>Langkah-langkah kami dalam membantu mewujudkan event dan proyek multimedia Anda dengan hasil terbaik.</p>
+
       </div>
+
       <div class="container">
+
         <div class="steps-wrapper">
+
           <div class="row">
+
             <div class="col-lg-3 col-md-6">
+
               <div class="step-item">
+
                 <div class="step-circle">
+
                   <span>1</span>
+
                 </div>
+
                 <h3>Konsultasi & Konsep Awal</h3>
+
                 <p>Kami mulai dengan mendengarkan ide dan kebutuhan Anda, lalu bantu menentukan konsep, tema, serta perkiraan anggaran acara.</p>
+
               </div>
+
             </div>
 
+
+
             <div class="col-lg-3 col-md-6">
+
               <div class="step-item">
+
                 <div class="step-circle">
+
                   <span>2</span>
+
                 </div>
+
                 <h3>Perencanaan Teknis & Desain</h3>
+
                 <p>Setelah konsep disepakati, tim kami menyusun rundown acara, desain dekorasi, tata panggung, dan kebutuhan teknis lainnya.</p>
+
               </div>
+
             </div>
 
+
+
             <div class="col-lg-3 col-md-6">
+
               <div class="step-item">
+
                 <div class="step-circle">
+
                   <span>3</span>
+
                 </div>
+
                 <h3>Pelaksanaan Acara</h3>
+
                 <p>Tim Artefax akan mengatur jalannya acara mulai dari pemasangan alat, lighting, sound system, hingga koordinasi di lapangan.</p>
+
               </div>
+
             </div>
 
+
+
             <div class="col-lg-3 col-md-6">
+
               <div class="step-item">
+
                 <div class="step-circle">
+
                   <span>4</span>
+
                 </div>
+
                 <h3>Evaluasi & Dokumentasi Akhir</h3>
+
                 <p>Setelah acara selesai, kami serahkan dokumentasi lengkap (foto, video, atau live recording) serta laporan singkat hasil pelaksanaan.</p>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
+
     <section id="tabs" class="tabs section">
+
       <div class="container">
+
         <div class="tabs-wrapper">
+
           <div class="tabs-header">
+
             <ul class="nav nav-tabs">
+
               <li class="nav-item">
+
                 <a class="nav-link active show" data-bs-toggle="tab" data-bs-target="#tabs-tab-1">
+
                   <div class="tab-content-preview">
+
                     <span class="tab-number">01</span>
+
                     <div class="tab-text">
+
                       <h6>Konsultasi</h6>
+
                       <small>Diskusi awal & ide konsep</small>
+
                     </div>
+
                   </div>
+
                 </a>
+
               </li>
+
               <li class="nav-item">
+
                 <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tabs-tab-2">
+
                   <div class="tab-content-preview">
+
                     <span class="tab-number">02</span>
+
                     <div class="tab-text">
+
                       <h6>Perencanaan</h6>
+
                       <small>Desain & persiapan teknis</small>
+
                     </div>
+
                   </div>
+
                 </a>
+
               </li>
+
               <li class="nav-item">
+
                 <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tabs-tab-3">
+
                   <div class="tab-content-preview">
+
                     <span class="tab-number">03</span>
+
                     <div class="tab-text">
+
                       <h6>Pelaksanaan</h6>
+
                       <small>Eksekusi acara di lapangan</small>
+
                     </div>
+
                   </div>
+
                 </a>
+
               </li>
+
               <li class="nav-item">
+
                 <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tabs-tab-4">
+
                   <div class="tab-content-preview">
+
                     <span class="tab-number">04</span>
+
                     <div class="tab-text">
+
                       <h6>Evaluasi</h6>
+
                       <small>Dokumentasi & hasil akhir</small>
+
                     </div>
+
                   </div>
+
                 </a>
+
               </li>
+
             </ul>
+
           </div>
+
+
 
           <div class="tab-content">
+
             <div class="tab-pane fade active show" id="tabs-tab-1">
+
               <div class="row align-items-center">
+
                 <div class="col-lg-6">
+
                   <div class="content-area">
+
                     <div class="content-badge">
+
                       <i class="bi bi-chat-dots"></i>
+
                       <span>Konsultasi & Konsep Awal</span>
+
                     </div>
+
                     <h3>Dari Ide Menjadi Rencana</h3>
+
                     <p>Kami mulai dengan mendengarkan ide dan kebutuhan Anda, lalu membantu menentukan tema, lokasi, dan konsep acara yang paling sesuai.</p>
 
+
+
                     <div class="feature-points">
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Diskusi santai untuk memahami kebutuhan acara</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Rekomendasi konsep & paket layanan terbaik</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Penyesuaian ide dengan anggaran dan target waktu</span>
+
                       </div>
+
                     </div>
+
+
 
                     <a href="#" class="explore-link">Mulai Konsultasi <i class="bi bi-arrow-up-right"></i></a>
+
                   </div>
+
                 </div>
+
                 <div class="col-lg-6">
+
                   <div class="visual-content">
+
                     <img src="assets/img/features/features-1.webp" class="img-fluid" alt="Konsultasi Artefax" />
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
+
 
             <div class="tab-pane fade" id="tabs-tab-2">
+
               <div class="row align-items-center">
+
                 <div class="col-lg-6">
+
                   <div class="content-area">
+
                     <div class="content-badge">
+
                       <i class="bi bi-pencil-square"></i>
+
                       <span>Perencanaan Teknis</span>
+
                     </div>
+
                     <h3>Menyusun Desain & Kebutuhan Teknis</h3>
+
                     <p>Setelah konsep disepakati, kami menyusun rundown acara, desain dekorasi, sistem panggung, lighting, dan kebutuhan multimedia lainnya.</p>
 
+
+
                     <div class="feature-points">
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Desain dekorasi dan tata panggung profesional</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Penyusunan jadwal dan koordinasi teknis detail</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Penentuan alat & sumber daya yang dibutuhkan</span>
+
                       </div>
+
                     </div>
+
+
 
                     <a href="#" class="explore-link">Lihat Rencana <i class="bi bi-arrow-up-right"></i></a>
+
                   </div>
+
                 </div>
+
                 <div class="col-lg-6">
+
                   <div class="visual-content">
+
                     <img src="assets/img/features/features-2.webp" class="img-fluid" alt="Perencanaan Artefax" />
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
+
 
             <div class="tab-pane fade" id="tabs-tab-3">
+
               <div class="row align-items-center">
+
                 <div class="col-lg-6">
+
                   <div class="content-area">
+
                     <div class="content-badge">
+
                       <i class="bi bi-lightning-charge"></i>
+
                       <span>Pelaksanaan</span>
+
                     </div>
+
                     <h3>Eksekusi dengan Tim Profesional</h3>
-                    <p>Tim Artefax memastikan semua berjalan lancar — dari instalasi alat, pengaturan lighting & sound, hingga jalannya acara di lokasi.</p>
+
+                    <p>Tim Artefax memastikan semua berjalan lancar â€” dari instalasi alat, pengaturan lighting & sound, hingga jalannya acara di lokasi.</p>
+
+
 
                     <div class="feature-points">
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Koordinasi penuh antara tim produksi & client</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Pengawasan teknis selama acara berlangsung</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Penyesuaian real-time untuk hasil maksimal</span>
+
                       </div>
+
                     </div>
+
+
 
                     <a href="#" class="explore-link">Lihat Proses Kami <i class="bi bi-arrow-up-right"></i></a>
+
                   </div>
+
                 </div>
+
                 <div class="col-lg-6">
+
                   <div class="visual-content">
+
                     <img src="assets/img/features/features-4.webp" class="img-fluid" alt="Pelaksanaan Artefax" />
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
+
 
             <div class="tab-pane fade" id="tabs-tab-4">
+
               <div class="row align-items-center">
+
                 <div class="col-lg-6">
+
                   <div class="content-area">
+
                     <div class="content-badge">
+
                       <i class="bi bi-camera-reels"></i>
+
                       <span>Evaluasi & Dokumentasi</span>
+
                     </div>
+
                     <h3>Penutup yang Sempurna</h3>
+
                     <p>Setelah acara selesai, kami serahkan hasil dokumentasi lengkap (foto, video, live recording) serta laporan pelaksanaan sebagai bahan evaluasi.</p>
 
+
+
                     <div class="feature-points">
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Hasil dokumentasi profesional siap dibagikan</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Laporan singkat hasil pelaksanaan acara</span>
+
                       </div>
+
                       <div class="point-item">
+
                         <i class="bi bi-arrow-right"></i>
+
                         <span>Feedback & review untuk peningkatan layanan</span>
+
                       </div>
+
                     </div>
 
+
+
                     <a href="#" class="explore-link">Lihat Hasil Akhir <i class="bi bi-arrow-up-right"></i></a>
+
                   </div>
+
                 </div>
+
                 <div class="col-lg-6">
+
                   <div class="visual-content">
+
                     <img src="assets/img/features/features-5.webp" class="img-fluid" alt="Dokumentasi Artefax" />
+
                   </div>
+
                 </div>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
+
     <section id="faq" class="faq section">
+
       <div class="container section-title">
+
         <h2>Pertanyaan yang Sering Diajukan</h2>
+
         <p>Temukan jawaban atas pertanyaan umum seputar layanan, pemesanan, dan pelaksanaan acara bersama Artefax.</p>
+
       </div>
+
       <div class="container">
+
         <div class="row justify-content-center">
+
           <div class="col-lg-9">
+
             <div class="faq-wrapper">
 
+
+
               <div class="faq-item faq-active">
+
                 <div class="faq-header">
+
                   <span class="faq-number">01</span>
-                  <h4>Bagaimana cara memesan layanan atau paket acara di Artefax? </h4>
+
+                  <h4>Bagaimana cara memesan layanan atau paket acara di Artefax?Â </h4>
+
                   <div class="faq-toggle">
+
                     <i class="bi bi-plus"></i>
+
                     <i class="bi bi-dash"></i>
+
                   </div>
+
                 </div>
+
                 <div class="faq-content">
+
                   <div class="content-inner">
+
                     <p>Anda dapat memesan layanan melalui halaman kontak kami atau langsung datang ke kantor Artefax. Tim kami akan membantu menentukan konsep, paket, dan kebutuhan acara sesuai anggaran Anda.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="faq-item">
+
                 <div class="faq-header">
+
                   <span class="faq-number">02</span>
+
                   <h4>Apakah saya bisa menyesuaikan paket layanan sesuai kebutuhan acara?</h4>
+
                   <div class="faq-toggle">
+
                     <i class="bi bi-plus"></i>
+
                     <i class="bi bi-dash"></i>
+
                   </div>
+
                 </div>
+
                 <div class="faq-content">
+
                   <div class="content-inner">
+
                     <p>Tentu! Semua paket Artefax bersifat fleksibel. Anda dapat menambah atau mengurangi layanan seperti dekorasi, dokumentasi, atau penyewaan alat sesuai kebutuhan acara Anda.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="faq-item">
+
                 <div class="faq-header">
+
                   <span class="faq-number">03</span>
+
                   <h4>Berapa lama waktu yang dibutuhkan untuk mempersiapkan sebuah acara?</h4>
+
                   <div class="faq-toggle">
+
                     <i class="bi bi-plus"></i>
+
                     <i class="bi bi-dash"></i>
+
                   </div>
+
                 </div>
+
                 <div class="faq-content">
+
                   <div class="content-inner">
-                    <p>Waktu persiapan tergantung pada skala dan jenis acara. Untuk acara kecil biasanya memerlukan 3–7 hari, sedangkan acara besar seperti pernikahan atau konser bisa memakan waktu hingga beberapa minggu.</p>
+
+                    <p>Waktu persiapan tergantung pada skala dan jenis acara. Untuk acara kecil biasanya memerlukan 3â€“7 hari, sedangkan acara besar seperti pernikahan atau konser bisa memakan waktu hingga beberapa minggu.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="faq-item">
+
                 <div class="faq-header">
+
                   <span class="faq-number">04</span>
+
                   <h4>Apakah Artefax menyediakan dokumentasi acara seperti foto dan video?</h4>
+
                   <div class="faq-toggle">
+
                     <i class="bi bi-plus"></i>
+
                     <i class="bi bi-dash"></i>
+
                   </div>
+
                 </div>
+
                 <div class="faq-content">
+
                   <div class="content-inner">
+
                     <p>Ya, kami menyediakan layanan dokumentasi lengkap meliputi foto, video, dan live recording yang dapat disesuaikan dengan kebutuhan dan konsep acara Anda.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               <div class="faq-item">
+
                 <div class="faq-header">
+
                   <span class="faq-number">05</span>
+
                   <h4>Bagaimana sistem pembayaran dan kebijakan pembatalan di Artefax?</h4>
+
                   <div class="faq-toggle">
+
                     <i class="bi bi-plus"></i>
+
                     <i class="bi bi-dash"></i>
+
                   </div>
+
                 </div>
+
                 <div class="faq-content">
+
                   <div class="content-inner">
+
                     <p>Pembayaran dilakukan dalam dua tahap: DP saat pemesanan dan pelunasan sebelum acara berlangsung. Pembatalan maksimal dapat dilakukan 7 hari sebelum acara dengan ketentuan pengembalian sesuai perjanjian awal.</p>
+
                   </div>
+
                 </div>
+
               </div>
+
               </div>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
+
     <section id="team" class="team section">
+
       <section id="contact" class="contact section">
+
           <div class="container section-title">
+
             <h2>Hubungi Kami</h2>
+
             <p>Punya pertanyaan atau ingin memesan layanan dari Artefax? Silakan isi formulir di bawah atau hubungi kami langsung.</p>
+
           </div>
+
           <div class="container">
+
             <div class="row align-items-stretch">
+
               <div class="col-lg-7 order-lg-1 order-2">
+
                 <div class="contact-form-container">
+
                   <div class="form-intro">
+
                     <h2>Mulai Percakapan</h2>
+
                     <p>Kami siap membantu mewujudkan acara impian Anda, dari konsep hingga pelaksanaan. Ceritakan kebutuhan Anda dan tim Artefax akan segera menghubungi!</p>
+
                   </div>
 
                   <form action="contact.php" method="post" class="php-email-form contact-form">
                     <div class="row">
-                      <div class="col-md-6">
-                        <div class="form-field">
-                          <input type="text" name="name" class="form-input" id="userName" placeholder="Nama Anda" required />
-                          <label for="userName" class="field-label">Nama</label>
-                        </div>
-                      </div>
 
                       <div class="col-md-6">
+
                         <div class="form-field">
-                          <input type="email" class="form-input" name="email" id="userEmail" placeholder="Email Anda" required />
-                          <label for="userEmail" class="field-label">Email</label>
+
+                          <input type="text" name="name" class="form-input" id="userName" placeholder="Nama Anda" required />
+
+                          <label for="userName" class="field-label">Nama</label>
+
                         </div>
+
                       </div>
+
+
+
+                      <div class="col-md-6">
+
+                        <div class="form-field">
+
+                          <input type="email" class="form-input" name="email" id="userEmail" placeholder="Email Anda" required />
+
+                          <label for="userEmail" class="field-label">Email</label>
+
+                        </div>
+
+                      </div>
+
                     </div>
+
+
 
                     <div class="row">
-                      <div class="col-md-6">
-                        <div class="form-field">
-                          <input type="tel" class="form-input" name="phone" id="userPhone" placeholder="Nomor Telepon / WhatsApp" />
-                          <label for="userPhone" class="field-label">Telepon</label>
-                        </div>
-                      </div>
 
                       <div class="col-md-6">
+
                         <div class="form-field">
-                          <input type="text" class="form-input" name="subject" id="messageSubject" placeholder="Subjek Pesan" required />
-                          <label for="messageSubject" class="field-label">Subjek</label>
+
+                          <input type="tel" class="form-input" name="phone" id="userPhone" placeholder="Nomor Telepon / WhatsApp" />
+
+                          <label for="userPhone" class="field-label">Telepon</label>
+
                         </div>
+
                       </div>
+
+
+
+                      <div class="col-md-6">
+
+                        <div class="form-field">
+
+                          <input type="text" class="form-input" name="subject" id="messageSubject" placeholder="Subjek Pesan" required />
+
+                          <label for="messageSubject" class="field-label">Subjek</label>
+
+                        </div>
+
+                      </div>
+
                     </div>
+
+
 
                     <div class="form-field message-field">
+
                       <textarea class="form-input message-input" name="message" id="userMessage" rows="5" placeholder="Ceritakan kebutuhan atau ide acara Anda" required></textarea>
+
                       <label for="userMessage" class="field-label">Pesan</label>
+
                     </div>
+
+
 
                     <div class="my-3">
+
                       <div class="loading">Mengirim...</div>
+
                       <div class="error-message"></div>
+
                       <div class="sent-message">Pesan Anda telah terkirim. Terima kasih telah menghubungi Artefax!</div>
+
                     </div>
 
+
+
                     <button type="submit" class="send-button">
+
                       Kirim Pesan
-                      <span class="button-arrow">→</span>
+
+                      <span class="button-arrow">â†’</span>
+
                     </button>
+
                   </form>
+
                 </div>
+
               </div>
+
+
 
               <div class="col-lg-5 order-lg-2 order-1">
   <div class="contact-sidebar">
@@ -1188,34 +2247,9 @@ if (ob_get_level() > 0) {
         </section>
         </main>
 
-  <!-- Map Section -->
-<section class="map-section">
-  <div class="container">
-    <h3 class="map-title">Lokasi Kami</h3>
+              </div>
 
-    <div class="map-wrapper">
-      <iframe 
-        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3951.566010013717!2d113.708465!3d-8.158553!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd695dfc3ccab7b%3A0x4fe67fa8b73c9bb1!2zOMKwMDknMzAuOCJTIDExM8KwNDInMzkuNyJF!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
-        loading="lazy"
-        allowfullscreen=""
-        referrerpolicy="no-referrer-when-downgrade">
-      </iframe>
-    </div>
-  </div>
-</section>
-<style>
-  /* MAP SECTION FULL WIDTH */
-.map-section {
-  width: 100%;
-  padding: 40px 0;
-  background: #eaf3ff;
-}
-
-.map-section .container {
-  max-width: 100%;
-  padding-left: 30px;
-  padding-right: 30px;
-}
+            </div>
 
 .map-title {
   font-size: 26px;
@@ -1325,20 +2359,38 @@ if (ob_get_level() > 0) {
     </div>
 </footer>
 
+
+
   <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+
 
   <div id="preloader"></div>
 
+
+
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
   <script src="assets/vendor/php-email-form/validate.js"></script>
+
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+
   <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
   <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
+
   <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+
   <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+
+
 
   <script src="assets/js/main.js"></script>
 
+
+
 </body>
+
+
 
 </html>

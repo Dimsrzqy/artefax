@@ -6,9 +6,15 @@ include __DIR__ . '/../config/koneksi.php';
 // 1. LOGIKA PENANGKAPAN TANGGAL DARI SHOP
 // =======================================================
 $autoDateValue = "";
+$isDateFixed = false;
+$dateOnlyFixed = '';
 
 if (isset($_GET['date']) && !empty($_GET['date'])) {
-   $autoDateValue = date('Y-m-d\TH:i', strtotime($_GET['date'] . ' 09:00'));
+    // Tangkap tanggal saja untuk dicek
+    $dateOnlyFixed = date('Y-m-d', strtotime($_GET['date']));
+    // Set nilai datetime-local (tanggal + jam default 09:00)
+    $autoDateValue = date('Y-m-d\TH:i', strtotime($dateOnlyFixed . ' 09:00'));
+    $isDateFixed = true; // Tandai bahwa tanggal sudah dikunci
 }
 
 // === CEK LOGIN & AMBIL DATA USER ===
@@ -37,10 +43,10 @@ $resUser = $stmtUser->get_result();
 $userData = $resUser->fetch_assoc();
 $stmtUser->close();
 
-$userId    = $userIdSession;
-$userName  = $userData['UserNama'] ?? $_SESSION['user']['UserNama'] ?? 'Pelanggan';
-$userEmail = $userData['UserEmail'] ?? $_SESSION['user']['UserEmail'] ?? '';
-$userPhone = $userData['UserNoHP'] ?? ''; 
+$userId 	= $userIdSession;
+$userName 	= $userData['UserNama'] ?? $_SESSION['user']['UserNama'] ?? 'Pelanggan';
+$userEmail 	= $userData['UserEmail'] ?? $_SESSION['user']['UserEmail'] ?? '';
+$userPhone 	= $userData['UserNoHP'] ?? '';
 
 $cart = $_SESSION['cart'] ?? [];
 $cart_count = count($cart);
@@ -53,7 +59,7 @@ $blockedProducts = [];
 
 foreach ($cart as $key => $item) {
     $itemId = (int)($item['id'] ?? 0);
-    $jenis  = strtolower($item['jenis'] ?? $item['tipe'] ?? $item['type'] ?? '');
+    $jenis 	= strtolower($item['jenis'] ?? $item['tipe'] ?? $item['type'] ?? '');
 
     if ($itemId <= 0) continue;
 
@@ -63,8 +69,8 @@ foreach ($cart as $key => $item) {
             WHERE DATE(b.BkgTglMulai) = ?
               AND b.BkgStatus NOT IN ('Dibatalkan', 'Ditolak', 'Selesai')
               AND (
-                  (d.BkgDetailJenis = 'Jasa' AND d.IDPaket = ?) 
-                  OR 
+                  (d.BkgDetailJenis = 'Jasa' AND d.IDPaket = ?)
+                  OR
                   (d.BkgDetailJenis = 'Alat' AND d.IDAlat = ?)
               )";
 
@@ -111,122 +117,117 @@ foreach ($cart as $it) {
     if (strpos($jenis, 'paket') !== false || strpos($jenis, 'jasa') !== false) $hasPaket = true;
 }
 
-$needLokasi  = $hasPaket;             
-$needJaminan = $hasAlat && !$hasPaket; 
+$needLokasi 	= $hasPaket;
+$needJaminan = $hasAlat && !$hasPaket;
 
 function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
 }
 
 $success = $_SESSION['success_checkout'] ?? null;
-$error   = $_SESSION['error_checkout'] ?? null;
+$error 	 = $_SESSION['error_checkout'] ?? null;
 unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Checkout - Artefax</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="../assets/img/logo Artefax1.png" rel="icon" />
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
-    <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/style.css?v=<?= time() ?>" rel="stylesheet">
-    
-    <!-- CSS INTERNAL: NAVBAR FIXED TOP 100% -->
-    <style>
-        /* Navbar benar-benar fixed */
-        .navbar-fixed-custom {
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            background-color: #fff !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
+	<title>Checkout - Artefax</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="../assets/img/logo Artefax1.png" rel="icon" />
+	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/style.css?v=<?= time() ?>" rel="stylesheet">
 
-        /* Konten tidak tertutup navbar */
-        body {
-            padding-top: 90px !important;
-        }
-        .checkout-title {
-            color: #ffffff !important;
-        }
+	<style>
+		/* Navbar benar-benar fixed */
+		.navbar-fixed-custom {
+			position: fixed !important;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 1030;
+			background-color: #fff !important;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+		}
 
-        @media (max-width: 991.98px) {
-            body {
-                padding-top: 80px !important;
-            }
-        }
+		/* Konten tidak tertutup navbar */
+		body {
+			padding-top: 90px !important;
+		}
+		.checkout-title {
+			color: #ffffff !important;
+		}
 
-        /* Spinner tetap di atas semua */
-        #spinner {
-            position: fixed !important;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.98);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+		@media (max-width: 991.98px) {
+			body {
+				padding-top: 80px !important;
+			}
+		}
 
-        .page-header {
-            margin-top: 2rem;
-        }
-    </style>
+		/* Spinner tetap di atas semua */
+		#spinner {
+			position: fixed !important;
+			top: 0; left: 0; right: 0; bottom: 0;
+			background: rgba(255,255,255,0.98);
+			z-index: 9999;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+		.page-header {
+			margin-top: 2rem;
+		}
+	</style>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
-<!-- SPINNER -->
 <div id="spinner" class="show">
-    <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+	<div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
 </div>
 
-<!-- NAVBAR DENGAN KELAS FIXED MANUAL -->
 <div class="navbar-fixed-custom">
-    <nav class="navbar navbar-light bg-white navbar-expand-xl shadow-sm">
-        <div class="container">
-            <a href="../index.php" class="navbar-brand">
-                <img src="../assets/img/logo Artefax.png" alt="Artefax" style="max-height: 55px;">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                <span class="fa fa-bars text-primary"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarCollapse">
-                <div class="navbar-nav mx-auto">
-                    <a href="Services.php" class="nav-item nav-link">Home</a>
-                    <a href="shop.php" class="nav-item nav-link">Shop</a>
-                </div>
-                <div class="nav-icon-wrapper m-3 me-0">
-                    <a href="#" class="nav-icon-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
-                        <i class="fa fa-shopping-bag"></i>
-                        <span class="cart-badge"><?= $cart_count ?></span>
-                    </a> 
-                    <a href="../View/profil.php" class="nav-icon-btn"><i class="fas fa-user"></i></a>
-                </div>
-            </div>
-        </div>
-    </nav>
+	<nav class="navbar navbar-light bg-white navbar-expand-xl shadow-sm">
+		<div class="container">
+			<a href="../index.php" class="navbar-brand">
+				<img src="../assets/img/logo Artefax.png" alt="Artefax" style="max-height: 55px;">
+			</a>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+				<span class="fa fa-bars text-primary"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarCollapse">
+				<div class="navbar-nav mx-auto">
+					<a href="Services.php" class="nav-item nav-link">Home</a>
+					<a href="shop.php" class="nav-item nav-link">Shop</a>
+				</div>
+				<div class="nav-icon-wrapper m-3 me-0">
+					<a href="#" class="nav-icon-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
+						<i class="fa fa-shopping-bag"></i>
+						<span class="cart-badge"><?= $cart_count ?></span>
+					</a>
+					<a href="../View/profil.php" class="nav-icon-btn"><i class="fas fa-user"></i></a>
+				</div>
+			</div>
+		</div>
+	</nav>
 </div>
 
-<!-- HEADER -->
 <div class="container-fluid page-header mb-5">
-    <div class="container text-center">
-        <h1 class="display-5 fw-bold mb-2 checkout-title">Checkout</h1>
-        <p class="text-white-50 mb-0">Lengkapi data pemesanan Anda</p>
-    </div>
+	<div class="container text-center">
+		<h1 class="display-5 fw-bold mb-2 checkout-title">Checkout</h1>
+		<p class="text-white-50 mb-0">Lengkapi data pemesanan Anda</p>
+	</div>
 </div>
 
-<!-- NOTIFIKASI SWEETALERT -->
 <?php if($success): ?>
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
-  Swal.fire({ icon:'success', title:'Berhasil', text: <?= json_encode($success) ?>, timer:3000, showConfirmButton:false });
+	Swal.fire({ icon:'success', title:'Berhasil', text: <?= json_encode($success) ?>, timer:3000, showConfirmButton:false });
 });
 </script>
 <?php endif; ?>
@@ -234,7 +235,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <?php if($error): ?>
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
-  Swal.fire({ icon:'error', title:'Gagal', text: <?= json_encode($error) ?> });
+	Swal.fire({ icon:'error', title:'Gagal', text: <?= json_encode($error) ?> });
 });
 </script>
 <?php endif; ?>
@@ -242,18 +243,17 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <?php if(!empty($blockedProducts)): ?>
 <script>
 document.addEventListener('DOMContentLoaded', ()=> {
-  let list = <?= json_encode($blockedProducts) ?>.join('<br>');
-  Swal.fire({
-    icon:'warning',
-    title:'Produk Tidak Tersedia',
-    html: 'Produk berikut telah mencapai batas booking hari ini dan dihapus dari keranjang:<br><br><strong>' + list + '</strong><br><br>Silakan pilih tanggal lain atau produk lain.',
-    confirmButtonText: 'OK'
-  });
+	let list = <?= json_encode($blockedProducts) ?>.join('<br>');
+	Swal.fire({
+		icon:'warning',
+		title:'Produk Tidak Tersedia',
+		html: 'Produk berikut telah mencapai batas booking hari ini dan dihapus dari keranjang:<br><br><strong>' + list + '</strong><br><br>Silakan pilih tanggal lain atau produk lain.',
+		confirmButtonText: 'OK'
+	});
 });
 </script>
 <?php endif; ?>
 
-<!-- KONTEN UTAMA -->
 <div class="container py-5">
   
   <?php if (empty($cart)): ?>
@@ -499,143 +499,251 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <script>
 // Hilangkan spinner setelah load
 window.addEventListener('load', () => {
-    document.getElementById('spinner').style.display = 'none';
+	document.getElementById('spinner').style.display = 'none';
+    // Set batas minimum tanggal mulai saat halaman dimuat
+    setRealtimeMinDate();
 });
 
 // Format Rupiah
 const formatter = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
+	style: 'currency',
+	currency: 'IDR',
+	minimumFractionDigits: 0
 });
 
-document.addEventListener("DOMContentLoaded", function() {
+function getMinDateTime() {
+    // Mendapatkan tanggal dan waktu saat ini dalam format ISO 8601 (YYYY-MM-DDThh:mm)
+    const now = new Date();
+    // Tambahkan 5 menit ke waktu saat ini untuk buffer
+    now.setMinutes(now.getMinutes() + 5);
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function setRealtimeMinDate() {
+    const minDateTime = getMinDateTime();
     const tglMulaiInput = document.getElementById("inputTglMulai");
-    const tglSelesaiInput = document.getElementById("inputTglSelesai");
     
-    function updateMinDate() {
-        if (tglMulaiInput.value) {
-            tglSelesaiInput.min = tglMulaiInput.value;
-            if (tglSelesaiInput.value && tglSelesaiInput.value < tglMulaiInput.value) {
-                tglSelesaiInput.value = ""; 
-            }
-        }
+    tglMulaiInput.min = minDateTime;
+
+    // Jika inputTglMulai kosong, set nilainya ke waktu minimum (opsional, tapi user friendly)
+    if (!tglMulaiInput.value) {
+        tglMulaiInput.value = minDateTime;
     }
-    updateMinDate();
-    tglMulaiInput.addEventListener("change", updateMinDate);
+}
 
-    function updatePrices() {
-        const startVal = tglMulaiInput.value;
-        const endVal = tglSelesaiInput.value;
-        
-        let multiplier = 1;
-        let infoText = "";
 
-        if (startVal && endVal) {
-            const startDate = new Date(startVal);
-            const endDate = new Date(endVal);
-            const diffTime = endDate - startDate;
-            const diffHours = diffTime / (1000 * 60 * 60);
-            multiplier = Math.ceil(diffHours / 24);
-            if (multiplier < 1) multiplier = 1;
+document.addEventListener("DOMContentLoaded", function() {
+	const tglMulaiInput = document.getElementById("inputTglMulai");
+	const tglSelesaiInput = document.getElementById("inputTglSelesai");
+    const isDateFixed = tglMulaiInput.hasAttribute('data-fixed-date');
+    const fixedDate = tglMulaiInput.getAttribute('data-fixed-date'); // YYYY-MM-DD
 
-            if (multiplier > 1) {
-                infoText = "(Durasi " + multiplier + " Hari: Harga x" + multiplier + ")";
-                $('#infoDurasi').text(infoText).addClass('text-danger').removeClass('text-muted');
-            } else {
-                $('#infoDurasi').text("(Harga Normal 1 Hari)").removeClass('text-danger').addClass('text-muted');
+    // ----------------------------------------------------
+    // LOGIKA KUNCI TANGGAL MULAI (Hanya Jam yang bisa diganti)
+    // ----------------------------------------------------
+    if (isDateFixed) {
+        // Buat input date hanya bisa menerima tanggal yang sudah fix
+        tglMulaiInput.addEventListener('input', function(e) {
+            const currentValue = e.target.value;
+            if (!currentValue) return;
+
+            // Pisahkan tanggal dan waktu dari nilai input
+            const [currentDatePart, currentTimePart] = currentValue.split('T');
+            
+            // Cek apakah bagian tanggal berubah
+            if (currentDatePart !== fixedDate) {
+                // Jika tanggal diubah, kembalikan ke tanggal tetap, dengan jam yang sama (jika ada)
+                e.target.value = fixedDate + 'T' + (currentTimePart || '00:00');
+                
+                // Tambahkan validasi agar waktu tetap >= minimum waktu saat ini (jika tanggalnya adalah hari ini)
+                if (fixedDate === new Date().toISOString().slice(0, 10)) {
+                    const minDateTime = getMinDateTime();
+                    if (e.target.value < minDateTime) {
+                        e.target.value = minDateTime;
+                    }
+                }
             }
-        }
-
-        $('.subtotal-item').each(function() {
-            const basePrice = parseFloat($(this).data('base-price'));
-            const newPrice = basePrice * multiplier;
-            $(this).text(formatter.format(newPrice));
+            // Pastikan min date tetap berlaku untuk membatasi waktu di masa lalu
+            setRealtimeMinDate();
+            // Panggil updateMinDate untuk TglSelesai
+            updateMinDate();
+            // Panggil updatePrices untuk hitung durasi
+            updatePrices();
         });
-
-        const totalElem = $('#totalFull');
-        const baseTotal = parseFloat(totalElem.data('base-total'));
-        const newTotal = baseTotal * multiplier;
-        totalElem.text(formatter.format(newTotal));
-
-        const newDp = newTotal * 0.5;
-        $('#totalDp').text(formatter.format(newDp));
+        
+        // Atur min date untuk mencegah pemilihan tanggal di masa lalu
+        setRealtimeMinDate(); 
+        
+    } else {
+        // Jika tanggal tidak fixed, atur min date seperti biasa
+        setRealtimeMinDate();
     }
+    // ----------------------------------------------------
 
-    $('#inputTglMulai, #inputTglSelesai').on('change', updatePrices);
+	function updateMinDate() {
+		if (tglMulaiInput.value) {
+            // Set min date untuk tglSelesai sama dengan tglMulai
+			tglSelesaiInput.min = tglMulaiInput.value;
+            // Jika tglSelesai sudah ada dan kurang dari tglMulai, hapus nilainya
+			if (tglSelesaiInput.value && tglSelesaiInput.value < tglMulaiInput.value) {
+				tglSelesaiInput.value = "";
+			}
+		}
+	}
 
-    function updateDpVisibility(){
-        const payment = $('input[name=payment]:checked').val();
-        if(payment === 'dp'){ $('#dpRow').show(); } else { $('#dpRow').hide(); }
-    }
-    updateDpVisibility();
-    $('input[name=payment]').on('change', updateDpVisibility);
+    updateMinDate();
+	tglMulaiInput.addEventListener("change", updateMinDate);
+
+	function updatePrices() {
+		const startVal = tglMulaiInput.value;
+		const endVal = tglSelesaiInput.value;
+
+		let multiplier = 1;
+		let infoText = "";
+
+		if (startVal && endVal) {
+			const startDate = new Date(startVal);
+			const endDate = new Date(endVal);
+			const diffTime = endDate - startDate;
+			
+            if (diffTime <= 0) {
+                 multiplier = 1;
+                 infoText = "(Harga Normal 1 Hari / Durasi tidak valid)";
+            } else {
+                const diffHours = diffTime / (1000 * 60 * 60);
+                // Pembulatan ke atas per 24 jam (misal 25 jam = 2 hari)
+			    multiplier = Math.ceil(diffHours / 24);
+                if (multiplier < 1) multiplier = 1; // Minimal 1 hari
+
+                if (multiplier > 1) {
+                    infoText = "(Durasi " + multiplier + " Hari: Harga x" + multiplier + ")";
+                    $('#infoDurasi').text(infoText).addClass('text-danger').removeClass('text-muted');
+                } else {
+                    $('#infoDurasi').text("(Harga Normal 1 Hari)").removeClass('text-danger').addClass('text-muted');
+                }
+            }
+		} else {
+            $('#infoDurasi').text("").removeClass('text-danger').addClass('text-muted');
+        }
+
+		$('.subtotal-item').each(function() {
+			const basePrice = parseFloat($(this).data('base-price'));
+			const newPrice = basePrice * multiplier;
+			$(this).text(formatter.format(newPrice));
+		});
+
+		const totalElem = $('#totalFull');
+		const baseTotal = parseFloat(totalElem.data('base-total'));
+		const newTotal = baseTotal * multiplier;
+		totalElem.text(formatter.format(newTotal));
+
+		const newDp = newTotal * 0.5;
+		$('#totalDp').text(formatter.format(newDp));
+	}
+
+	$('#inputTglMulai, #inputTglSelesai').on('change', updatePrices);
+
+	function updateDpVisibility(){
+		const payment = $('input[name=payment]:checked').val();
+		if(payment === 'dp'){ $('#dpRow').show(); } else { $('#dpRow').hide(); }
+	}
+	updateDpVisibility();
+	$('input[name=payment]').on('change', updateDpVisibility);
 });
 
 // SweetAlert Konfirmasi Checkout
 document.getElementById("btnKonfirmasi").addEventListener("click", function () {
-    if(!document.getElementById("inputTglMulai").value || !document.getElementById("inputTglSelesai").value){
-        Swal.fire('Error', 'Mohon lengkapi tanggal sewa.', 'error');
+	const tglMulaiInput = document.getElementById("inputTglMulai");
+    const tglSelesaiInput = document.getElementById("inputTglSelesai");
+    
+    // Cek kelengkapan tanggal
+    if (!tglMulaiInput.value || !tglSelesaiInput.value){
+		Swal.fire('Error', 'Mohon lengkapi tanggal sewa (Mulai dan Selesai).', 'error');
+		return;
+	}
+    
+    // Cek tanggal mulai tidak boleh di masa lalu
+    // Gunakan buffer 1 menit untuk menghindari masalah perbandingan waktu
+    const now = new Date(new Date().getTime() - (60 * 1000));
+    const selectedStartDate = new Date(tglMulaiInput.value);
+    const selectedEndDate = new Date(tglSelesaiInput.value);
+
+    if (selectedStartDate < now) {
+        Swal.fire('Error', 'Tanggal mulai tidak boleh di masa lalu (sebelum waktu saat ini).', 'error');
+        return;
+    }
+    
+    // Cek tanggal selesai tidak boleh sebelum atau sama dengan tanggal mulai
+    if (selectedEndDate <= selectedStartDate) {
+        Swal.fire('Error', 'Tanggal selesai harus lebih lambat dari tanggal mulai.', 'error');
         return;
     }
 
-    Swal.fire({
-        title: 'Syarat & Ketentuan',
-        html: `
-        <div style="text-align:left; max-height:350px; overflow-y:auto; padding-right:10px;">
-            <h4><b>1. Ketentuan Penyewaan Alat</b></h4>
-              <ul>
-                <li>Penyewa wajib memberikan data yang benar.</li>
-                <li>Pembayaran dilakukan di awal sesuai ketentuan.</li>
-                <li>Penyewa bertanggung jawab penuh atas alat selama masa sewa.</li>
-                <li>Kerusakan ringan ditanggung penyewa, sedangkan kerusakan berat atau kehilangan harus diganti sesuai harga alat.</li>
-                <li>Alat harus dikembalikan tepat waktu. Keterlambatan akan dikenakan denda.</li>
-                <li>Dilarang meminjamkan alat kepada pihak lain tanpa izin dari penyedia.</li>
-            </ul>
-            <h4><b>2. Ketentuan Penyewaan Jasa</b></h4>
-            <ul>
-                <li>Penyewa wajib menjelaskan detail kebutuhan jasa dengan jelas.</li>
-                <li>Pembayaran jasa dilakukan di awal (DP/lunas).</li>
-                <li>Jasa yang sudah dikerjakan tidak dapat dibatalkan atau dikembalikan dananya.</li>
-                <li>Permintaan revisi besar di luar perjanjian awal akan dikenakan biaya tambahan.</li>
-            </ul>
-            <h4><b>3. Ketentuan Pembatalan Booking</b></h4>
-            <ul>
-                <li>Pembatalan maksimal H-2 sebelum acara untuk refund 100%.</li>
-                <li>Pembatalan H-1 atau hari H → uang tidak dikembalikan (non-refund).</li>
-                <li>Tidak hadir atau tidak mengambil barang dianggap batal tanpa refund.</li>
-                <li>Proses refund membutuhkan 1–3 hari kerja.</li>
-            </ul>
-            <h4><b>4. Ketentuan Tambahan</b></h4>
-            <ul>
-                <li>Dengan melanjutkan checkout, penyewa dianggap setuju dengan seluruh ketentuan di atas.</li>
-                <li>Penyedia berhak menolak pesanan tertentu apabila dianggap tidak sesuai atau berisiko.</li>
-                <li>Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
-            </ul>
-            <hr>
-            <div style="margin-top:10px;">
-                <input type="checkbox" id="agreeCheckbox">
-                <label for="agreeCheckbox">Saya telah membaca dan menyetujui Syarat & Ketentuan.</label>
-            </div>
-        </div>
-        `,
-        width: 700,
-        showCancelButton: true,
-        confirmButtonText: 'Lanjutkan Pembayaran',
-        cancelButtonText: 'Batal',
-        allowOutsideClick: false,
-        preConfirm: () => {
-            if (!document.getElementById('agreeCheckbox').checked) {
-                Swal.showValidationMessage('Anda harus menyetujui syarat & ketentuan.');
-                return false;
-            }
-            return true;
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById("checkoutForm").submit();
-        }
-    });
+
+	Swal.fire({
+		title: 'Syarat & Ketentuan',
+		html: `
+		<div style="text-align:left; max-height:350px; overflow-y:auto; padding-right:10px;">
+			<h4><b>1. Ketentuan Penyewaan Alat</b></h4>
+			 	<ul>
+			 		<li>Penyewa wajib memberikan data yang benar.</li>
+			 		<li>Pembayaran dilakukan di awal sesuai ketentuan.</li>
+			 		<li>Penyewa bertanggung jawab penuh atas alat selama masa sewa.</li>
+			 		<li>Kerusakan ringan ditanggung penyewa, sedangkan kerusakan berat atau kehilangan harus diganti sesuai harga alat.</li>
+			 		<li>Alat harus dikembalikan tepat waktu. Keterlambatan akan dikenakan denda.</li>
+			 		<li>Dilarang meminjamkan alat kepada pihak lain tanpa izin dari penyedia.</li>
+			 	</ul>
+			 	<h4><b>2. Ketentuan Penyewaan Jasa</b></h4>
+			 	<ul>
+			 		<li>Penyewa wajib menjelaskan detail kebutuhan jasa dengan jelas.</li>
+			 		<li>Pembayaran jasa dilakukan di awal (DP/lunas).</li>
+			 		<li>Jasa yang sudah dikerjakan tidak dapat dibatalkan atau dikembalikan dananya.</li>
+			 		<li>Permintaan revisi besar di luar perjanjian awal akan dikenakan biaya tambahan.</li>
+			 	</ul>
+			 	<h4><b>3. Ketentuan Pembatalan Booking</b></h4>
+			 	<ul>
+			 		<li>Pembatalan maksimal H-2 sebelum acara untuk refund 100%.</li>
+			 		<li>Pembatalan H-1 atau hari H &rarr; uang tidak dikembalikan (non-refund).</li>
+			 		<li>Tidak hadir atau tidak mengambil barang dianggap batal tanpa refund.</li>
+			 		<li>Proses refund membutuhkan 1&ndash;3 hari kerja.</li>
+			 	</ul>
+			 	<h4><b>4. Ketentuan Tambahan</b></h4>
+			 	<ul>
+			 		<li>Dengan melanjutkan checkout, penyewa dianggap setuju dengan seluruh ketentuan di atas.</li>
+			 		<li>Penyedia berhak menolak pesanan tertentu apabila dianggap tidak sesuai atau berisiko.</li>
+			 		<li>Syarat &amp; ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
+			 	</ul>
+			 	<hr>
+			 	<div style="margin-top:10px;">
+			 		<input type="checkbox" id="agreeCheckbox">
+			 		<label for="agreeCheckbox">Saya telah membaca dan menyetujui Syarat &amp; Ketentuan.</label>
+			 	</div>
+		 </div>
+		`,
+		width: 700,
+		showCancelButton: true,
+		confirmButtonText: 'Lanjutkan Pembayaran',
+		cancelButtonText: 'Batal',
+		allowOutsideClick: false,
+		preConfirm: () => {
+			if (!document.getElementById('agreeCheckbox').checked) {
+				Swal.showValidationMessage('Anda harus menyetujui syarat & ketentuan.');
+				return false;
+			}
+			return true;
+		}
+	}).then((result) => {
+		if (result.isConfirmed) {
+			document.getElementById("checkoutForm").submit();
+		}
+	});
 });
 </script>
 
