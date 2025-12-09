@@ -1227,8 +1227,12 @@ if (ob_get_level() > 0) {
   margin-bottom: 20px;
   color: #333;
 }
-
-/* Wrapper map */
+.map-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: cover; /* biar full area */
+}
 .map-wrapper {
   width: 100%;
   height: 400px; /* --- ukuran BESAR --- */
@@ -1236,17 +1240,7 @@ if (ob_get_level() > 0) {
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
-
-/* Iframe */
-.map-wrapper iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  object-fit: cover; /* biar full area */
-}
 </style>
-
-
 
   <footer id="footer" class="footer position-relative light-background">
     <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
