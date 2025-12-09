@@ -6,9 +6,15 @@ include __DIR__ . '/../config/koneksi.php';
 // 1. LOGIKA PENANGKAPAN TANGGAL DARI SHOP
 // =======================================================
 $autoDateValue = "";
+$isDateFixed = false;
+$dateOnlyFixed = '';
 
 if (isset($_GET['date']) && !empty($_GET['date'])) {
-    $autoDateValue = date('Y-m-d\TH:i', strtotime($_GET['date'] . ' 09:00'));
+    // Tangkap tanggal saja untuk dicek
+    $dateOnlyFixed = date('Y-m-d', strtotime($_GET['date']));
+    // Set nilai datetime-local (tanggal + jam default 09:00)
+    $autoDateValue = date('Y-m-d\TH:i', strtotime($dateOnlyFixed . ' 09:00'));
+    $isDateFixed = true; // Tandai bahwa tanggal sudah dikunci
 }
 
 // === CEK LOGIN & AMBIL DATA USER ===
@@ -40,7 +46,7 @@ $stmtUser->close();
 $userId 	= $userIdSession;
 $userName 	= $userData['UserNama'] ?? $_SESSION['user']['UserNama'] ?? 'Pelanggan';
 $userEmail 	= $userData['UserEmail'] ?? $_SESSION['user']['UserEmail'] ?? '';
-$userPhone 	= $userData['UserNoHP'] ?? ''; 
+$userPhone 	= $userData['UserNoHP'] ?? '';
 
 $cart = $_SESSION['cart'] ?? [];
 $cart_count = count($cart);
@@ -63,8 +69,8 @@ foreach ($cart as $key => $item) {
             WHERE DATE(b.BkgTglMulai) = ?
               AND b.BkgStatus NOT IN ('Dibatalkan', 'Ditolak', 'Selesai')
               AND (
-                  (d.BkgDetailJenis = 'Jasa' AND d.IDPaket = ?) 
-                  OR 
+                  (d.BkgDetailJenis = 'Jasa' AND d.IDPaket = ?)
+                  OR
                   (d.BkgDetailJenis = 'Alat' AND d.IDAlat = ?)
               )";
 
@@ -111,8 +117,8 @@ foreach ($cart as $it) {
     if (strpos($jenis, 'paket') !== false || strpos($jenis, 'jasa') !== false) $hasPaket = true;
 }
 
-$needLokasi 	= $hasPaket; 			
-$needJaminan = $hasAlat && !$hasPaket; 
+$needLokasi 	= $hasPaket;
+$needJaminan = $hasAlat && !$hasPaket;
 
 function rupiah($n) {
     return 'Rp ' . number_format((float)$n, 0, ',', '.');
@@ -129,11 +135,11 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
 	<title>Checkout - Artefax</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link href="../assets/img/logo Artefax1.png" rel="icon" />
-	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet"> 
+	<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Raleway:wght@600;800&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"/>
 	<link href="css/bootstrap.min.css" rel="stylesheet">
 	<link href="css/style.css?v=<?= time() ?>" rel="stylesheet">
-	
+
 	<style>
 		/* Navbar benar-benar fixed */
 		.navbar-fixed-custom {
@@ -203,7 +209,7 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
 					<a href="#" class="nav-icon-btn" data-bs-toggle="modal" data-bs-target="#cartModal">
 						<i class="fa fa-shopping-bag"></i>
 						<span class="cart-badge"><?= $cart_count ?></span>
-					</a> 
+					</a>
 					<a href="../View/profil.php" class="nav-icon-btn"><i class="fas fa-user"></i></a>
 				</div>
 			</div>
@@ -249,7 +255,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <?php endif; ?>
 
 <div class="container py-5">
-	
+
 	<?php if (empty($cart)): ?>
 		<div class="alert alert-warning text-center py-5">
 			<i class="fa fa-shopping-cart fa-3x mb-3 text-muted"></i><br>
@@ -264,7 +270,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 		<div class="row g-5">
 			<div class="col-lg-7">
 				<h4 class="mb-3">Detail Penyewa</h4>
-				
+
 				<div class="mb-3">
 					<label class="form-label fw-bold">Nama Lengkap</label>
 					<input type="text" class="form-control bg-light" name="username" value="<?= htmlspecialchars($userName) ?>" readonly>
@@ -320,14 +326,22 @@ document.addEventListener('DOMContentLoaded', ()=> {
 				<div class="row g-3 mt-3">
 					<div class="col-md-6">
 						<label class="form-label fw-bold text-primary">Tanggal Mulai <span class="text-danger">*</span></label>
-						<input type="datetime-local" 
-							id="inputTglMulai" 
-							name="tgl_mulai" 
-							class="form-control border-primary" 
-							value="<?= htmlspecialchars($autoDateValue) ?>" 
-							required>
 						
-						<?php if (!empty($autoDateValue)): ?>
+						<input type="datetime-local"
+							id="inputTglMulai"
+							name="tgl_mulai"
+							class="form-control border-primary"
+							value="<?= htmlspecialchars($autoDateValue) ?>"
+							required
+							<?= $isDateFixed ? 'data-fixed-date="' . htmlspecialchars($dateOnlyFixed) . '"' : '' ?>
+						>
+						<?php if ($isDateFixed): ?>
+							<input type="hidden" name="tgl_mulai_fixed_date" value="<?= htmlspecialchars($dateOnlyFixed) ?>">
+						<?php endif; ?>
+
+						<?php if ($isDateFixed): ?>
+							<small class="text-muted"><i class="fas fa-lock text-info"></i> **Tanggal sudah dikunci** (hanya jam bisa diubah).</small>
+						<?php elseif (!empty($autoDateValue)): ?>
 							<small class="text-muted"><i class="fas fa-check-circle text-success"></i> Sesuai pilihan di Shop.</small>
 						<?php endif; ?>
 					</div>
@@ -337,7 +351,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 						<input type="datetime-local" id="inputTglSelesai" name="tgl_selesai" class="form-control border-primary" required>
 					</div>
 				</div>
-				
+
 				<div class="mt-4 p-3 bg-light rounded border">
 					<label class="form-label fw-bold mb-2">Metode Pembayaran</label>
 					<div class="d-flex gap-4">
@@ -387,7 +401,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 										</td>
 									</tr>
 									<?php endforeach; ?>
-									
+
 									<tr class="border-top mt-3">
 										<td colspan="2" class="text-end pt-3">Total Estimasi:</td>
 										<td class="text-end pt-3">
@@ -404,13 +418,13 @@ document.addEventListener('DOMContentLoaded', ()=> {
 								</tbody>
 							</table>
 						</div>
-						
+
 						<div class="d-grid gap-2 mt-4">
 							<button type="button" id="btnKonfirmasi" class="btn btn-primary py-3 fw-bold">Konfirmasi Checkout</button>
 							<a href="shop.php" class="btn btn-outline-secondary">Kembali ke Shop</a>
 						</div>
 					</div>
-					
+
 				</div>
 			</div>
 		</div>
@@ -482,7 +496,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 window.addEventListener('load', () => {
 	document.getElementById('spinner').style.display = 'none';
     // Set batas minimum tanggal mulai saat halaman dimuat
-    setRealtimeMinDate(); 
+    setRealtimeMinDate();
 });
 
 // Format Rupiah
@@ -492,25 +506,30 @@ const formatter = new Intl.NumberFormat('id-ID', {
 	minimumFractionDigits: 0
 });
 
-function setRealtimeMinDate() {
+function getMinDateTime() {
     // Mendapatkan tanggal dan waktu saat ini dalam format ISO 8601 (YYYY-MM-DDThh:mm)
     const now = new Date();
-    // Tambahkan 5 menit ke waktu saat ini untuk buffer 
-    now.setMinutes(now.getMinutes() + 5); 
-    
+    // Tambahkan 5 menit ke waktu saat ini untuk buffer
+    now.setMinutes(now.getMinutes() + 5);
+
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const hour = String(now.getHours()).padStart(2, '0');
     const minute = String(now.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function setRealtimeMinDate() {
+    const minDateTime = getMinDateTime();
+    const tglMulaiInput = document.getElementById("inputTglMulai");
     
-    const minDateTime = `${year}-${month}-${day}T${hour}:${minute}`;
-    
-    document.getElementById("inputTglMulai").min = minDateTime;
+    tglMulaiInput.min = minDateTime;
 
     // Jika inputTglMulai kosong, set nilainya ke waktu minimum (opsional, tapi user friendly)
-    if (!document.getElementById("inputTglMulai").value) {
-        document.getElementById("inputTglMulai").value = minDateTime;
+    if (!tglMulaiInput.value) {
+        tglMulaiInput.value = minDateTime;
     }
 }
 
@@ -518,28 +537,69 @@ function setRealtimeMinDate() {
 document.addEventListener("DOMContentLoaded", function() {
 	const tglMulaiInput = document.getElementById("inputTglMulai");
 	const tglSelesaiInput = document.getElementById("inputTglSelesai");
-	
+    const isDateFixed = tglMulaiInput.hasAttribute('data-fixed-date');
+    const fixedDate = tglMulaiInput.getAttribute('data-fixed-date'); // YYYY-MM-DD
+
+    // ----------------------------------------------------
+    // LOGIKA KUNCI TANGGAL MULAI (Hanya Jam yang bisa diganti)
+    // ----------------------------------------------------
+    if (isDateFixed) {
+        // Buat input date hanya bisa menerima tanggal yang sudah fix
+        tglMulaiInput.addEventListener('input', function(e) {
+            const currentValue = e.target.value;
+            if (!currentValue) return;
+
+            // Pisahkan tanggal dan waktu dari nilai input
+            const [currentDatePart, currentTimePart] = currentValue.split('T');
+            
+            // Cek apakah bagian tanggal berubah
+            if (currentDatePart !== fixedDate) {
+                // Jika tanggal diubah, kembalikan ke tanggal tetap, dengan jam yang sama (jika ada)
+                e.target.value = fixedDate + 'T' + (currentTimePart || '00:00');
+                
+                // Tambahkan validasi agar waktu tetap >= minimum waktu saat ini (jika tanggalnya adalah hari ini)
+                if (fixedDate === new Date().toISOString().slice(0, 10)) {
+                    const minDateTime = getMinDateTime();
+                    if (e.target.value < minDateTime) {
+                        e.target.value = minDateTime;
+                    }
+                }
+            }
+            // Pastikan min date tetap berlaku untuk membatasi waktu di masa lalu
+            setRealtimeMinDate();
+            // Panggil updateMinDate untuk TglSelesai
+            updateMinDate();
+            // Panggil updatePrices untuk hitung durasi
+            updatePrices();
+        });
+        
+        // Atur min date untuk mencegah pemilihan tanggal di masa lalu
+        setRealtimeMinDate(); 
+        
+    } else {
+        // Jika tanggal tidak fixed, atur min date seperti biasa
+        setRealtimeMinDate();
+    }
+    // ----------------------------------------------------
+
 	function updateMinDate() {
 		if (tglMulaiInput.value) {
+            // Set min date untuk tglSelesai sama dengan tglMulai
 			tglSelesaiInput.min = tglMulaiInput.value;
+            // Jika tglSelesai sudah ada dan kurang dari tglMulai, hapus nilainya
 			if (tglSelesaiInput.value && tglSelesaiInput.value < tglMulaiInput.value) {
-				tglSelesaiInput.value = ""; 
+				tglSelesaiInput.value = "";
 			}
 		}
 	}
-	
-    // Panggil setRealtimeMinDate saat DOM siap, jika window.load belum dipanggil
-    if (document.readyState === 'loading') {
-        setRealtimeMinDate(); 
-    }
-    
+
     updateMinDate();
 	tglMulaiInput.addEventListener("change", updateMinDate);
 
 	function updatePrices() {
 		const startVal = tglMulaiInput.value;
 		const endVal = tglSelesaiInput.value;
-		
+
 		let multiplier = 1;
 		let infoText = "";
 
@@ -547,17 +607,26 @@ document.addEventListener("DOMContentLoaded", function() {
 			const startDate = new Date(startVal);
 			const endDate = new Date(endVal);
 			const diffTime = endDate - startDate;
-			const diffHours = diffTime / (1000 * 60 * 60);
-			multiplier = Math.ceil(diffHours / 24);
-			if (multiplier < 1) multiplier = 1;
+			
+            if (diffTime <= 0) {
+                 multiplier = 1;
+                 infoText = "(Harga Normal 1 Hari / Durasi tidak valid)";
+            } else {
+                const diffHours = diffTime / (1000 * 60 * 60);
+                // Pembulatan ke atas per 24 jam (misal 25 jam = 2 hari)
+			    multiplier = Math.ceil(diffHours / 24);
+                if (multiplier < 1) multiplier = 1; // Minimal 1 hari
 
-			if (multiplier > 1) {
-				infoText = "(Durasi " + multiplier + " Hari: Harga x" + multiplier + ")";
-				$('#infoDurasi').text(infoText).addClass('text-danger').removeClass('text-muted');
-			} else {
-				$('#infoDurasi').text("(Harga Normal 1 Hari)").removeClass('text-danger').addClass('text-muted');
-			}
-		}
+                if (multiplier > 1) {
+                    infoText = "(Durasi " + multiplier + " Hari: Harga x" + multiplier + ")";
+                    $('#infoDurasi').text(infoText).addClass('text-danger').removeClass('text-muted');
+                } else {
+                    $('#infoDurasi').text("(Harga Normal 1 Hari)").removeClass('text-danger').addClass('text-muted');
+                }
+            }
+		} else {
+            $('#infoDurasi').text("").removeClass('text-danger').addClass('text-muted');
+        }
 
 		$('.subtotal-item').each(function() {
 			const basePrice = parseFloat($(this).data('base-price'));
@@ -586,20 +655,29 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // SweetAlert Konfirmasi Checkout
 document.getElementById("btnKonfirmasi").addEventListener("click", function () {
-	// Tambahkan validasi tanggal mulai tidak boleh di masa lalu sebelum submit
-    const tglMulaiInput = document.getElementById("inputTglMulai");
-    // Gunakan buffer 1 menit untuk menghindari masalah perbandingan waktu
-    const now = new Date(new Date().getTime() - (60 * 1000)); 
-    const selectedDate = new Date(tglMulaiInput.value);
-
-    // Cek apakah tanggal sudah dipilih dan apakah tanggal yang dipilih valid (tidak di masa lalu)
-    if (!tglMulaiInput.value || !document.getElementById("inputTglSelesai").value){
-		Swal.fire('Error', 'Mohon lengkapi tanggal sewa.', 'error');
+	const tglMulaiInput = document.getElementById("inputTglMulai");
+    const tglSelesaiInput = document.getElementById("inputTglSelesai");
+    
+    // Cek kelengkapan tanggal
+    if (!tglMulaiInput.value || !tglSelesaiInput.value){
+		Swal.fire('Error', 'Mohon lengkapi tanggal sewa (Mulai dan Selesai).', 'error');
 		return;
 	}
     
-    if (selectedDate < now) {
+    // Cek tanggal mulai tidak boleh di masa lalu
+    // Gunakan buffer 1 menit untuk menghindari masalah perbandingan waktu
+    const now = new Date(new Date().getTime() - (60 * 1000));
+    const selectedStartDate = new Date(tglMulaiInput.value);
+    const selectedEndDate = new Date(tglSelesaiInput.value);
+
+    if (selectedStartDate < now) {
         Swal.fire('Error', 'Tanggal mulai tidak boleh di masa lalu (sebelum waktu saat ini).', 'error');
+        return;
+    }
+    
+    // Cek tanggal selesai tidak boleh sebelum atau sama dengan tanggal mulai
+    if (selectedEndDate <= selectedStartDate) {
+        Swal.fire('Error', 'Tanggal selesai harus lebih lambat dari tanggal mulai.', 'error');
         return;
     }
 
@@ -627,20 +705,20 @@ document.getElementById("btnKonfirmasi").addEventListener("click", function () {
 			 	<h4><b>3. Ketentuan Pembatalan Booking</b></h4>
 			 	<ul>
 			 		<li>Pembatalan maksimal H-2 sebelum acara untuk refund 100%.</li>
-			 		<li>Pembatalan H-1 atau hari H → uang tidak dikembalikan (non-refund).</li>
+			 		<li>Pembatalan H-1 atau hari H &rarr; uang tidak dikembalikan (non-refund).</li>
 			 		<li>Tidak hadir atau tidak mengambil barang dianggap batal tanpa refund.</li>
-			 		<li>Proses refund membutuhkan 1–3 hari kerja.</li>
+			 		<li>Proses refund membutuhkan 1&ndash;3 hari kerja.</li>
 			 	</ul>
 			 	<h4><b>4. Ketentuan Tambahan</b></h4>
 			 	<ul>
 			 		<li>Dengan melanjutkan checkout, penyewa dianggap setuju dengan seluruh ketentuan di atas.</li>
 			 		<li>Penyedia berhak menolak pesanan tertentu apabila dianggap tidak sesuai atau berisiko.</li>
-			 		<li>Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
+			 		<li>Syarat &amp; ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
 			 	</ul>
 			 	<hr>
 			 	<div style="margin-top:10px;">
 			 		<input type="checkbox" id="agreeCheckbox">
-			 		<label for="agreeCheckbox">Saya telah membaca dan menyetujui Syarat & Ketentuan.</label>
+			 		<label for="agreeCheckbox">Saya telah membaca dan menyetujui Syarat &amp; Ketentuan.</label>
 			 	</div>
 		 </div>
 		`,
