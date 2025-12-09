@@ -14,9 +14,9 @@ if (!$conn) {
 
 $user = new User($conn);
 
-$idUser = filter_var(trim($_POST['id'] ?? ''), FILTER_SANITIZE_SPECIAL_CHARS);
+$idUser = filter_var(trim($_POST['id'] ?? ''), FILTER_SANITIZE_NUMBER_INT);
 
-if (empty($idUser)) {
+if (empty($idUser) || !is_numeric($idUser)) {
     $_SESSION['error_message'] = 'ID karyawan tidak valid';
     header("Location: form-karyawan.php");
     exit;
@@ -24,14 +24,13 @@ if (empty($idUser)) {
 
 try {
     if ($user->deleteUser($idUser)) {
-        $_SESSION['success_message'] = 'Karyawan berhasil dihapus';
+        $_SESSION['success_message'] = 'Karyawan berhasil dihapus.';
     } else {
-        $_SESSION['error_message'] = 'Gagal menghapus karyawan: Pengguna tidak ditemukan';
+        $_SESSION['error_message'] = 'Karyawan tidak ditemukan atau sudah dinonaktifkan sebelumnya.';
     }
 } catch (Exception $e) {
-    $_SESSION['error_message'] = 'Error: ' . $e->getMessage();
+    $_SESSION['error_message'] = 'Gagal: ' . $e->getMessage();
 }
 
-// Redirect kembali ke form karyawan setelah semua proses
 header("Location: form-karyawan.php");
 exit;

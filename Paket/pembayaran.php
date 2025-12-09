@@ -221,16 +221,16 @@ function rupiah($n) { return 'Rp ' . number_format((float)$n, 0, ',', '.'); }
                             <div class="bank-card">
                                 <i class="fas fa-university fa-3x text-primary mb-3"></i>
                                 <h5 class="fw-bold text-dark">BANK BCA</h5>
-                                <h3 class="mb-1 text-primary fw-bold">1234 567 890</h3>
-                                <small class="text-muted">a.n. Artefax Indonesia</small>
+                                <h3 class="mb-1 text-primary fw-bold">2001039484</h3>
+                                <small class="text-muted">AN. RAFLI NUR ALFIAN</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="bank-card">
                                 <i class="fas fa-university fa-3x text-primary mb-3"></i>
                                 <h5 class="fw-bold text-dark">BANK BRI</h5>
-                                <h3 class="mb-1 text-primary fw-bold">0987 654 321</h3>
-                                <small class="text-muted">a.n. Artefax Indonesia</small>
+                                <h3 class="mb-1 text-primary fw-bold">002101279865500</h3>
+                                <small class="text-muted">AN. RAFLI NUR ALFIAN</small>
                             </div>
                         </div>
                     </div>
