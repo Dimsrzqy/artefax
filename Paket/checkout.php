@@ -160,6 +160,14 @@ unset($_SESSION['success_checkout'], $_SESSION['error_checkout']);
 			color: #ffffff !important;
 		}
 
+		/* Tambahan styling untuk input yang dikunci (bukan disabled) */
+        #inputTglMulai[data-fixed-date] {
+            /* Sedikit visual hint bahwa ini sudah ditetapkan */
+            background-color: #f8f9fa; 
+            /* Optional: ganti kursor untuk memberi kesan terkunci */
+            /* cursor: not-allowed; */ 
+        }
+
 		@media (max-width: 991.98px) {
 			body {
 				padding-top: 80px !important;
@@ -255,255 +263,244 @@ document.addEventListener('DOMContentLoaded', ()=> {
 <?php endif; ?>
 
 <div class="container py-5">
-  
-  <?php if (empty($cart)): ?>
-    <div class="alert alert-warning text-center py-5">
-      <i class="fa fa-shopping-cart fa-3x mb-3 text-muted"></i><br>
-      <h4>Keranjang Belanja Kosong</h4>
-      <a href="shop.php" class="btn btn-primary mt-3">Belanja Sekarang</a>
-    </div>
-  <?php else: ?>
 
-  <form id="checkoutForm" action="checkoutproses.php<?= isset($_GET['date']) ? '?date='.$_GET['date'] : '' ?>" method="POST">
-    <input type="hidden" name="user_id" value="<?= htmlspecialchars($userId) ?>">
+	<?php if (empty($cart)): ?>
+		<div class="alert alert-warning text-center py-5">
+			<i class="fa fa-shopping-cart fa-3x mb-3 text-muted"></i><br>
+			<h4>Keranjang Belanja Kosong</h4>
+			<a href="shop.php" class="btn btn-primary mt-3">Belanja Sekarang</a>
+		</div>
+	<?php else: ?>
 
-    <div class="row g-5">
-      <div class="col-lg-7">
-        <h4 class="mb-3">Detail Penyewa</h4>
-        
-        <div class="mb-3">
-          <label class="form-label fw-bold">Nama Lengkap</label>
-          <input type="text" class="form-control bg-light" name="username" value="<?= htmlspecialchars($userName) ?>" readonly>
-          <small class="text-muted">Sesuai akun login</small>
-        </div>
+	<form id="checkoutForm" action="checkoutproses.php<?= isset($_GET['date']) ? '?date='.$_GET['date'] : '' ?>" method="POST">
+		<input type="hidden" name="user_id" value="<?= htmlspecialchars($userId) ?>">
 
-        <div class="mb-3">
-          <label class="form-label fw-bold">
-            Alamat Lokasi Acara
-            <?php if (!$needLokasi): ?>
-            <span class="badge bg-secondary ms-2">Tidak Perlu</span>
-            <?php else: ?>
-            <span class="text-danger">*</span>
-            <?php endif; ?>
-          </label>
-          <textarea id="alamatField" name="alamat" class="form-control" rows="3"
-            <?php if ($needLokasi): ?>
-                required placeholder="Masukkan alamat lengkap lokasi acara"
-            <?php else: ?>
-                disabled placeholder="(Tidak diperlukan hanya untuk penyewaan jasa saja)"
-            <?php endif; ?>
-          ></textarea>
-        </div>
+		<div class="row g-5">
+			<div class="col-lg-7">
+				<h4 class="mb-3">Detail Penyewa</h4>
 
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold">
-              Jaminan
-              <?php if ($needJaminan): ?>
-              <span class="text-danger">*</span>
-              <?php else: ?>
-              <span class="badge bg-secondary ms-2">Tidak Perlu</span>
-              <?php endif; ?>
-            </label>
-            <select id="jaminanField" name="jaminan" class="form-select" <?= $needJaminan ? 'required' : 'disabled' ?>>
-              <?php if ($needJaminan): ?>
-                <option value="">-- Pilih Jaminan --</option>
-                <option value="KTP">KTP</option>
-                <option value="SIM">SIM</option>
-                <option value="STNK">STNK</option>
-              <?php else: ?>
-                <option value="" selected>Tidak diperlukan</option>
-              <?php endif; ?>
-            </select>
-          </div>
+				<div class="mb-3">
+					<label class="form-label fw-bold">Nama Lengkap</label>
+					<input type="text" class="form-control bg-light" name="username" value="<?= htmlspecialchars($userName) ?>" readonly>
+					<small class="text-muted">Sesuai akun login</small>
+				</div>
 
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Nomor HP <span class="text-danger">*</span></label>
-            <input type="tel" name="phone" class="form-control" placeholder="08xxxxxxxxxx" value="<?= htmlspecialchars($userPhone) ?>" required>
-          </div>
-        </div>
+				<div class="mb-3">
+					<label class="form-label fw-bold">
+						Alamat Lokasi Acara
+						<?php if (!$needLokasi): ?>
+						<span class="badge bg-secondary ms-2">Tidak Perlu</span>
+						<?php else: ?>
+						<span class="text-danger">*</span>
+						<?php endif; ?>
+					</label>
+					<textarea id="alamatField" name="alamat" class="form-control" rows="3"
+						<?php if ($needLokasi): ?>
+							required placeholder="Masukkan alamat lengkap lokasi acara"
+						<?php else: ?>
+							disabled placeholder="(Tidak diperlukan hanya untuk penyewaan jasa saja)"
+						<?php endif; ?>
+					></textarea>
+				</div>
 
-       <div class="row g-3 mt-3">
-  <div class="col-md-6">
-    <label class="form-label fw-bold" style="color: #008ac0;">Tanggal Mulai <span class="text-danger">*</span></label>
-    
-    <input type="datetime-local" 
-           id="inputTglMulai" 
-           name="tgl_mulai" 
-           class="form-control" 
-           style="border-color: #008ac0;"
-           value="<?= htmlspecialchars($autoDateValue) ?>" 
-           required>
-    
-    <?php if (!empty($autoDateValue)): ?>
-        <small class="text-muted">
-            <i class="fas fa-check-circle" style="color: #008ac0;"></i> Sesuai pilihan di Shop.
-        </small>
-    <?php endif; ?>
-  </div>
+				<div class="row g-3">
+					<div class="col-md-6">
+						<label class="form-label fw-bold">
+							Jaminan
+							<?php if ($needJaminan): ?>
+							<span class="text-danger">*</span>
+							<?php else: ?>
+							<span class="badge bg-secondary ms-2">Tidak Perlu</span>
+							<?php endif; ?>
+						</label>
+						<select id="jaminanField" name="jaminan" class="form-select" <?= $needJaminan ? 'required' : 'disabled' ?>>
+							<?php if ($needJaminan): ?>
+								<option value="">-- Pilih Jaminan --</option>
+								<option value="KTP">KTP</option>
+								<option value="SIM">SIM</option>
+								<option value="STNK">STNK</option>
+							<?php else: ?>
+								<option value="" selected>Tidak diperlukan</option>
+							<?php endif; ?>
+						</select>
+					</div>
 
-  <div class="col-md-6">
-    <label class="form-label fw-bold" style="color: #008ac0;">Tanggal Selesai <span class="text-danger">*</span></label>
-    <input type="datetime-local" 
-           id="inputTglSelesai" 
-           name="tgl_selesai" 
-           class="form-control" 
-           style="border-color: #008ac0;"
-           required>
-  </div>
+					<div class="col-md-6">
+						<label class="form-label fw-bold">Nomor HP <span class="text-danger">*</span></label>
+						<input type="tel" name="phone" class="form-control" placeholder="08xxxxxxxxxx" value="<?= htmlspecialchars($userPhone) ?>" required>
+					</div>
+				</div>
+
+				<div class="row g-3 mt-3">
+					<div class="col-md-6">
+						<label class="form-label fw-bold text-primary">Tanggal Mulai <span class="text-danger">*</span></label>
+
+						<input type="datetime-local"
+							id="inputTglMulai"
+							name="<?= $isDateFixed ? 'tgl_mulai_visual' : 'tgl_mulai' ?>"
+							class="form-control border-primary"
+							value="<?= htmlspecialchars($autoDateValue) ?>"
+							required
+							<?= $isDateFixed ? 'data-fixed-date="' . htmlspecialchars($dateOnlyFixed) . '"' : '' ?>
+						>
+						
+						<?php if ($isDateFixed): ?>
+							<input type="hidden" id="tglMulaiHidden" name="tgl_mulai" value="<?= htmlspecialchars($autoDateValue) ?>">
+						<?php endif; ?>
+
+						<?php if ($isDateFixed): ?>
+							<small class="text-muted"><i class="fas fa-lock text-info"></i> **Tanggal <?= date('d M Y', strtotime($dateOnlyFixed)) ?> dikunci** (hanya jam bisa diubah).</small>
+						<?php elseif (!empty($autoDateValue)): ?>
+							<small class="text-muted"><i class="fas fa-check-circle text-success"></i> Sesuai pilihan di Shop.</small>
+						<?php endif; ?>
+					</div>
+
+					<div class="col-md-6">
+						<label class="form-label fw-bold text-primary">Tanggal Selesai <span class="text-danger">*</span></label>
+						<input type="datetime-local" id="inputTglSelesai" name="tgl_selesai" class="form-control border-primary" required>
+					</div>
+				</div>
+
+				<div class="mt-4 p-3 bg-light rounded border">
+					<label class="form-label fw-bold mb-2">Metode Pembayaran</label>
+					<div class="d-flex gap-4">
+						<div class="form-check">
+							<input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_dp" value="dp" checked>
+							<label class="form-check-label fw-bold" for="pay_dp">DP 50% <span class="text-muted fw-normal">(Sisanya saat acara)</span></label>
+						</div>
+						<div class="form-check">
+							<input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_full" value="lunas">
+							<label class="form-check-label fw-bold" for="pay_full">Lunas (Full Payment)</label>
+						</div>
+					</div>
+				</div>
+
+				<div class="mt-4">
+					<label class="form-label">Catatan Tambahan (opsional)</label>
+					<textarea name="deskripsi" class="form-control" rows="2" placeholder="Request khusus..."></textarea>
+				</div>
+			</div>
+
+			<div class="col-lg-5">
+				<div class="card border-0 shadow-sm">
+					<div class="card-header bg-white border-bottom py-3">
+						<h5 class="mb-0 fw-bold">Ringkasan Pesanan</h5>
+					</div>
+					<div class="card-body">
+						<div class="table-responsive">
+							<table class="table table-sm table-borderless">
+								<thead>
+									<tr class="text-muted border-bottom">
+										<th>Produk</th>
+										<th class="text-center">Qty</th>
+										<th class="text-end">Subtotal</th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach($cart as $it):
+										$qty = (int)($it['quantity'] ?? $it['qty'] ?? 1);
+										$price = (float)($it['price'] ?? 0);
+										$line = $price * $qty;
+									?>
+									<tr>
+										<td class="fw-bold"><?= htmlspecialchars($it['name']) ?></td>
+										<td class="text-center"><?= $qty ?></td>
+										<td class="text-end subtotal-item" data-base-price="<?= $line ?>">
+											<?= rupiah($line) ?>
+										</td>
+									</tr>
+									<?php endforeach; ?>
+
+									<tr class="border-top mt-3">
+										<td colspan="2" class="text-end pt-3">Total Estimasi:</td>
+										<td class="text-end pt-3">
+											<strong id="totalFull" class="fs-5" data-base-total="<?= $total ?>"><?= rupiah($total) ?></strong>
+											<br><small id="infoDurasi" class="text-muted" style="font-size: 0.75em;"></small>
+										</td>
+									</tr>
+									<tr id="dpRow" style="background-color: #fff3cd;">
+										<td colspan="2" class="text-end fw-bold p-3" style="color: #856404;"> Bayar Sekarang (DP 50%):</td>
+										<td class="text-end p-3">
+											<strong class="fs-4" id="totalDp" style="color: #d39e00;"> <?= rupiah($total * 0.5) ?></strong>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+
+						<div class="d-grid gap-2 mt-4">
+							<button type="button" id="btnKonfirmasi" class="btn btn-primary py-3 fw-bold">Konfirmasi Checkout</button>
+							<a href="shop.php" class="btn btn-outline-secondary">Kembali ke Shop</a>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	</form>
+
+	<?php endif; ?>
 </div>
-
-<div class="mt-4 p-3 bg-light rounded border">
-  <label class="form-label fw-bold mb-2">Metode Pembayaran</label>
-  <div class="d-flex gap-4">
-      <div class="form-check">
-        <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_dp" value="dp" checked>
-        <label class="form-check-label fw-bold" for="pay_dp">DP 50% <span class="text-muted fw-normal">(Sisanya saat acara)</span></label>
-      </div>
-      <div class="form-check">
-        <input class="form-check-input paymentOpt" type="radio" name="payment" id="pay_full" value="lunas">
-        <label class="form-check-label fw-bold" for="pay_full">Lunas (Full Payment)</label>
-      </div>
-  </div>
-</div>
-
-        <div class="mt-4">
-          <label class="form-label">Catatan Tambahan (opsional)</label>
-          <textarea name="deskripsi" class="form-control" rows="2" placeholder="Request khusus..."></textarea>
-        </div>
-      </div>
-
-      <div class="col-lg-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom py-3">
-                <h5 class="mb-0 fw-bold">Ringkasan Pesanan</h5>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-sm table-borderless">
-                  <thead>
-                    <tr class="text-muted border-bottom">
-                        <th>Produk</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-end">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach($cart as $it):
-                      $qty = (int)($it['quantity'] ?? $it['qty'] ?? 1);
-                      $price = (float)($it['price'] ?? 0);
-                      $line = $price * $qty;
-                    ?>
-                    <tr>
-                      <td class="fw-bold"><?= htmlspecialchars($it['name']) ?></td>
-                      <td class="text-center"><?= $qty ?></td>
-                      <td class="text-end subtotal-item" data-base-price="<?= $line ?>">
-                          <?= rupiah($line) ?>
-                      </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    
-                    <tr class="border-top mt-3">
-                      <td colspan="2" class="text-end pt-3">Total Estimasi:</td>
-                      <td class="text-end pt-3">
-                          <strong id="totalFull" class="fs-5" data-base-total="<?= $total ?>"><?= rupiah($total) ?></strong>
-                          <br><small id="infoDurasi" class="text-muted" style="font-size: 0.75em;"></small>
-                      </td>
-                    </tr>
-                    <tr id="dpRow" style="background-color: #fff3cd;">
-                      <td colspan="2" class="text-end fw-bold p-3" style="color: #856404;"> Bayar Sekarang (DP 50%):</td>
-                      <td class="text-end p-3">
-                          <strong class="fs-4" id="totalDp" style="color: #d39e00;"> <?= rupiah($total * 0.5) ?></strong>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <div class="d-grid gap-2 mt-4">
-                  <button type="button" id="btnKonfirmasi" class="btn btn-primary py-3 fw-bold">Konfirmasi Checkout</button>
-                  <a href="shop.php" class="btn btn-outline-secondary">Kembali ke Shop</a>
-              </div>
-            </div>
-        </div>
-      </div>
-    </div>
-  </form>
-
-  <?php endif; ?>
-</div>
-
-<!-- FOOTER -->
 
 <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5">
-    <div class="container py-5">
-        <div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
-            <div class="row g-4">
-                <div class="col-lg-3">
-                    <a href="#">
-                        <h1 class="text-info mb-0">ARTEFAX.ID</h1>
-                        <p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
-                    </a>
-                </div>
-                <div class="col-lg-3">
-                    <div class="d-flex justify-content-end pt-3">
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" target="_blank"><i class="fab fa-instagram"></i></a>
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" target="_blank"><i class="fab fa-tiktok"></i></a>
-                        <a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" target="_blank"><i class="fab fa-youtube"></i></a>
-                        <a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank"><i class="fab fa-whatsapp"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row g-5">
-            <div class="col-lg-3 col-md-6">
-                <div class="footer-item">
-                    <h4 class="text-light mb-3">Tentang Kami</h4>
-                    <p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional untuk menunjang kesuksesan acara Anda.</p>
-                    <a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-info">Lihat Layanan</a>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="d-flex flex-column text-start footer-item">
-                    <h4 class="text-light mb-3">Menu Cepat</h4>
-                    <a class="btn-link text-info" href="../index.php">Landing Page</a>
-                    <a class="btn-link text-info" href="shop.php">Shop</a>
-                    <a class="btn-link text-info" href="Services.php">Home</a>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="d-flex flex-column text-start footer-item">
-                    <h4 class="text-light mb-3">Akun Saya</h4>
-                    <a class="btn-link text-info" href="../View/profil.php">Profil</a>
-                    <a class="btn-link text-info" href="cart.php">Keranjang</a>
-                    <a class="btn-link text-info" href="../RiwayatBooking.php">Riwayat Booking</a>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="footer-item">
-                    <h4 class="text-light mb-3">Kontak</h4>
-                    <p>Alamat: Jember, Jawa Timur</p>
-                    <p>Email: artefaxm@gmail.com</p>
-                    <p>WhatsApp: +62 896-5352-1667</p>
-                    <p class="mt-3 mb-0">Pembayaran: Transfer Bank (BCA/BRI)</p>
-                    <img src="img/pembayaran.png" class="img-fluid" alt="Metode Pembayaran" style="margin-top: 10px;">
-                </div>
-            </div>
-        </div>
-    </div>
+	<div class="container py-5">
+		<div class="pb-4 mb-4" style="border-bottom: 1px solid rgba(226, 175, 24, 0.5);">
+			<div class="row g-4">
+				<div class="col-lg-3">
+					<a href="#">
+						<h1 class="text-primary mb-0">ARTEFAX.ID</h1>
+						<p class="text-secondary mb-0">Penyewaan Paket Jasa Dan Alat Multimedia</p>
+					</a>
+				</div>
+				<div class="col-lg-3">
+					<div class="d-flex justify-content-end pt-3">
+						<a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.instagram.com/artefax_id?igsh=YWJ2amlvajRiNHh0" target="_blank"><i class="fab fa-instagram"></i></a>
+						<a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://www.tiktok.com/@artefax.id?_r=1&_t=ZS-91w6hQ7SJym" target="_blank"><i class="fab fa-tiktok"></i></a>
+						<a class="btn btn-outline-secondary me-2 btn-md-square rounded-circle" href="https://youtube.com/@artefaxmedia-xn6zm?si=2HWgVISPqwb-zoVg" target="_blank"><i class="fab fa-youtube"></i></a>
+						<a class="btn btn-outline-secondary btn-md-square rounded-circle" href="https://wa.me/6289653521667" target="_blank"><i class="fab fa-whatsapp"></i></a>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<div class="footer-item">
+						<h4 class="text-light mb-3">Tentang Kami</h4>
+						<p class="mb-4">Artefax Media menyediakan layanan sewa alat multimedia terlengkap dan jasa dokumentasi profesional untuk menunjang kesuksesan acara Anda.</p>
+						<a href="Services.php" class="btn border-secondary py-2 px-4 rounded-pill text-primary">Lihat Layanan</a>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<div class="d-flex flex-column text-start footer-item">
+						<h4 class="text-light mb-3">Menu Cepat</h4>
+						<a class="btn-link" href="../index.php">Landing Page</a>
+						<a class="btn-link" href="shop.php">Shop</a>
+						<a class="btn-link" href="Services.php">Home</a>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<div class="d-flex flex-column text-start footer-item">
+						<h4 class="text-light mb-3">Akun Saya</h4>
+						<a class="btn-link" href="../View/profil.php">Profil</a>
+						<a class="btn-link" href="cart.php">Contact</a>
+						<a class="btn-link" href="../RiwayatBooking.php">Riwayat Booking</a>
+					</div>
+				</div>
+				<div class="col-lg-3 col-md-6">
+					<div class="footer-item">
+						<h4 class="text-light mb-3">Kontak</h4>
+						<p>Alamat: Jember, Jawa Timur</p>
+						<p>Email: artefaxm@gmail.com</p>
+						<p>WhatsApp: +62 896-5352-1667</p>
+						<p class="mt-3 mb-0">Pembayaran: Transfer Bank (BCA/BRI)</p>
+						<img src="img/pembayaran.png" class="img-fluid" alt="Metode Pembayaran" style="margin-top: 10px;">
+					</div>
+				</div>
+			</div>
+		</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/main.js"></script>
 
 <script>
-// Hilangkan spinner setelah load
-window.addEventListener('load', () => {
-	document.getElementById('spinner').style.display = 'none';
-    // Set batas minimum tanggal mulai saat halaman dimuat
-    setRealtimeMinDate();
-});
-
 // Format Rupiah
 const formatter = new Intl.NumberFormat('id-ID', {
 	style: 'currency',
@@ -529,80 +526,122 @@ function getMinDateTime() {
 function setRealtimeMinDate() {
     const minDateTime = getMinDateTime();
     const tglMulaiInput = document.getElementById("inputTglMulai");
-    
+    const tglMulaiHidden = document.getElementById("tglMulaiHidden");
+    const isDateFixed = tglMulaiInput.hasAttribute('data-fixed-date');
+
+    // 1. Selalu set nilai minimum yang mungkin (realtime + 5 menit)
     tglMulaiInput.min = minDateTime;
 
-    // Jika inputTglMulai kosong, set nilainya ke waktu minimum (opsional, tapi user friendly)
-    if (!tglMulaiInput.value) {
+    // 2. Jika input tidak memiliki nilai (tidak datang dari GET/Shop)
+    // DAN tidak dikunci (isDateFixed)
+    if (!tglMulaiInput.value && !isDateFixed) {
         tglMulaiInput.value = minDateTime;
+    } 
+    
+    // 3. Jika dikunci (isDateFixed), tapi waktu default (09:00) sudah di masa lalu, 
+    // kita set ke waktu realtime + 5 menit, TAPI HARUS tetap menggunakan tanggal yang dikunci.
+    if (isDateFixed) {
+        const fixedDate = tglMulaiInput.getAttribute('data-fixed-date');
+        
+        // Cek apakah tanggal yang dikunci adalah hari ini
+        if (fixedDate === new Date().toISOString().slice(0, 10)) {
+            
+            // Jika waktu yang ada (09:00 atau yang lain) di masa lalu
+            if (tglMulaiInput.value < minDateTime) {
+                // HANYA ganti jam ke realtime, tapi jaga tanggalnya tetap fixedDate
+                const realTimePart = minDateTime.split('T')[1];
+                const newFixedTimeValue = `${fixedDate}T${realTimePart}`;
+                
+                tglMulaiInput.value = newFixedTimeValue;
+                if (tglMulaiHidden) {
+                    tglMulaiHidden.value = newFixedTimeValue;
+                }
+            }
+        }
     }
 }
+
+// Hilangkan spinner setelah load
+window.addEventListener('load', () => {
+	document.getElementById('spinner').style.display = 'none';
+    setRealtimeMinDate();
+    // Panggil updatePrices setelah setRealtimeMinDate selesai dan DOM siap
+    updatePrices(); 
+});
 
 
 document.addEventListener("DOMContentLoaded", function() {
 	const tglMulaiInput = document.getElementById("inputTglMulai");
 	const tglSelesaiInput = document.getElementById("inputTglSelesai");
+    const tglMulaiHidden = document.getElementById("tglMulaiHidden"); // Mungkin null jika tidak fixed
     const isDateFixed = tglMulaiInput.hasAttribute('data-fixed-date');
     const fixedDate = tglMulaiInput.getAttribute('data-fixed-date'); // YYYY-MM-DD
+    
+    // Jika tidak fixed, kita perlu input visual yang bisa disubmit, jadi namanya harus 'tgl_mulai'
+    if (!isDateFixed) {
+        tglMulaiInput.name = 'tgl_mulai';
+    }
 
+    // Panggil setRealtimeMinDate di DOMContentLoaded juga untuk memastikan nilai default terpasang cepat
+    if (!tglMulaiInput.value) {
+        setRealtimeMinDate();
+    }
+    
     // ----------------------------------------------------
     // LOGIKA KUNCI TANGGAL MULAI (Hanya Jam yang bisa diganti)
     // ----------------------------------------------------
     if (isDateFixed) {
-        // Buat input date hanya bisa menerima tanggal yang sudah fix
+        // Karena kita tidak menggunakan 'disabled', kita harus mengunci perubahan tanggal secara manual
+        
         tglMulaiInput.addEventListener('input', function(e) {
             const currentValue = e.target.value;
             if (!currentValue) return;
 
-            // Pisahkan tanggal dan waktu dari nilai input
             const [currentDatePart, currentTimePart] = currentValue.split('T');
             
-            // Cek apakah bagian tanggal berubah
+            // Logika Penguncian Tanggal: Jika tanggal diubah, kembalikan ke fixedDate
             if (currentDatePart !== fixedDate) {
-                // Jika tanggal diubah, kembalikan ke tanggal tetap, dengan jam yang sama (jika ada)
+                // Kembalikan ke tanggal yang dikunci dengan jam yang sama
                 e.target.value = fixedDate + 'T' + (currentTimePart || '00:00');
-                
-                // Tambahkan validasi agar waktu tetap >= minimum waktu saat ini (jika tanggalnya adalah hari ini)
-                if (fixedDate === new Date().toISOString().slice(0, 10)) {
-                    const minDateTime = getMinDateTime();
-                    if (e.target.value < minDateTime) {
-                        e.target.value = minDateTime;
-                    }
-                }
             }
-            // Pastikan min date tetap berlaku untuk membatasi waktu di masa lalu
-            setRealtimeMinDate();
-            // Panggil updateMinDate untuk TglSelesai
+            
+            // Perbarui nilai input hidden
+            if (tglMulaiHidden) {
+                tglMulaiHidden.value = e.target.value;
+            }
+
+            // Panggil fungsi perhitungan setelah perubahan
             updateMinDate();
-            // Panggil updatePrices untuk hitung durasi
             updatePrices();
         });
         
-        // Atur min date untuk mencegah pemilihan tanggal di masa lalu
-        setRealtimeMinDate(); 
-        
-    } else {
-        // Jika tanggal tidak fixed, atur min date seperti biasa
-        setRealtimeMinDate();
     }
     // ----------------------------------------------------
 
 	function updateMinDate() {
-		if (tglMulaiInput.value) {
+        // Ambil nilai yang akan disubmit (input hidden jika fixed, input visual jika tidak fixed)
+		const startVal = isDateFixed && tglMulaiHidden ? tglMulaiHidden.value : tglMulaiInput.value;
+
+		if (startVal) {
             // Set min date untuk tglSelesai sama dengan tglMulai
-			tglSelesaiInput.min = tglMulaiInput.value;
+			tglSelesaiInput.min = startVal;
             // Jika tglSelesai sudah ada dan kurang dari tglMulai, hapus nilainya
-			if (tglSelesaiInput.value && tglSelesaiInput.value < tglMulaiInput.value) {
+			if (tglSelesaiInput.value && tglSelesaiInput.value < startVal) {
 				tglSelesaiInput.value = "";
 			}
 		}
 	}
 
     updateMinDate();
-	tglMulaiInput.addEventListener("change", updateMinDate);
+    // Pasang event listener pada input visual
+    tglMulaiInput.addEventListener("change", function() {
+        updateMinDate();
+        updatePrices();
+    });
 
 	function updatePrices() {
-		const startVal = tglMulaiInput.value;
+        // Ambil nilai dari input yang akan disubmit
+		const startVal = isDateFixed && tglMulaiHidden ? tglMulaiHidden.value : tglMulaiInput.value;
 		const endVal = tglSelesaiInput.value;
 
 		let multiplier = 1;
@@ -648,8 +687,8 @@ document.addEventListener("DOMContentLoaded", function() {
 		$('#totalDp').text(formatter.format(newDp));
 	}
 
-	$('#inputTglMulai, #inputTglSelesai').on('change', updatePrices);
-
+	$('#inputTglSelesai').on('change', updatePrices);
+	
 	function updateDpVisibility(){
 		const payment = $('input[name=payment]:checked').val();
 		if(payment === 'dp'){ $('#dpRow').show(); } else { $('#dpRow').hide(); }
@@ -661,10 +700,15 @@ document.addEventListener("DOMContentLoaded", function() {
 // SweetAlert Konfirmasi Checkout
 document.getElementById("btnKonfirmasi").addEventListener("click", function () {
 	const tglMulaiInput = document.getElementById("inputTglMulai");
-    const tglSelesaiInput = document.getElementById("inputTglSelesai");
+	const tglSelesaiInput = document.getElementById("inputTglSelesai");
+    const tglMulaiHidden = document.getElementById("tglMulaiHidden");
+    const isDateFixed = tglMulaiInput.hasAttribute('data-fixed-date');
+
+    // Ambil nilai yang akan disubmit
+    const tglMulaiValue = isDateFixed && tglMulaiHidden ? tglMulaiHidden.value : tglMulaiInput.value;
     
     // Cek kelengkapan tanggal
-    if (!tglMulaiInput.value || !tglSelesaiInput.value){
+    if (!tglMulaiValue || !tglSelesaiInput.value){
 		Swal.fire('Error', 'Mohon lengkapi tanggal sewa (Mulai dan Selesai).', 'error');
 		return;
 	}
@@ -672,7 +716,7 @@ document.getElementById("btnKonfirmasi").addEventListener("click", function () {
     // Cek tanggal mulai tidak boleh di masa lalu
     // Gunakan buffer 1 menit untuk menghindari masalah perbandingan waktu
     const now = new Date(new Date().getTime() - (60 * 1000));
-    const selectedStartDate = new Date(tglMulaiInput.value);
+    const selectedStartDate = new Date(tglMulaiValue);
     const selectedEndDate = new Date(tglSelesaiInput.value);
 
     if (selectedStartDate < now) {
